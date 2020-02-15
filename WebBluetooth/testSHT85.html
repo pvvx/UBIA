@@ -2,8 +2,9 @@
 <html>
   <head>
 	<link rel="stylesheet" href="tests.css">
-	<title>Get ADC data</title>
+	<title>Get SHT85 data</title>
 	<script type="text/javascript" src="dygraph.min.js"></script>
+	<script type="text/javascript" src="crc8.js"></script>
   </head>
   <body>
 	<div style="height: auto; width: auto; text-align: center;">
@@ -21,43 +22,28 @@
 	</div>
   </body>
 <script type="text/javascript">
-// if min Connection interval 11.5 -> max 3333 sps
-// if min Connection interval 7.5 -> max 5 ksps
-var smprate = 3333; // 250..5000 sps (116*2+2)/(0.0075*3)=10400 bytes in sec
-/* ADC Channels 0..1.3V:
-bit0,4:
-=0x05:	PD4 ExtPower
-=0x06:	PD5 USB/BLE
-=0x09:	PC4 ADC1
-=0x07:	PC2 ADC2
-=0x0b:	PC6 TX
-=0x0c:	PC7 RX
-=0x12:	GND
-Diff/PGA Channel: 
-=0x6D:  DIFF, PGA, '+PC2','-'PC1', base: 0.65V
-=0x8E:  PC1
-=0x6E:  PC1, PGA
-=0x8D:  PC2, PGA
-*/
-var chnl = 0x09;
-var pga20db = 0x00; // 0x40 - PC2+20db, 0x10 - PC1+20db
-var pga2db5 = 0x00; // bit0..3: 0..9 *2.5db PC2, bit4..7: 0..9 *2.5db PC1  
-var Uk_ADC = 1.3/65536;
-var Uz_ADC = -0.0110; // -0.0120 Ch0x12 -> GND
-if(smprate < 245) smprate = 245;
-else if(smprate > 50000) smprate = 50000;
+var crc8 = new CRC8(); 
 var $ = function(id) {
 	return document.getElementById(id);
 }
 // Вывод в терминал
 function log(data) {console.log(data);}
+//-------------------------
+var smprate = 10; // 0.5..10 sps
+// 10 sps -> 1.36 mA
+// 4 sps -> 0.58 mA
+// 2 sps -> 0.32 mA
+// 1 sps -> 0.19 mA
+// 0.5 sps -> 0.12 mA
+// Disconnect -> 0.09 mA
+//-------------------------
 var devcnn = 0;
 var stg = 0;
 var smps = smprate;
 var sttim = 0;
 var cur_idx = 0;
 var old_idx = 0;
-var samples = 10000;
+var samples = 20000;
 var rend = 1;
 var oldblkid = 0;
 var rdnextflg = false;
@@ -106,14 +92,9 @@ function ShowGrf(value) {
 		setInterval(function(){wsSmpRate()}, 500);
 	}
 	if(rend) {
-//		log('Raw['+value.byteLength+']: '+ value.getUint16(2,true)+ ', '+value.getUint16(4,true)+'..');
-	    let x = 0;
-		for (let i=2;i<value.byteLength;i+=2) {
-			datau.push([cur_idx/smprate, value.getUint16(i,true)*Uk_ADC + Uz_ADC]);
-			cur_idx++;
-			if(cur_idx >= samples) datau.shift();
-		}
-//		datau.push([(cur_idx-0.5)/smprate, 0]); // Test Mark End Blk
+		datau.push([cur_idx/smprate, -45+175*value.getUint16(4,false)/65535, 100*value.getUint16(7,false)/65535]);
+		cur_idx++;
+		if(cur_idx >= samples) datau.shift();
 	}
 	else {
 		sttim = new Date().getTime();
@@ -124,15 +105,18 @@ function ShowGrf(value) {
 			$("div_v"),
 		    datau,
 			{
-				title: 'ADC samples',
+				title: 'Humidity and Temperature Sensor SHT85',
 				showRangeSelector: true,
 				showRoller: true,
-				xlabel: 'T(sec)',
-				ylabel: 'ADC(V)',
-				colors: ['green'],
+				rollPeriod: 7,
+				xlabel: 'Time(sec)',
+				ylabel: 'Temp(C&deg;)',
+				y2label: 'H(%)',
+				colors: ['green', 'red'],
+				series : { 'H(%)': { axis: 'y2' } },
 				axes: {
 					x: {valueFormatter: function(x){return this.getLabels()[0] + ': '+ x.toPrecision(5);}}},
-					labels: ['T', 'ADC'],
+					labels: ['T(sec)', 'T(C°)', 'H(%)'],
 					labelsDiv: $('labdiv'),
 					legend: 'always',  // "follow"
 					digitsAfterDecimal: 3,
@@ -208,7 +192,6 @@ function SendWhoIs(){
 	characteristicCache.writeValue(new Uint8Array([0, 0]));
 }
 var con_interval;
-var pack_samples = 4;
 /* typedef struct {
 	uint8_t size;	// размер данных пакета (0..8 байт, =0 - get, =1..8 set)
 	uint8_t cmd;	// номер команды / тип пакета (=4)
@@ -226,21 +209,45 @@ function ConnParUpdate(tms) {
 	// cni 6..3200 -> tmeout (100..1600)*10 = 1..16 sec
 	let tt = (t-6)*0.5 + 100; // max tmeout 0x0C80 * 10 = 32000 ms
 	let lce = 0; // latency connection events
-	if(t < 25) lce = 6;
+//	if(t < 25) lce = 6;
 	log('Set Connect parameters #04: interval '+tms.toFixed(2)+' ms (real '+(t*1.25)+'), timeout '+(tt*10)+' ms');
 	characteristicCache.writeValue(new Uint8Array([8, 4, t&0xff,(t>>8)&0xff, t&0xff,(t>>8)&0xff, lce,0, tt&0xff,(tt>>8)&0xff]));
 }
-/* typedef struct { // TLSR8266 ADC + DFIFO
-	uint8_t size;	// размер данных пакета (0..4 байт: 0 - get, 1..4 set)
-	uint8_t cmd;	// номер команды / тип пакета (=8)
-	uint8_t pktcnt;	// кол-во передаваемых значений из регистров в одном пакете передачи (1..116 байта, BT4.2 MTU TX = 125)
-	uint8_t chnl;	// Channel 0..0x12
-	uint16_t smps;	// Sample Rate
-} dev_adc_t; */
+/* typedef struct {
+	uint8_t size;	// размер данных пакета 
+	uint8_t cmd;	// номер команды / тип пакета (=1)
+	uint8_t pktcnt;  	// кол-во передаваемых значений из регистров в одном пакете передачи
+	uint8_t multiplier; // множитель периода опроса, time << multiplier
+	uint16_t time; 		// период опроса регистров чтения в us
+	uint16_t clk_khz; 	// частота i2c шины в kHz
+	reg_wr_t init[MAX_INIT_REGS];
+	reg_rd_t rd[MAX_READ_REGS];
+	reg_wr_t slp[2];
+} dev_i2c_cfg_t; */
+var pack_samples = 8;
 function SendInit(){
-	smprate = Math.round(smprate);
-	log('Send command #08: Init ADC ('+smprate+' sps)');
-	characteristicCache.writeValue(new Uint8Array([6, 8, pack_samples, chnl, smprate&0xff, (smprate>>8)&0xff, pga20db&0x50, pga2db5]));
+	log('Send command#01: Init I2C/SMBUS CLK 400 kHz...'); // - init I2C 
+	characteristicCache.writeValue(new Uint8Array([6, 1, 0, 0, 255, 255, 0x90, 1]));
+}
+function SendStartMeasurement(){
+	let code = 0x202F;// 0.5 sps
+	let t = 0.5;
+	if(smprate >= 10) {
+		code = 0x272A; // 10 sps
+	 	t = 10;
+	} else if(smprate >= 4) {
+		code = 0x2329; // 4 sps
+	 	t = 4;
+	} else if(smprate >= 2) {
+		code = 0x222B; // 2 sps
+	 	t = 2;
+	} else if(smprate >= 1) {
+		code = 0x212D; // 1 sps
+	 	t = 1;
+	}
+	log('Send command #0C: Measurement Commands for Periodic Data Acquisition Mode ('+t.toFixed(1)+' sps)...');
+	characteristicCache.writeValue(new Uint8Array([0x05, 0x0c, 0x02, 0x00, 0x88, (code>>8)&0xff, code&0xff]));
+	stage_read = 2;
 }
 function hex(number, length) {
     var str = (number.toString(16)).toUpperCase();
@@ -249,26 +256,22 @@ function hex(number, length) {
 } 
 function ResponsePkt(head, value) {
 	let ds = value.getUint8(0);
-	let s = '#'+hex(value.getUint8(1),2)+' '+head + '['+ds+']:';
-	for(let i=0; i < ds; i++) {
+	let s = '#'+value.getUint8(1).toString(16)+' '+head + '['+ds+']:';
+    for(let i=0; i < ds; i++) {
 		s+=' '+value.getUint8(i+2);
 		if(i<ds-1) s+=',';
 	}
 	log(s);
-}
+}	
 function WaitConnection() {
-	if(!stg) {
+	if(devcnn && !stg) {
+		disconnect(); 
 		alert('Device not Start!');
-		disconnect();
 	}
 }
-/* typedef struct {
-	uint8_t size;	// размер данных пакета (1..116 байт)
-	uint8_t cmd;	// номер команды / тип пакета (=10)
-	uint16_t adc[size/2]; // U = adc value * 1.3/63356V
-} dev_adc_data_t; */
 var ping_timer = 0;
 function PingTimeout() { ping_timer = 1; }
+var err_rd_i2c = 0;
 var stage_read = 0;
 var start_time = new Date;
 function handleCharacteristicValueChanged(event) {
@@ -278,10 +281,20 @@ function handleCharacteristicValueChanged(event) {
 		let ds = value.getUint8(0);
 		if(ds+2 >= value.byteLength) {
 			let idx = value.getUint8(1);
-			if(idx == 0x0A) {
+			if(idx == 0x0C) {
 //				ResponsePkt('ResponsePkt', value);
-//				log('#0A ADC data [' + ds + ']');
-				ShowGrf(value);
+//				log('#0C I2C data [' + ds + ']');
+				if(ds >= 8) {
+					ShowGrf(value);
+				}
+//				log('Readout of Measurement Results for Periodic Mode...');
+				characteristicCache.writeValue(new Uint8Array([0x05, 0x0C, 0x02, 0x86, 0x88, 0xE0, 0x00]));
+				err_rd_i2c = 0;
+				
+			} else if(idx == 0x0A) {
+//				ResponsePkt('ResponsePkt', value);
+				log('#0A ADC data [' + ds + ']');
+//				ShowGrf(value);
 				if(ping_timer != 0) {
 					ping_timer = 0;
 					log('Send command #03: Get Status...');
@@ -290,16 +303,19 @@ function handleCharacteristicValueChanged(event) {
 				}
 			} else if(idx == 0x07) {
 /* typedef struct {
-	uint8_t size;	// размер данных пакета (1..116 байт)
-	uint8_t cmd;	// номер команды / тип пакета (=0x07)
-	uint16_t data[size/2];
-} dev_i2c_data_t; */
-				ResponsePkt('ResponsePkt', value);
-				log('#07 I2C data [' + ds + '] #07');
-			} else if(idx >= 0x80) {
-				ResponsePkt('ErrorPkt', value);
-				disconnect();
-				alert('Error! (see logs)');
+	uint8_t size;	// размер данных пакета (=0 байт)
+	uint8_t cmd;	// номер команды / тип пакета (=0x0C)
+	uint8_t char rdlen; 
+	uint8_t char rddata[];
+} i2c_utr_t; */
+//				ResponsePkt('ResponsePkt', value);
+//				ShowGrf(value);
+				if(ping_timer != 0) {
+					ping_timer = 0;
+					log('Send command #03: Get Status...');
+					characteristicCache.writeValue(new Uint8Array([0x00, 0x03]));
+					setTimeout(PingTimeout, 20000);
+				}					
 			} else if(idx == 0x0F) {
 /* typedef struct {
 	uint8_t size;	// размер данных пакета (1..116 байт)
@@ -311,7 +327,32 @@ function handleCharacteristicValueChanged(event) {
 				log('#0F Runtime Error 0x'+hex(err_id,4)+':'+hex(err_num,4));
 				disconnect();
 				alert('Runtime Error 0x'+hex(err_id,4)+':'+hex(err_num,4)+'!');
-			} else if(idx == 0x00 && ds > 3) {
+			} else if(idx == 0x01 && ds >= 38) {
+				ResponsePkt('ResponsePkt', value);
+/* typedef struct {
+	uint8_t size;	//+0 размер данных пакета 
+	uint8_t cmd;	//+1 номер команды / тип пакета (=1)
+	uint8_t pktcnt;  	//+2 кол-во передаваемых значений из регистров в одном пакете передачи
+	uint8_t multiplier; //+3 множитель периода опроса, time << multiplier
+	uint16_t time; 		//+4 период опроса регистров чтения в us
+	uint16_t clk_khz; 	//+6 частота i2c шины в kHz
+	reg_wr_t init[MAX_INIT_REGS];
+	reg_rd_t rd[MAX_READ_REGS];
+	reg_wr_t slp[2];
+} dev_i2c_cfg_t; */
+	    		let s = '#01 I2CConfig['+ds+']: pkt_count: '+value.getUint8(2);
+				if(value.getUint8(2) == 0) {
+					s+=' -> Stop';
+				} else {
+					s+=', time: '+value.getUint16(4,true)+' << '+(value.getUint8(3)+1)+' = '+(value.getUint16(4,true)<<(value.getUint8(3)+1))+' us';
+					s+=', I2C CLK: '+value.getUint16(6,true) +' kHz, ...';
+				}
+				log(s);
+				SendStartMeasurement();
+			}
+			else if(idx == 0x00 && ds > 3) {
+				err_rd_i2c = 0;
+				stage_read = 0;				
 /* typedef struct {
 	uint8_t size;	// размер данных пакета (=4 байт)
 	uint8_t cmd;	// номер команды / тип пакета (=0)
@@ -325,13 +366,13 @@ function handleCharacteristicValueChanged(event) {
 					disconnect();
 					alert('DeviceID: '+ hex(dev_id,4)+', Ver: '+hex(ver_id, 4)+'\r\nUnknown BLE Device!');
 				} else {
-					let t = 1000/smprate; // 1000/smprate = step samples ADC in ms (250 sps -> 40 ms, 2500 sps -> 0.4 ms)
-					pack_samples = Math.round(100/3/t); // min packet 50 ms?
-					if(pack_samples > 116) pack_samples = 116;
-					ConnParUpdate(116*t/3); // calk interval (min 7.5 or 11.5 ms)
+					if(smprate > 33.3) smprate = 33.3
+					else if(smprate < 0.5) smprate = 0.5;
+//					pack_samples = (smprate*44/50 + 7) & 0xFE;
+					ConnParUpdate(250/smprate); // Set interval 25+ ms (min 7.5 ms)
 				}
-			} else if(idx == 0x04 && ds >= 16) {
-//				ResponsePkt('ResponsePkt', value);
+			}
+			else if(idx == 0x04 && ds >= 16) {
 /* typedef struct {
 	uint8_t size;	// размер данных пакета (0..16 байт, =0 - get, =1..16 set)
 	uint8_t cmd;	// номер команды / тип пакета (=4)
@@ -357,50 +398,9 @@ function handleCharacteristicValueChanged(event) {
 					} else {
 						stage_read = 1; // stage 1
 						SendInit();
+						setTimeout(PingTimeout, 20000);
 					}
 				}
-			} else if(idx == 0x08 && ds >= 6) {
-/* typedef struct { // TLSR8266 ADC + DFIFO
-	uint8_t size;	// размер данных пакета (0..4 байт: 0 - get, 1..4 set)
-	uint8_t cmd;	// номер команды / тип пакета (=8)
-	uint8_t pktcnt;	// кол-во передаваемых значений из регистров в одном пакете передачи (1..116 байта, BT4.2 MTU TX = 125)
-	uint8_t chnl;	// Channel 0..0x12
-	uint16_t smps;	// Sample Rate
-} dev_adc_t; */
-			    let s = '#08 ADCConfig['+ds+']: ';
-				s+='Pkt Count: '+value.getUint8(2);
-				if(value.getUint8(2) == 0) {
-					s+=' -> Stop';
-				} else {
-					s+=', Channel: '+value.getUint8(3);
-					s+=', Sample Rate: '+value.getUint16(4,true);
-					s+=', PGA Gain: 0x'+hex(value.getUint16(6,false),4);
-					stage_read = 2; // end stage, start
-					start_time = Date.now();
-					setTimeout(PingTimeout, 20000);
-				}
-				log(s);
-			} else if(idx == 0x01 && ds >= 38) {
-				ResponsePkt('ResponsePkt', value);
-/* typedef struct {
-	uint8_t size;	//+0 размер данных пакета
-	uint8_t cmd;	//+1 номер команды / тип пакета (=1)
-	uint8_t pktcnt;  	//+2 кол-во передаваемых значений из регистров в одном пакете передачи
-	uint8_t multiplier; //+3 множитель периода опроса, time << multiplier
-	uint16_t time; 		//+4 период опроса регистров чтения в us
-	uint16_t clk_khz; 	//+6 частота i2c шины в kHz
-	reg_wr_t init[MAX_INIT_REGS];
-	reg_rd_t rd[MAX_READ_REGS];
-	reg_wr_t slp[2];
-} dev_i2c_cfg_t; */
-	    		let s = '#01 I2CConfig['+ds+']: pkt_count: '+value.getUint8(2);
-				if(value.getUint8(2) == 0) {
-					s+=' -> Stop';
-				} else {
-					s+=', time: '+value.getUint16(4,true)+' << '+(value.getUint8(3)+1)+' = '+(value.getUint16(4,true)<<(value.getUint8(3)+1))+' us';
-					s+=', I2C CLK: '+value.getUint16(6,true) +' kHz, ...';
-				}
-				log(s);
 			} else if(idx == 0x03 && ds >= 8) {
 /* typedef struct {
 	uint8_t size;	// размер данных пакета (=0 байт)
@@ -413,7 +413,7 @@ function handleCharacteristicValueChanged(event) {
 				log('#03 DevStatus: samples count '+smpcnt+', tspcount '+nscnt);
 				let tt = smpcnt-nscnt*pack_samples;
 				if(tt > 0) {
-					tt = tt*1000/(Date.now() - start_time);
+					tt = tt*500/(Date.now() - start_time);
 					log('Real sps: '+ tt.toFixed(3) + '?');
 				}
 			} else if(idx == 0x10 && ds > 3) {
@@ -425,10 +425,21 @@ function handleCharacteristicValueChanged(event) {
 	uint16_t value;
 } dev_rdregi2c_t; */
 //				ResponsePkt('ResponsePkt', value);
-				log('#10 I2C(0x'+hex(value.getUint8(2), 2)+') Register['+hex(value.getUint8(3),2)+'] = '+hex(value.getUint16(4,true),4));
+				log('#10 I2C(0x'+hex(value.getUint8(2), 2)+') ['+hex(value.getUint8(3),2)+'] = '+hex(value.getUint16(4,true),4));
+			} else if(idx == 0x81) {
+				SendStartMeasurement();
+			} else if(idx == 0x8C && stage_read == 2 && err_rd_i2c < 3) {
+				err_rd_i2c++;
+				log('Error '+err_rd_i2c+' #0C I2C data [' + ds + '], reread...');
+				characteristicCache.writeValue(new Uint8Array([0x05, 0x0C, 0x02, 0x86, 0x88, 0xE0, 0x00]));
+			} else if(idx >= 0x80) {
+				ResponsePkt('ErrorPkt', value);
+				disconnect();
+				alert('Error! (see logs)');
 			} else
 				ResponsePkt('ResponsePkt', value);
-		} else
+		}
+		else
 			log('RawPkt['+value.byteLength+']: '+ value.getUint8(0)+ ', '+value.getUint8(1)+'..');
 	}
 }
@@ -444,13 +455,22 @@ function startNotifications(characteristic) {
 	then(() => {
 		log('Notifications started');
 		characteristic.addEventListener('characteristicvaluechanged', handleCharacteristicValueChanged);
-		devcnn = 1;
-		ShowConnect()
-		stage_read = 0;
-		setTimeout(SendWhoIs, 500);
+    	devcnn = 1;
+        ShowConnect()
+        stage_read = 0;
+		setTimeout(SendWhoIs, 400);
 		setTimeout(WaitConnection, 5000+7500/smprate);
 	});
 }
+function ResponsePkt(head, value) {
+	let ds = value.getUint8(0);
+	let s = head + '['+ds+']#'+value.getUint8(1).toString(16)+':';
+    for(let i=0; i < ds; i++) {
+		s+=' '+value.getUint8(i+2);
+		if(i<ds-1) s+=',';
+	}
+	log(s);
+}	
 // Запустить выбор Bluetooth устройства и подключиться к выбранному
 function connect() {
 	return (deviceCache ? Promise.resolve(deviceCache) :
@@ -476,7 +496,7 @@ function requestBluetoothDevice() {
 // Обработчик разъединения
 function handleDisconnection(event) {
 	let device = event.target;
-	ShowConnect();
+    ShowConnect();
 	if(devcnn != 0) {
 		log('"' + device.name + '" bluetooth device disconnected, trying to reconnect...');
 		connectDeviceAndCacheCharacteristic(device).
@@ -526,7 +546,7 @@ function disconnect() {
 					deviceCache = null;
 					ShowConnect();
 				})
-				.catch(error => { log(error);
+				.catch(error => { log(error); 
 					if (characteristicCache) {
 						characteristicCache.removeEventListener('characteristicvaluechanged', handleCharacteristicValueChanged);
 						characteristicCache = null;

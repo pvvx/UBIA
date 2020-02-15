@@ -240,18 +240,19 @@ void send_usb_err(u16 err_id, u16 err) {
  * Called from Irq (!)
  */
 _attribute_ram_code_ void USBCDC_RxCb(unsigned char *data, unsigned int len){
-	if (len) // есть данные?
+	if (len) { // есть данные?
 		USBCDC_RxBufSet(rx_buf[++rx_ptr&1]); // назначить новый буфер
+#ifdef USB_LED_RX
+		USB_LED_RX();
+#endif
 		if(rx_len == 0
 			&& data
 			&& len >= sizeof(blk_head_t)
 			&& len <= MTU_RX_DATA_SIZE
 			&& data[0]+sizeof(blk_head_t) <= len) {
-#ifdef USB_LED_RX
-			USB_LED_RX();
-#endif
 			rx_len = data[0]+sizeof(blk_head_t);
 			memcpy(&read_pkt, data, rx_len);
+		}
 	}
 }
 
@@ -660,6 +661,7 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				if(pbufi->data.pwr.ADC_Stop) {
 					ADC_Stop();
 				}
+				txlen = 0 + sizeof(blk_head_t);
 				break;
 			default:
 				pbufo->head.cmd |= CMD_ERR_FLG; // Error cmd

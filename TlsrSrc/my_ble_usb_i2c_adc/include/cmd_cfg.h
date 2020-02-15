@@ -118,11 +118,11 @@ extern dev_i2c_cfg_t cfg_i2c; // store in eep
 
 // CMD_DEV_PWR Power On/Off, Sleep
 typedef struct  __attribute__((packed)) _dev_pwr_slp_t{
-	uint8_t ExtDevPowerOn : 1;
-	uint8_t I2CDevWakeUp : 1;
-	uint8_t ExtDevPowerOff : 1;
-	uint8_t I2CDevSleep : 1;
-	uint8_t ADC_Stop : 1;
+	uint8_t ExtDevPowerOn	: 1; //0x01
+	uint8_t I2CDevWakeUp	: 1; //0x02
+	uint8_t ExtDevPowerOff	: 1; //0x04
+	uint8_t I2CDevSleep		: 1; //0x08
+	uint8_t ADC_Stop		: 1; //0x10
 } dev_pwr_slp_t;
 
 // BLE connection config
