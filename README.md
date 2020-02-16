@@ -1,7 +1,7 @@
 # USB/BLE to I2C/ADC
 
 Universal I2C/SMBus + ADC to USB / BLE adapter.
-JDY-10 (TLSR8266)
+# JDY-10 (TLSR8266)
 ![SCH](https://github.com/pvvx/UBIA/blob/master/DOCs/img/tBLETST_JDY10_sch.gif)
 
 # I2C/SMBus:
