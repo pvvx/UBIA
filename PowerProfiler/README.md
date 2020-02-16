@@ -13,6 +13,10 @@ JDY-10 pin PA1:<br>
 ='0' (“not connected or gnd") - BLE<br>
 ='1' (+3.3v) - USB<br>
 
+![SCH](https://github.com/pvvx/UBIA/blob/master/PowerProfiler/img/PowerProfiler.gif)
+
+![SCH](https://github.com/pvvx/UBIA/blob/master/PowerProfiler/img/PowerProfiler_ADC.gif)
+
 [Готовые прошивка и программа](https://github.com/pvvx/UBIA/blob/master/PowerProfiler/bin/package.zip)
 
 [Форум](https://esp8266.ru/forum/threads/power-profiler.4643)
