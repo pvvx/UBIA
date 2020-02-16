@@ -19,9 +19,9 @@ Universal I2C/SMBus + ADC to USB / BLE adapter.
 * BLE: 250..5000 sps
 
 # BLE Power (default config)
-* Disconnect 0.09 mA
+* Disconnect 0.09 mA (800 ms sleep: 17 uA, 5 ms active: TX impulse 33 mA +8dB)
 * Deep-sleep 1.7 / 3 uA
-* sleep 17 uA
+* Connect (7.5ms..4sec - sleep 17 uA, 3..5 ms active: TX impulse 33 mA +8dB)
 
 [IDE](http://wiki.telink-semi.cn/dokuwiki/doku.php?id=menu:tools:ide_quick_start)
 [SDK](http://wiki.telink-semi.cn/dokuwiki/doku.php?id=menu:chipset:tslr826x)
