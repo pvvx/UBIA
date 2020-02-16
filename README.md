@@ -1,7 +1,7 @@
 # USB/BLE to I2C/ADC
 
 Universal I2C/SMBus + ADC to USB / BLE adapter.
-# JDY-10 (TLSR8266)
+# JDY-10 (TLSR8266, BT 4.2, RF TX +8dB)
 ![SCH](https://github.com/pvvx/UBIA/blob/master/DOCs/img/tBLETST_JDY10_sch.gif)
 
 # I2C/SMBus:
@@ -16,7 +16,12 @@ Universal I2C/SMBus + ADC to USB / BLE adapter.
 # ADC:
 * 15..16 bits ADC, Ref 1.3V, PGA 0..42.5 dB
 * USB: 250..50000 sps 
-* BLE: 250..5000 sps 
+* BLE: 250..5000 sps
+
+# BLE Power (default config)
+* Disconnect 0.09 mA
+* Deep-sleep 1.7 / 3 uA
+* sleep 17 uA
 
 [IDE](http://wiki.telink-semi.cn/dokuwiki/doku.php?id=menu:tools:ide_quick_start)
 [SDK](http://wiki.telink-semi.cn/dokuwiki/doku.php?id=menu:chipset:tslr826x)
