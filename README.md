@@ -6,11 +6,10 @@ Universal I2C/SMBus + ADC to USB / BLE adapter.
 
 # I2C/SMBus:
 * SLC clock 100..2000 kHz.
-* SMBus auto-read mode:
+## SMBus auto-read mode:
 * USB: 20000 transactions per sec
 * BLE: 1250 transactions per sec
-
-# I2C/SMBus host write-read: 
+## I2C/SMBus host write-read: 
 * USB: 500 transactions per sec
 * BLE: 50 transactions per sec
 
