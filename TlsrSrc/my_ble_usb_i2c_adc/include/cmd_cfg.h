@@ -28,28 +28,31 @@
 #define CMD_DEV_VER  0x00 // Get Ver
 // I2C/SBUS cfg
 #define CMD_DEV_CFG  0x01 // Get/Set CFG/ini I2C & Start measure
-#define CMD_DEV_SCF  0x02 // Store CFG/ini I2C in Flash
+// Save cfg
+#define CMD_DEV_SCF  0x02 // Store CFG/ini in Flash
 // Status
 #define CMD_DEV_STA  0x03 // Status
 // BLE cfg
 #define CMD_DEV_CPU  0x04 // Connect parameters Update (BLE)
 #define CMD_DEV_ADV  0x05 // Advertising parameters Update (BLE)
-#define CMD_DEV_SBC  0x06 // Store CFG/ini BLE in Flash
+// 0x06
 // I2C/SMBUS out regs
 #define CMD_DEV_I2C  0x07 // blk out regs i2c data
 // ADC cfg
 #define CMD_DEV_CAD  0x08 // Get/Set CFG/ini ADC & Start measure
-#define CMD_DEV_SAD  0x09 // Store CFG/ini ADC in Flash
+// DAC cfg
+#define CMD_DEV_DAC  0x09 // DAC cfg
 // ADC out samples
 #define CMD_DEV_ADC  0x0A // blk out regs ADC data
-// ADC set samples rate
-#define CMD_DEV_SPS  0x0B // ADC set samples rate
+// 0x0B
 // I2C rd/wr
 #define CMD_DEV_UTR  0x0C // I2C read/write
+// Debug
+#define CMD_DEV_DBG  0x0D // Debug
 // Power, Sleep
-#define CMD_DEV_PWR  0x0D // Power On/Off, Sleep
-// E
-#define CMD_DEV_ERR  0x0f // Runtime Error
+#define CMD_DEV_PWR  0x0E // Power On/Off, Sleep
+// Runtime Error
+#define CMD_DEV_ERR  0x0F // Runtime Error
 // I2C/SMBUS rd/wr regs
 #define CMD_DEV_GRG  0x10 // Get reg I2C
 #define CMD_DEV_SRG  0x11 // Set reg I2C
@@ -80,6 +83,20 @@ typedef struct  __attribute__((packed)) _dev_sta_t{
 	uint32_t to_cnt; // счетчик не переданных или timeout при передаче samples
 } dev_sta_t;
 
+// CMD_DEV_DBG  Debug
+typedef struct  __attribute__((packed)) _dev_dbg_t{
+	uint16_t rd_cnt; // счетчик байт чтения
+	uint16_t addr; // адрес
+} dev_dbg_t;
+
+// CMD_DEV_DAC Dac cfg
+typedef struct  __attribute__((packed)) _dev_dac_cfg_t{
+	uint8_t mode;  //
+	uint8_t slk_mhz;  //
+	uint16_t step; //
+	int16_t value[1]; //
+} dev_dac_cfg_t;
+
 // CMD_DEV_SRG  Set reg I2C
 typedef struct __attribute__((packed)) _reg_wr_t{
 	uint8_t dev_addr; // адрес на шине i2c
@@ -87,6 +104,13 @@ typedef struct __attribute__((packed)) _reg_wr_t{
 	uint16_t data; // значение для записи в регистр
 } reg_wr_t;
 
+// CMD_DEV_SCF  Store CFG/ini in Flash
+typedef struct  __attribute__((packed)) _dev_scf_t{
+	uint8_t i2c	: 1; //0x01
+	uint8_t adc	: 1; //0x02
+	uint8_t con	: 1; //0x04
+	uint8_t adv	: 1; //0x08
+} dev_scf_t;
 // Структура конфигурации опроса и инициализации устройства ADC
 // Выходной пакет непрерывного опроса формируется по данному описанию
 // CMD_DEV_CAD Get/Set CFG/ini ADC & Start measure
@@ -121,8 +145,11 @@ typedef struct  __attribute__((packed)) _dev_pwr_slp_t{
 	uint8_t ExtDevPowerOn	: 1; //0x01
 	uint8_t I2CDevWakeUp	: 1; //0x02
 	uint8_t ExtDevPowerOff	: 1; //0x04
-	uint8_t I2CDevSleep		: 1; //0x08
-	uint8_t ADC_Stop		: 1; //0x10
+	uint8_t DAC_off			: 1; //0x08
+	uint8_t I2CDevSleep		: 1; //0x10
+	uint8_t ADC_Stop		: 1; //0x20
+	uint8_t none			: 1; //0x40
+	uint8_t Test			: 1; //0x80
 } dev_pwr_slp_t;
 
 // BLE connection config
@@ -212,6 +239,9 @@ typedef struct __attribute__((packed)) _blk_tx_pkt_t{
 		i2c_wr_t wr;
 		dev_err_t err;
 		dev_sta_t sta;
+		dev_dbg_t dbg;
+		dev_scf_t scf;
+		dev_dac_cfg_t dac;
 	} data;
 } blk_tx_pkt_t;
 
@@ -233,6 +263,9 @@ typedef struct __attribute__((packed)) _blk_rx_pkt_t{
 		i2c_wr_t wr;
 		i2c_utr_t utr;
 		dev_pwr_slp_t pwr;
+		dev_dbg_t dbg;
+		dev_scf_t scf;
+		dev_dac_cfg_t dac;
 	} data;
 } blk_rx_pkt_t;
 

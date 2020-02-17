@@ -28,6 +28,7 @@
 #if (USE_ADC_TST)
 #include "adc.h"
 #endif
+#include "dac.h"
 
 static inline u32 clock_tik_exceed(u32 ref, u32 span_us){
 	return ((u32)(clock_time() - ref) > span_us);
@@ -43,7 +44,7 @@ extern u16 SppDataServer2ClientDataCCC;
 
 u32 all_rd_count = 0; // status
 u32 not_send_count = 0; // status
-#define LOOP_MIN_CYCLE 15
+#define LOOP_MIN_CYCLE 0
 #if LOOP_MIN_CYCLE
 u32 ble_loop_count;
 #endif
@@ -68,7 +69,7 @@ volatile u8 timer_flg = 0; // flag временного отключения ч�
 static u8 general_call_reset[] = { 0, 0, 0, 6 };
 #define I2C_BUF_SIZE 256 // equ 256, 512, ...
 reg_rd_t * raddr;
-u16 i2c_buf[I2C_BUF_SIZE];
+u16 i2c_buf[I2C_BUF_SIZE]; // 512 bytes
 #if (I2C_BUF_SIZE != 256)
 u32 rd_next_cnt = 0;
 u32 i2c_buf_wr = 0;
@@ -84,11 +85,11 @@ u8 i2c_buf_rd = 0;
 // Define USB rx/tx buffer
 #define RX_BUF_LEN    USB_CDC_MAX_RX_BLK_SIZE // in bytes
 #define TX_BUF_LEN    MTU_DATA_SIZE // in bytes
-#define RX_BUF_NUM    2
-//#define TX_BUF_NUM    2
-static unsigned char rx_buf[RX_BUF_NUM][RX_BUF_LEN];
-static unsigned char tx_buf[TX_BUF_LEN];
-static unsigned char rx_ptr = 0;
+
+struct {
+	unsigned char rx[RX_BUF_LEN]; // 64 bytes
+	unsigned char tx[TX_BUF_LEN]; // 241 bytes
+}usb_buf;
 
 volatile u8 usb_actived; // flag
 #endif // USE_USB_CDC
@@ -110,8 +111,6 @@ dev_config_t dev_cfg;
 
 dev_i2c_cfg_t cfg_i2c;
 dev_i2c_cfg_t def_cfg_i2c = {
-//		.rd_count = 0,
-//		.init_count = 1,
 		.pktcnt = 2, // max = SMPS_BLK_CNT;
 		.multiplier = 0,
 		.time = 10000, // us
@@ -144,24 +143,13 @@ dev_i2c_cfg_t def_cfg_i2c = {
 		.slp[1].data = 0x0000
 };
 dev_adc_cfg_t cfg_adc;
-#if 1
 const dev_adc_cfg_t def_cfg_adc = { // 500 sps, PC4
-		.pktcnt = 100,
+		.pktcnt = 0,
 		.chnl = 9,
 		.sps = 500,
 		.pga20db = 0,
 		.pga2db5 = 0
 };
-#else
-const dev_adc_cfg_t def_cfg_adc = { // 500 sps, PC4
-		.pktcnt = 30,
-		.chnl = 9,
-		.per0 = 3920,
-		.per1 = 255,
-		.vol = 4,
-		.scale = 0x77
-};
-#endif
 
 ble_con_t ble_con_ini;
 ble_con_t cur_ble_con_ini;
@@ -175,8 +163,8 @@ u8					blt_rxfifo_b[];
 my_fifo_t			blt_txfifo;
 u8					blt_txfifo_b[];
 
-MYFIFO_INIT(blt_rxfifo, 64, 8);
-MYFIFO_INIT(blt_txfifo, 40, 16);
+MYFIFO_INIT(blt_rxfifo, 64, 8); 	// 512 bytes + headers
+MYFIFO_INIT(blt_txfifo, 40, 16);	// 640 bytes + headers
 
 const u8 ble_dev_name[8] = { BLE_DEV_NAME, 0 };
 
@@ -217,13 +205,17 @@ const u8 tbl_scanRsp[] = {
 	 sizeof(ble_dev_name), 0x09, BLE_DEV_NAME
 	};
 
+//--------- < Test!
+static inline void test(void) {
+};
+//--------- Test! >
+
 void send_ble_err(u16 err_id, u16 err) {
 	send_pkt.head.size = sizeof(dev_err_t);
 	send_pkt.head.cmd = CMD_DEV_ERR;
 	send_pkt.data.err.id = err_id;
 	send_pkt.data.err.err = err;
 	bls_att_pushIndicateData(SPP_Server2Client_INPUT_DP_H, (u8 *) &send_pkt, sizeof(blk_head_t) + sizeof(dev_err_t));
-//	tick_wakeup = clock_time() | 1;
 }
 
 void send_usb_err(u16 err_id, u16 err) {
@@ -241,7 +233,6 @@ void send_usb_err(u16 err_id, u16 err) {
  */
 _attribute_ram_code_ void USBCDC_RxCb(unsigned char *data, unsigned int len){
 	if (len) { // есть данные?
-		USBCDC_RxBufSet(rx_buf[++rx_ptr&1]); // назначить новый буфер
 #ifdef USB_LED_RX
 		USB_LED_RX();
 #endif
@@ -253,6 +244,7 @@ _attribute_ram_code_ void USBCDC_RxCb(unsigned char *data, unsigned int len){
 			rx_len = data[0]+sizeof(blk_head_t);
 			memcpy(&read_pkt, data, rx_len);
 		}
+		USBCDC_RxBufSet(usb_buf.rx); // назначить новый буфер (в данном приложении единственный)
 	}
 }
 
@@ -494,7 +486,7 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				pbufo->data.ui[1] = 0x0002; // Ver 0.0.0.2 = 0x0002
 #else
 				pbufo->data.ui[0] = 0x1021; // DevID = 0x1021
-				pbufo->data.ui[1] = 0x0001; // Ver 0.0.0.1 = 0x0001
+				pbufo->data.ui[1] = 0x0002; // Ver 1.2.3.4 = 0x1234
 #endif					
 				txlen = sizeof(u16) + sizeof(u16) + sizeof(blk_head_t);
 				break;
@@ -516,8 +508,21 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				txlen = sizeof(cfg_i2c) + sizeof(blk_head_t);
 				break;
 			case CMD_DEV_SCF: // Store CFG/ini in Flash
-				flash_write_cfg(&cfg_i2c, EEP_ID_I2C_CFG, sizeof(cfg_i2c));
-				txlen = sizeof(blk_head_t);
+				if(pbufi->head.size < sizeof(dev_scf_t)) {
+					pbufo->head.cmd |= CMD_ERR_FLG; // Error cmd
+					txlen = 0 + sizeof(blk_head_t);
+					break;
+				}
+				pbufo->data.ud[0] = 0;
+				if(pbufi->data.scf.i2c)
+					pbufo->data.scf.i2c = flash_write_cfg(&cfg_i2c, EEP_ID_I2C_CFG, sizeof(cfg_i2c));
+				if(pbufi->data.scf.adc)
+					pbufo->data.scf.adc = flash_write_cfg(&cfg_adc, EEP_ID_ADC_CFG, sizeof(cfg_adc));
+				if(pbufi->data.scf.con)
+					pbufo->data.scf.con = flash_write_cfg(&ble_con_ini, EEP_ID_CON_CFG, sizeof(dev_cfg));
+				if(pbufi->data.scf.adv)
+					pbufo->data.scf.adv = flash_write_cfg(&ble_adv_ini, EEP_ID_ADV_CFG, sizeof(dev_cfg));
+				txlen = sizeof(dev_scf_t) + sizeof(blk_head_t);
 				break;
 			//-------
 			case CMD_DEV_GRG: // Get reg
@@ -560,10 +565,6 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				}
 				memcpy(&pbufo->data, &cfg_adc, sizeof(cfg_adc));
 				txlen = sizeof(cfg_adc) + sizeof(blk_head_t);
-				break;
-			case CMD_DEV_SAD: // Store CFG/ini ADC in Flash, Start set sps
-				flash_write_cfg(&cfg_adc, EEP_ID_ADC_CFG, sizeof(cfg_adc));
-				txlen = sizeof(blk_head_t);
 				break;
 #endif
 			//-------
@@ -622,10 +623,6 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 					txlen = 0 + sizeof(blk_head_t);
 				}
 				break;
-			case CMD_DEV_SBC: // Store CFG/ini BLE in Flash
-				flash_write_cfg(&ble_con_ini, EEP_ID_CON_CFG, sizeof(dev_cfg));
-				flash_write_cfg(&ble_adv_ini, EEP_ID_ADV_CFG, sizeof(dev_cfg));
-				break;
 #if USE_I2C
 			case CMD_DEV_UTR: // I2C read/write
 				txlen = pbufi->data.utr.rdlen & 0x7f;
@@ -645,6 +642,11 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				break;
 #endif // USE_I2C
 			case CMD_DEV_PWR: // Power On/Off, Sleep
+				if(pbufi->head.size < sizeof(dev_pwr_slp_t)) {
+					pbufo->head.cmd |= CMD_ERR_FLG; // Error cmd
+					txlen = 0 + sizeof(blk_head_t);
+					break;
+				}
 				if(pbufi->data.pwr.ExtDevPowerOn) {
 					ExtDevPowerOn();
 				}
@@ -654,6 +656,9 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				if(pbufi->data.pwr.ExtDevPowerOff) {
 					ExtDevPowerOff();
 				}
+				if(pbufi->data.pwr.DAC_off) {
+					sdm_off();
+				}
 				if(pbufi->data.pwr.I2CDevSleep) {
 					Timer_Stop();
 					I2CDevSleep();
@@ -661,7 +666,35 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				if(pbufi->data.pwr.ADC_Stop) {
 					ADC_Stop();
 				}
+				if(pbufi->data.pwr.Test) {
+					test();
+				}
 				txlen = 0 + sizeof(blk_head_t);
+				break;
+			case CMD_DEV_DAC: // Dac cfg
+				if(pbufi->head.size < sizeof(dev_dac_cfg_t) - 2) {
+					pbufo->head.cmd |= CMD_ERR_FLG; // Error cmd
+					txlen = 0 + sizeof(blk_head_t);
+					break;
+				}
+				pbufo->data.uc[0] = dac_cmd(&pbufi->data.dac);
+				txlen = 1 + sizeof(blk_head_t);
+				break;
+			case CMD_DEV_DBG: // Debug
+				if(pbufi->head.size > sizeof(dev_dbg_t)) {
+					memcpy((u8 *)0x800000 + pbufi->data.dbg.addr, &pbufi->data.ud[1], pbufi->head.size - sizeof(dev_dbg_t));
+				} else if(pbufi->head.size < sizeof(dev_dbg_t)) {
+					pbufo->head.cmd |= CMD_ERR_FLG; // Error cmd
+					txlen = 0 + sizeof(blk_head_t);
+					break;
+				}
+				txlen = pbufi->data.dbg.rd_cnt;
+				if(txlen){
+					if(txlen > sizeof(pbufi->data))
+						txlen = sizeof(pbufi->data);
+					memcpy(&pbufo->data, (u8 *)0x800000 + pbufi->data.dbg.addr, txlen);
+				}
+				txlen += sizeof(blk_head_t);
 				break;
 			default:
 				pbufo->head.cmd |= CMD_ERR_FLG; // Error cmd
@@ -1154,7 +1187,7 @@ void user_init()
 #endif // hw init
 		/* Initialize usb cdc */
 		USB_Init();
-		USBCDC_RxBufSet(rx_buf[0]);
+		USBCDC_RxBufSet(usb_buf.rx);
 		USBCDC_CBSet(USBCDC_RxCb, NULL); // CDC_TxDoneCb);
 		usb_dp_pullup_en(1);
 #if 0
@@ -1222,6 +1255,7 @@ void user_init()
 #endif
 				;
 	}
+//	reg_dma_chn_en = 0; // ?
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -1365,6 +1399,7 @@ void main_ble_loop() {
 	}
 	else { // отключение
 		if(wrk_enable) {
+			sdm_off();
 #if USE_I2C_INA		
 			Timer_Stop();
 			I2CDevSleep();
@@ -1430,8 +1465,8 @@ void main_usb_loop() {
 	u32 i;
 	if(tx_len) { // есть данные для передачи
 		if(USBCDC_IsAvailable()) {
-			memcpy(&tx_buf, &send_pkt, tx_len);
-			USBCDC_DataSend((unsigned char *)&tx_buf, tx_len);
+			memcpy(&usb_buf.tx, &send_pkt, tx_len);
+			USBCDC_DataSend((unsigned char *)&usb_buf.tx, tx_len);
 			tx_len = 0;
 		}
 	} else
@@ -1470,6 +1505,7 @@ void main_usb_loop() {
 		rx_len = 0;
 	} else
 	if(usb_pwd) { // Events: USB_SET_CTRL_UART DTR Off, USB_PWDN, USB_RESET
+		sdm_off();
 #if USE_I2C_INA
 		Timer_Stop();
 		I2CDevSleep();
@@ -1489,3 +1525,4 @@ void main_usb_loop() {
 		usb_pwup = 0;
 	}
 }
+

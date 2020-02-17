@@ -206,25 +206,24 @@ extern gap_periConnectParams_t my_periConnParameters;
 //////////////////////////// MODULE PM GPIO	/////////////////////////////////
 #if	(BOARD == BOARD_JDY_10)
 // Project use
-//KEY_K1		GPIO_PB0 PWM5
-//KEY_K2		GPIO_PA5 <STAT>
-//ADC6d			GPIO_PD5 <PWRC> ADC-CH6-DIFF
 //KEY_BLE/USB	GPIO_PA1 PWM3
+//KEY_K2		GPIO_PA5 <STAT>
+//KEY_K1		GPIO_PB0 PWM5
+//EXT_POWER_OFF GPIO_PC0 PWM0 PGA_R
+//ADCp			GPIO_PC1 ADC-+PGA_L
+//ADC7			GPIO_PC2 ADC-CH7 PGA_R
+//ADC9			GPIO_PC4 ADC-CH9
+//EXT_POWER_4MA GPIO_PD4 <ADV_LED> ADC-CH5
+//ADC6d			GPIO_PD5 <PWRC> ADC-CH6-DIFF
+//DAC 			GPIO_PE5 SDMN
 //SDA 			GPIO_PE7 SPI_DI
 //SCL			GPIO_PF1 SPI_CK
-//EXT_POWER_OFF GPIO_PE5
-//EXT_POWER_4MA GPIO_PD4 <ADV_LED> ADC-CH5
-//ADC9			GPIO_PC4 ADC-CH9
-//ADC7			GPIO_PC2 ADC-CH7 PGA_R
-//ADCp			GPIO_PC1 ADC-+PGA_L
 //-------------------
 //<RX> - PC7, ADC-CH10
 //<TX> - PC6, ADC-CH11
 //-------------------
 // PE6 RTS, SPI_CS
 // PF0 CTS, SPI_DO
-//
-// PC0 PWM0 PGA_R
 //-------------------
 #define	KEY_K1	 						GPIO_PB0 // K1 /DeepSleep 30 sec
 #define PB0_FUNC						AS_GPIO
@@ -238,16 +237,16 @@ extern gap_periConnectParams_t my_periConnParameters;
 #define	PULL_WAKEUP_SRC_PA5				PM_PIN_PULLUP_1M
 
 //-------------------------- Ext Power
-#define EXT_POWER_OFF					GPIO_PE5	// =1 Pow.Off
-#define PE5_FUNC						AS_GPIO
-#define	PULL_WAKEUP_SRC_PE5				PM_PIN_PULLDOWN_100K
+#define EXT_POWER_OFF					GPIO_PC0	// =1 Pow.Off
+#define PC0_FUNC						AS_GPIO
+#define	PULL_WAKEUP_SRC_PC0				PM_PIN_PULLDOWN_100K
 
 #define EXT_POWER_4MA					GPIO_PD4	// =1 Pow.On
 #define PD4_FUNC						AS_GPIO
 #define	PULL_WAKEUP_SRC_PD4				PM_PIN_PULLUP_10K
 
 //------------------- ADC
-#define	PC0_FUNC							AS_GPIO // ?
+//#define	PC0_FUNC							AS_GPIO // ?
 #define	PC1_FUNC							AS_GPIO	// ADC3, -diff ADC PC1/PC2
 #define	PC2_FUNC							AS_GPIO // ADC2, +diff ADC PC2/PC1
 #define	PC3_FUNC							AS_GPIO // --- none ---
@@ -255,6 +254,8 @@ extern gap_periConnectParams_t my_periConnParameters;
 #define	PC6_FUNC							AS_GPIO // ADCx TX
 #define	PC7_FUNC							AS_GPIO // ADCx RX
 #define	PD5_FUNC							AS_GPIO // ADC0, -diff
+//------------------- DAC
+#define	PE5_FUNC							AS_GPIO // SDMN
 
 //------------------- USB/BLE
 #define GPIO_WAKEUP_MODULE					GPIO_PA1   // mcu wakeup module (Key PWRC)

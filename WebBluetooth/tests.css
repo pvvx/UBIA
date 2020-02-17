@@ -77,11 +77,11 @@
 }
 
 .dygraph-axis-label-y {
-  color: rgb(51,204,204); 
+  color: green;
 }
 
 .dygraph-axis-label-y2 {
-  color: rgb(255,100,100); 
+  color: red;
 }
 
 .dygraph-title {

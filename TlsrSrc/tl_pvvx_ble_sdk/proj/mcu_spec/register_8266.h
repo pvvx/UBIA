@@ -460,7 +460,16 @@ enum{
 	FLD_CLK2_I2S =				BIT_RNG(3,4),
 	FLD_CLK2_C32K =				BIT_RNG(5,7),
 };
-
+/* System clock select
+[4:0]: system clock divider: fhs/(CLKSEL[4:0]).
+Fhs refer to {0x70, 0x66[7]} FHS_sel
+[6:5]
+2’b00:32m clock from rc
+2’b01:hs divider clk
+2’b10:16M clock from pad
+2’b11:32k clk from pad
+{0x70[0], 0x66[7]}: FHS sel
+ */
 #define reg_clk_sel				REG_ADDR8(0x66)
 enum{
 	FLD_CLK_SEL_DIV = 			BIT_RNG(0,4),
@@ -472,12 +481,19 @@ enum{
 	FLD_I2S_STEP = 				BIT_RNG(0,6),
 	FLD_I2S_CLK_EN =			BIT(7),
 };
-
+/* I2S clock = 48M*reg_i2s_step[6:0]/reg_i2s_mod[7:0]
+ * Mod should be larger than or equal to 2*step.*/
 #define reg_i2s_mod				REG_ADDR8(0x68)
-
+enum{
+	FLD_I2S_MOD_PLL =			192, // FHS is 192Mhz
+	FLD_I2S_MOD_48M =			48, // FHS is 192Mhz
+	FLD_I2S_MOD_OSC =			32, // FHS is RC_32Mhz
+	FLD_I2S_MOD_PAD_Q16 =		16, // FHS is 16Mhz crystal oscillator?
+	FLD_I2S_MOD_PAD_Q12 =		12, // FHS is 12Mhz crystal oscillator?
+};
 static inline void SET_SDM_CLOCK_MHZ(int f_mhz)	{
 	reg_i2s_step = FLD_I2S_CLK_EN | f_mhz;
-	reg_i2s_mod = 0xc0;
+	reg_i2s_mod = FLD_I2S_MOD_PLL;
 }
 
 /****************************************************
@@ -536,7 +552,12 @@ enum{
 	FHS_SEL_32M_OSC = 1,
 //	FHS_SEL_16M_OSC = 3,
 };
-
+enum{
+	FHS_SEL_PLL = 0,	// 192M clock from pll
+	FHS_SEL_48M = 1,	// 48M pll
+	FHS_SEL_OSC = 2,	// 32M clock from osc
+	FHS_SEL_PAD = 3		// 12M/16M clock from pad (quartz)
+};
 /****************************************************
   OTP  addr : 0x71
  *****************************************************/
@@ -1170,6 +1191,12 @@ enum{
 	FLD_AUD_ENABLE	 =			BIT(0),
 	FLD_AUD_SDM_PLAY_EN = 		BIT(1),
 	FLD_AUD_SHAPPING_EN =		BIT(2),
+// 8269?
+	FLD_AUD_PN_SHAPPING_BYPASS =    BIT(2),
+	FLD_AUD_SHAPING_EN         =    BIT(3),
+	FLD_AUD_PN2_GENERATOR_EN   =    BIT(4),
+	FLD_AUD_PN1_GENERATOR_EN   =    BIT(5),
+	FLD_AUD_CONST_VAL_INPUT_EN =    BIT(6),
 };
 
 #define reg_aud_vol_ctrl		REG_ADDR8(0x561)

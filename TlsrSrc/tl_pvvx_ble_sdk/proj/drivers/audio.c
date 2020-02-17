@@ -50,7 +50,7 @@ enum {
  * @param[in] size_buff - the size of pbuff.
  * @return    none
  */
-void audio_config_mic_buf(signed short* pbuff,unsigned char size_buff)
+void audio_config_mic_buf(signed short* pbuff,unsigned int size_buff)
 {
 	reg_dfifo0_addr = (unsigned short)((u32)pbuff);
 	reg_dfifo0_size = (size_buff>>4)-1;
@@ -61,7 +61,7 @@ void audio_config_mic_buf(signed short* pbuff,unsigned char size_buff)
  * @param[in] size_buff - the size of pbuff.
  * @return    none
  */
-void audio_config_sdm_buf(signed short* pbuff, unsigned char size_buff)
+void audio_config_sdm_buf(signed short* pbuff, unsigned int size_buff)
 {
 	reg_aud_base_adr = (unsigned short)((u32)pbuff);
 	reg_aud_buff_size = (size_buff>>4)-1;

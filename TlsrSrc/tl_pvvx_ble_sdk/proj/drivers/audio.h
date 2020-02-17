@@ -20,9 +20,9 @@
  *
  *******************************************************************************************************/
 
-#if (__TL_LIB_8267__ || (MCU_CORE_TYPE == MCU_CORE_8267) || \
+#if 1 /* (__TL_LIB_8267__ || (MCU_CORE_TYPE == MCU_CORE_8267) || \
 	__TL_LIB_8261__ || (MCU_CORE_TYPE == MCU_CORE_8261) || \
-	__TL_LIB_8269__ || (MCU_CORE_TYPE == MCU_CORE_8269))
+	__TL_LIB_8269__ || (MCU_CORE_TYPE == MCU_CORE_8269)) */
 #ifndef audio_H
 #define audio_H
 
@@ -113,14 +113,14 @@ enum{
  * @param[in] size_buff - the size of pbuff.
  * @return    none
  */
-void audio_config_mic_buf(signed short* pbuff,unsigned char size_buff);
+void audio_config_mic_buf(signed short* pbuff,unsigned int size_buff);
 /**
  * @brief     configure the SDM buffer's address and size
  * @param[in] pbuff - the first address of buffer SDM read data from.
  * @param[in] size_buff - the size of pbuff.
  * @return    none
  */
-void audio_config_sdm_buf(signed short* pbuff, unsigned char size_buff);
+void audio_config_sdm_buf(signed short* pbuff, unsigned int size_buff);
 
 /****
 * brief: audio amic initial function. configure ADC corresponding parameters. set hpf,lpf and decimation ratio.
