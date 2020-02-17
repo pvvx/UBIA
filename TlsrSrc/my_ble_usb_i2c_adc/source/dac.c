@@ -10,16 +10,17 @@
 #include "hw.h"
 #include "dac.h"
 
-s16 single_out_buf[4];
+s16 single_out_buf[16]; // minimal size audio buf
 
 /*
  * Канал SDM_P - нечетный в буфере dfifo
  * Канал SDM_N - четный в буфере dfifo
  * Min buffer = 16 bytes (size_buff = 0) -> 8 int16_t -> 4 samples for channel
  * Min sps reg_i2s_mod = 0; reg_i2s_step = 0x81;  = 2.86 sps
- * Min sps при 1 Mhz = (1*1000000/100)/(0x8000/100)*(reg_ascl_step=1) = 30.517578 sps
- * Min sps при 8 Mhz = (8*1000000/100)/(0x8000/100)*(reg_ascl_step=1) = 244.140625 sps
- * Max sps при 8 Mhz = (8*1000000/100)/(0x8000/100)*(reg_ascl_step=4080) = 996093.75 sps
+ * Min sps при 1 MHz = (1*1000000/100)/(0x8000/100)*(reg_ascl_step=1) = 30.517578 sps
+ * Min sps при 8 MHz = (8*1000000/100)/(0x8000/100)*(reg_ascl_step=1) = 244.140625 sps
+ * Max sps при 8 MHz = (8*1000000/100)/(0x8000/100)*(reg_ascl_step=4080) = 996093.75 sps
+ * Min sps при 16 MHz = (16*1000000/100)/(0x8000/100)*(reg_ascl_step=1) = 488.28125 sps
  * reg_aud_vol_ctrl = 0x3A, dac=0x7ff -> OUT +1064.1 mV
  * reg_aud_vol_ctrl = 0x3B, dac=0x7ff -> OUT +968.1 mV
  * reg_aud_vol_ctrl = 0x3C, dac=0x7ff -> OUT +871.9 mV
@@ -102,12 +103,11 @@ void sdm_init(unsigned char sdm_clk_mhz, unsigned short step)
 }
 
 static void set_dac_out(signed short value) {
-	single_out_buf[0] = value;
-	single_out_buf[1] = value;
-	single_out_buf[2] = value;
-	single_out_buf[3] = value;
+	int i;
+	for(i=0; i < 16; i++)
+	single_out_buf[i] = value;
 	reg_aud_base_adr = (unsigned short)((u32)single_out_buf);
-	reg_aud_buff_size = 0; // min step
+	reg_aud_buff_size = 1; // min step
 	reg_aud_rptr = 0;
 }
 
@@ -143,17 +143,17 @@ static void gen_u(signed short value) {
 	sdm_set_buf(dfifo, sizeof(dfifo));
 }
 
-// ADC/step = 488
 extern dev_adc_cfg_t cfg_adc;
 extern int init_adc_dfifo(dev_adc_cfg_t * p);
 // 		0409 05 10 6300
 static void test(dev_dac_cfg_t *p) {
-	cfg_adc.sps = p->step*488;
+	// ADC/step = 488.28125
+	cfg_adc.sps = p->step*488 + (p->step>>2); // *488.25
 	init_adc_dfifo(&cfg_adc);
 	sdm_set_buf(dfifo, sizeof(dfifo));
 	sdm_init(p->slk_mhz, p->step);
 }
-
+extern void ADC_Stop(void);
 //===== TEST! ============== end
 
 unsigned int dac_cmd(dev_dac_cfg_t *p) {
@@ -164,14 +164,17 @@ unsigned int dac_cmd(dev_dac_cfg_t *p) {
 		sdm_init(p->slk_mhz, p->step);
 		break;
 	case 2: // test! out value (adc off!)
+		ADC_Stop();
 		gen_u(p->value[0]);
 		sdm_init(p->slk_mhz, p->step);
 		break;
 	case 3: // test! out triangular (adc off!)
+		ADC_Stop();
 		gen_triangular();
 		sdm_init(p->slk_mhz, p->step);
 		break;
 	case 4: // test! adc->dac
+		ADC_Stop();
 		sdm_set_buf(dfifo, sizeof(dfifo));
 		sdm_init(p->slk_mhz, p->step);
 		break;

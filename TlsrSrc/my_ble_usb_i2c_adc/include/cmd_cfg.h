@@ -91,10 +91,10 @@ typedef struct  __attribute__((packed)) _dev_dbg_t{
 
 // CMD_DEV_DAC Dac cfg
 typedef struct  __attribute__((packed)) _dev_dac_cfg_t{
-	uint8_t mode;  //
-	uint8_t slk_mhz;  //
-	uint16_t step; //
-	int16_t value[1]; //
+	uint8_t mode;  // 0..4
+	uint8_t slk_mhz;  // 1..16
+	uint16_t step; // 0..3ff
+	int16_t value[1]; // значение вывода
 } dev_dac_cfg_t;
 
 // CMD_DEV_SRG  Set reg I2C
