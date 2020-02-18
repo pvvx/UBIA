@@ -109,7 +109,8 @@ u32 per, per12;
 	/** adc stop**/
  	reg_adc_ctrl = 0;
 	/** dfifo stop**/
- 	reg_dfifo_ana_in = 0;
+ 	// 	reg_dfifo_ana_in = 0;
+	reg_dfifo_ana_in = 0;
 	/**enable adc clock**/
 	reg_rst_clk0 |= FLD_CLK_ADC_EN;
 	/**set adc clock **/
@@ -191,15 +192,18 @@ u32 per, per12;
 	// set dfifo0 buf
 	reg_dfifo0_addr = (u16) ((u32)&dfifo);
 	reg_dfifo0_size = (ADC_DFIFO_SIZE>>3)-1;
+//	reg_dfifo0_size = (ADC_DFIFO_SIZE>>3)-1;
 
 	// start dfifo
 	// Bit[3]: disable D-MIC channel
 	reg_dfifo_ana_in = BIT(3) | FLD_DFIFO_MIC_ADC_IN | FLD_DFIFO_AUD_INPUT_MONO | FLD_DFIFO_WPTR_CLR;
 	dfifo_rd_ptr = 0;
-	reg_dfifo_ana_in = BIT(3) | FLD_DFIFO_MIC_ADC_IN | FLD_DFIFO_AUD_INPUT_MONO;
+//	reg_dfifo_ana_in = BIT(3) | FLD_DFIFO_MIC_ADC_IN | FLD_DFIFO_AUD_INPUT_MONO;
+//	dfifo_rd_ptr = 0;
 
 	// start adc
 	reg_adc_ctrl = FLD_ADC_CHNL_AUTO_EN | FLD_ADC_AUD_DATAPATH_EN | MASK_VAL(FLD_ADC_AUD_MODE, 1); //= 0x15; 0: no audio; 1: mono; 2: stereo;
+//	while(reg_audio_wr_ptr);
 	return 1;
 }
 
@@ -264,6 +268,7 @@ void init_adc(u16 per0, u8 per1, u8 vol, u8 scale, u8 chnl) {
 #if ADC_DFIFO_EN
 	reg_dfifo0_addr = (u16) ((u32)&dfifo);
 	reg_dfifo0_size = (ADC_DFIFO_SIZE>>3)-1;
+	reg_dfifo0_size = 0;
 
 
 	reg_adc_period_chn0 = per0; reg_adc_period_chn12 = per1; reg_aud_alc_vol = vol; reg_dfifo_scale = scale;
@@ -289,7 +294,7 @@ void deinit_adc(void) {
 	reg_adc_ctrl = 0;
 #if ADC_DFIFO_EN
 	reg_dfifo_ana_in = 0; // dfifo disable
-	reg_clk_en2 &= ~(FLD_CLK2_DIFIO_EN | FLD_CLK2_AUD_EN );
+//	reg_clk_en2 &= ~(FLD_CLK2_DIFIO_EN | FLD_CLK2_AUD_EN ); // в общем sdm_off
 	WriteAnalogReg(rega_aud_ctrl, FLDA_AUD_PWDN_LEFT | FLDA_AUD_PWDN_RIGHT); //(PGA_GAIN_PREAMP << 6));
 #endif
 	REG_ADDR32(0x002c) = 0 // chnl GPIO_PC4

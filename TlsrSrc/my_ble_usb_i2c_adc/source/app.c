@@ -486,7 +486,7 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				pbufo->data.ui[1] = 0x0002; // Ver 0.0.0.2 = 0x0002
 #else
 				pbufo->data.ui[0] = 0x1021; // DevID = 0x1021
-				pbufo->data.ui[1] = 0x0002; // Ver 1.2.3.4 = 0x1234
+				pbufo->data.ui[1] = 0x0003; // Ver 1.2.3.4 = 0x1234
 #endif					
 				txlen = sizeof(u16) + sizeof(u16) + sizeof(blk_head_t);
 				break;
@@ -1399,7 +1399,6 @@ void main_ble_loop() {
 	}
 	else { // отключение
 		if(wrk_enable) {
-			sdm_off();
 #if USE_I2C_INA		
 			Timer_Stop();
 			I2CDevSleep();
@@ -1407,6 +1406,7 @@ void main_ble_loop() {
 #if USE_ADC_TST
 			ADC_Stop();
 #endif			
+			sdm_off();
 			ExtDevPowerOff();
 		}
 		wrk_tick = 0xff;
@@ -1505,7 +1505,6 @@ void main_usb_loop() {
 		rx_len = 0;
 	} else
 	if(usb_pwd) { // Events: USB_SET_CTRL_UART DTR Off, USB_PWDN, USB_RESET
-		sdm_off();
 #if USE_I2C_INA
 		Timer_Stop();
 		I2CDevSleep();
@@ -1513,6 +1512,7 @@ void main_usb_loop() {
 #if USE_ADC_TST
 		ADC_Stop();
 #endif
+		sdm_off();
 		ExtDevPowerOff();
 		usb_pwd = 0;
 	}

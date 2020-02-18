@@ -85,13 +85,13 @@ typedef struct  __attribute__((packed)) _dev_sta_t{
 
 // CMD_DEV_DBG  Debug
 typedef struct  __attribute__((packed)) _dev_dbg_t{
-	uint16_t rd_cnt; // счетчик байт чтения
+	uint16_t rd_cnt; // счетчик байт чтения (hi byte - reserved)
 	uint16_t addr; // адрес
 } dev_dbg_t;
 
 // CMD_DEV_DAC Dac cfg
 typedef struct  __attribute__((packed)) _dev_dac_cfg_t{
-	uint8_t mode;  // 0..4
+	uint8_t mode;  // 0..4 !первая запись устанавливает внуренний уровень, последующие выводятся на выход GPIO!
 	uint8_t slk_mhz;  // 1..16
 	uint16_t step; // 0..3ff
 	int16_t value[1]; // значение вывода
