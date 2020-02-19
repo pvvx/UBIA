@@ -32,4 +32,4 @@ Universal I2C/SMBus + ADC to USB / BLE adapter.
 
 [SDK](http://wiki.telink-semi.cn/dokuwiki/doku.php?id=menu:chipset:tslr826x)
 
-[forum](https://esp8266.ru/forum/threads/ble-modul-jdy-10-na-chipe-tlsr8266.4654/)
+[forum](https://esp8266.ru/forum/threads/ubia-usb-ble-to-i2c-smbus-adapter.4810/)
