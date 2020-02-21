@@ -2,7 +2,7 @@
 <html>
   <head>
 	<link rel="stylesheet" href="tests.css">
-	<title>Get BMP280 data</title>
+	<title>Get MPU9250 data</title>
 	<script type="text/javascript" src="dygraph.min.js"></script>
   </head>
   <body>
@@ -27,8 +27,7 @@ var $ = function(id) {
 // Вывод в терминал
 function log(data) {console.log(data);}
 //-------------------------
-var smprate = 10; // 0.5..25 sps (BMP280 Set Measurement rate 10[Hz])
-// Disconnect -> 0.09 mA
+var smprate = 20; // 0.5..25 sps
 //-------------------------
 var devcnn = 0;
 var stg = 0;
@@ -79,60 +78,47 @@ $("butClr").onclick =  function() {
 	stg = 0;
 	gu.destroy();
 }
-//BMP280 http://www.adafruit.com/datasheets/BST-BMP180-DS000-09.pdf
-var trim;
-// Save Trimming parameters
-function SaveTrimmingParameters(value) {
-	trim = {};
-	trim.t1 = value.getUint16(4,true);
-	trim.t2 = value.getInt16(6,true);
-	trim.t3 = value.getInt16(8,true);
-	trim.p1 = value.getUint16(10,true);
-	trim.p2 = value.getInt16(12,true);
-	trim.p3 = value.getInt16(14,true);
-	trim.p4 = value.getInt16(16,true);
-	trim.p5 = value.getInt16(18,true);
-	trim.p6 = value.getInt16(20,true);
-	trim.p7 = value.getInt16(22,true);
-	trim.p8 = value.getInt16(24,true);
-	trim.p9 = value.getInt16(26,true);
-	log('Trimming parameters:');
-	log('Tx = '+ trim.t1 +', '+trim.t2 +', '+trim.t3);
-	log('Px = '+ trim.p1 +', '+trim.p2 +', '+trim.p3+', '+trim.p4 +', '+trim.p5+', '+trim.p6 +', '+trim.p7+', '+trim.p8 +', '+trim.p9);
+// Magnetometer Sensitivity Adjustment values
+var mpu = {};
+function SaveMagSenAdj(value) {
+    mpu.jmx = (value.getUint8(4)-128)/64 + 1;
+    mpu.jmy = (value.getUint8(5)-128)/64 + 1;
+    mpu.jmz = (value.getUint8(6)-128)/64 + 1;
+	log('Magnetometer Sensitivity Adjustment values: '+mpu.jmx+', '+mpu.jmy+', '+mpu.jmz);
 }
-var t_fine;
-function CalkTemp(value) {
-	let adc_T = (value.getUint16(11,false)<<4)|(value.getUint8(13)>>4);
-//	log('adc_T = '+ adc_T);
-	let var1 = (adc_T/16384.0 - trim.t1/1024.0) * trim.t2;
-	let var2 = ((adc_T/131072.0 - trim.t1/8192.0) * (adc_T/131072.0 - trim.t1/8192.0)) * trim.t3;
-	t_fine = var1 + var2;
-	return (t_fine / 5120.0);
+function SaveGyroSenAdj(value) {
+    mpu.kg = (value.getUint8(12)>>3)&0x3;
+    mpu.ka = (value.getUint8(13)>>3)&0x3;
+    let k = 0.0030517578125/(1<<mpu.kg); // Step 0.0305 dps
+    mpu.jgx = value.getInt16(4,false)*k;
+    mpu.jgy = value.getInt16(6,false)*k;
+    mpu.jgz = value.getInt16(8,false)*k;
+	log('Gyroscope x'+(1<<mpu.kg)+' Offset values: '+mpu.jgx+', '+mpu.jgy+', '+mpu.jgz);
 }
-function CalkPressure(value) {
-	adc_P = (value.getUint16(8,false)<<4)|(value.getUint8(10)>>4);
-//	log('adc_P = '+ adc_P);
-	let var1 = (t_fine / 2.0) - 64000.0;
-	let var2 = var1 * var1 * trim.p6 / 32768.0;
-	var2 = var2 + var1 * trim.p5 * 2.0;
-	var2 = (var2 / 4.0) + (trim.p4 * 65536.0);
-	var1 = (trim.p3 * var1 * var1 / 524288.0 + trim.p2 * var1) / 524288.0;
-	var1 = (1.0 + var1 / 32768.0) * trim.p1;
-	if (var1 == 0.0) 
-		return 0; // avoid exception caused by division by zero
-	let x = 1048576.0 - adc_P;
-	x = (x - var2 / 4096.0) * 6250.0 / var1;
-	var1 = trim.p9 * x * x / 2147483648.0;
-	var2 = x * trim.p8 / 32768.0;
-	return (x + (var1 + var2 + trim.p7) / 16.0);
+function SaveAccSenAdj(value) {
+    let k = 32/65536; // 0.98-mg steps 15 bits
+    mpu.jax = value.getInt16(4,false)*k;
+    mpu.jay = value.getInt16(6,false)*k;
+    mpu.jaz = value.getInt16(8,false)*k;
+	log('Accelerometer x'+(1<<mpu.ka)+' Offset values: '+mpu.jax+', '+mpu.jay+', '+mpu.jaz);
 }
-function seaLevelForAltitude(altitude, atmospheric) {
-  return atmospheric/Math.pow(1.0 - (altitude / 44330.0), 5.255);
-}
-var seaLevelhPa = seaLevelForAltitude(16, 99714);
-//get altitude in m
-function bmp280CalcAltitude(press) {
-	return 44330.0 * (1.0 - Math.pow(press/seaLevelhPa, 0.19029));
+function MpuData(value) {
+	let k = 16384/(1<<mpu.kg);
+    mpu.ax = value.getInt16(4,false)/k;// g
+    mpu.ay = value.getInt16(6,false)/k;
+    mpu.az = value.getInt16(8,false)/k;
+    mpu.a = Math.abs(Math.sqrt(Math.pow(mpu.ax,2)+Math.pow(mpu.ay,2)+Math.pow(mpu.az,2)));
+    mpu.tmp = value.getUint16(10,false)/333.87 + 21;
+    k=131.072/(1<<mpu.kg)
+    mpu.gx = value.getInt16(12,false)/k;// °/s
+    mpu.gy = value.getInt16(14,false)/k;
+    mpu.gz = value.getInt16(16,false)/k;
+    mpu.g = Math.abs(Math.sqrt(Math.pow(mpu.gx,2)+Math.pow(mpu.gy,2)+Math.pow(mpu.gz,2)));
+    mpu.mx = value.getInt16(18,true)*0.149939*mpu.jmx-33.5; // +-4800 uT
+    mpu.my = value.getInt16(20,true)*0.149939*mpu.jmy-84;
+    mpu.mz = value.getInt16(22,true)*0.149939*mpu.jmz+43;
+    mpu.m = Math.abs(Math.sqrt(Math.pow(mpu.mx,2)+Math.pow(mpu.my,2)+Math.pow(mpu.mz,2)));
+    return mpu;
 }
 function ShowGrf(value) {
 	if(!sttim) {
@@ -140,9 +126,7 @@ function ShowGrf(value) {
 		setInterval(function(){wsSmpRate()}, 500);
 	}
 	if(rend) {
-//		let P = (value.getInt16(8,false)<<8)|value.getUint8(10);
-//		let T = (value.getInt16(11,false)<<8)|value.getUint8(13);
-		datau.push([cur_idx/smprate, CalkTemp(value), CalkPressure(value)]);
+		datau.push([cur_idx/smprate, value.g/360+0.994, value.a/1.014, value.m/59, value.tmp]);
 		cur_idx++;
 		if(cur_idx >= samples) datau.shift();
 	}
@@ -155,18 +139,18 @@ function ShowGrf(value) {
 			$("div_v"),
 		    datau,
 			{
-				title: 'Pressure and Temperature Sensor BMP280',
+				title: 'Sensor MPU9250',
 				showRangeSelector: true,
 				showRoller: true,
-				rollPeriod: 5,
+				rollPeriod: 33,
 				xlabel: 'Time(sec)',
-				ylabel: 'Temp(C&deg;)',
-				y2label: 'P(hPa)',
-				colors: ['green', 'red'],
-				series : { 'P(hPa)': { axis: 'y2' } },
+				ylabel: 'K',
+				y2label: 'Temp(C&deg;)',
+				colors: ['blue', 'magenta', 'green', 'red'],
+				series : { 'T(C°)': { axis: 'y2' } },
 				axes: {
 					x: {valueFormatter: function(x){return this.getLabels()[0] + ': '+ x.toPrecision(5);}}},
-					labels: ['T(sec)', 'T(C°)', 'P(hPa)'],
+					labels: ['T(sec)', 'G','A','M', 'T(C°)'],
 					labelsDiv: $('labdiv'),
 					legend: 'always',  // "follow"
 					digitsAfterDecimal: 3,
@@ -275,19 +259,41 @@ function ConnParUpdate(tms) {
 	reg_wr_t slp[2];
 } dev_i2c_cfg_t; */
 var pack_samples = 8;
-function SendInit(){
-//	log('Send command#01: Init I2C/SMBUS CLK 400 kHz...'); // - init I2C 
-//	characteristicCache.writeValue(new Uint8Array([7, 1, 0, 0, 255, 255, 0x90, 1, 0]));
-	log('Send command#01: Init I2C/SMBUS CLK 1 MHz...'); // - init I2C 
-	characteristicCache.writeValue(new Uint8Array([7, 1, 0, 0, 255, 255, 0xe8, 3, 0]));
-}
-function SendStartMeasurement(){
-	log('Send command #0C: Set Contfig registor & Start Measurement...');
-	characteristicCache.writeValue(new Uint8Array([0x05, 0x0c, 0x00, 0x00, 0xEC, 0xf4, 0xb7]));
-}
-function SetCntlMeasurement(){
-	log('Send command #0C: Set Controls Measurement registor...');
-	characteristicCache.writeValue(new Uint8Array([0x05, 0x0c, 0x00, 0x00, 0xEC, 0xf5, 0x10]));
+var cnt_ini = 0;
+function SendInit(flg, value) {
+	if(flg==0) cnt_ini = 0;
+	else cnt_ini++;
+	let ret = 0;
+	if(cnt_ini == 0) {
+		log('Send command#01: Init I2C/SMBUS CLK 400 kHz, MPU9250 Reset...'); // - init I2C 
+		characteristicCache.writeValue(new Uint8Array([11, 1, 0, 0, 255, 255, 0x90, 1, 0xD0, 0x6B, 0, 0x80, 0]));
+	} else if(cnt_ini == 1) { 
+		log('Send command #0C: MPU9250 Magnetometer i2c On...');
+		characteristicCache.writeValue(new Uint8Array([0x0E, 0x0C, 0x00, 0x00, 0xD0, 0x63, 0x12,0x12,0x12,0x12, 0x0f, 0x00, 0x00, 0x27, 0x01, 0x00]));
+	} else if(cnt_ini == 2) { 
+		log('Send command #0C: MPU9250 Set Magnetometer i2c read speed...');//rd=1000/20-1=49
+		characteristicCache.writeValue(new Uint8Array([0x06, 0x0C, 0x00, 0x00, 0xD0, 0x19, 49, 0x01]));
+	} else if(cnt_ini == 3) { 
+		log('Send command #0C: MPU9250 cfg init rd/wr i2c...');
+		characteristicCache.writeValue(new Uint8Array([0x19, 0x0C, 0x00, 0x00, 0xD0, 0x23, 0, 0x0D, 0x8C,0x03,0x87, 0x0C,0x0A,0x81, 0x8c,0x10,0x83, 0,0,0, 0,0,0,0, 0, 0, 1]));
+	} else if(cnt_ini == 4) { 
+		log('Send command #0C: Read Gyroscope Offset Registers...');
+		characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0x8A, 0xD0, 0x13]));
+	} else if(cnt_ini == 5) { 
+    	SaveGyroSenAdj(value);
+		log('Send command #0C: Read Accelerometer Offset Registers...');
+		characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0x86, 0xD0, 0x77]));
+	} else if(cnt_ini == 6) { 
+    	SaveAccSenAdj(value);
+		log('Send command #0C: Read Magnetometer Sensitivity Adjustment values...');
+		characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0x83, 0xD0, 0x50]));
+	} else if(cnt_ini == 7) { 
+    	SaveMagSenAdj(value);
+		log('Send command #0C: Run only auto read Magnetometer data...');
+		characteristicCache.writeValue(new Uint8Array([0x0a, 0x0C, 0x00, 0x00, 0xD0, 0x28, 0,0,0, 0,0,0]));
+		ret = 1;
+	}
+	return ret;
 }
 function hex(number, length) {
     var str = (number.toString(16)).toUpperCase();
@@ -324,23 +330,15 @@ function handleCharacteristicValueChanged(event) {
 			if(idx == 0x0C) {
 //				ResponsePkt('ResponsePkt', value);
 //				log('#0C I2C data [' + ds + ']');
-				if(ds == 12) {
-//					if(value.getUint8(5) & 0x9) stage_read = 3; // reread
-//					else 
-					ShowGrf(value);
-				} 
-				if (stage_read == 2) {
-					log('Send command #0C: Read Trimming parameter...');
-					characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0x98, 0xEC, 0x88]));
-					stage_read = 3;
-				} else if (stage_read == 3) { // ds == 24
+				if(ds == 22) {
+					ShowGrf(MpuData(value));
+				}
+				if (stage_read == 1) {
 					ResponsePkt('ResponsePkt', value);
-					SaveTrimmingParameters(value);
-					SendStartMeasurement();
-					stage_read = 4;
-				} else if (stage_read == 4) {
-//					log('Send command #0C: Read measurement values...');
-					characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0x8a, 0xEC, 0xF3]));
+					if (SendInit(1, value)==1) stage_read = 2;
+				} else {
+//					log('Send command #0C: Read Measurement Data...');
+					characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0x94, 0xD0, 0x3B]));
 				}
 				err_rd_i2c = 0;
 			} else if(idx == 0x0A) {
@@ -400,12 +398,12 @@ function handleCharacteristicValueChanged(event) {
 					s+=', I2C CLK: '+value.getUint16(6,true) +' kHz, ...';
 				}
 				log(s);
-				SetCntlMeasurement();
-				stage_read = 2;				
+				SendInit(1, 0);
 			}
 			else if(idx == 0x00 && ds > 3) {
 				err_rd_i2c = 0;
 				stage_read = 0;				
+				cnt_ini = 0;
 /* typedef struct {
 	uint8_t size;	// размер данных пакета (=4 байт)
 	uint8_t cmd;	// номер команды / тип пакета (=0)
@@ -449,7 +447,7 @@ function handleCharacteristicValueChanged(event) {
 						characteristicCache.writeValue(new Uint8Array([0, 4]));
 					} else {
 						stage_read = 1; // stage 1
-						SendInit();
+						SendInit(0,0);
 						setTimeout(PingTimeout, 20000);
 					}
 				}
@@ -479,20 +477,15 @@ function handleCharacteristicValueChanged(event) {
 //				ResponsePkt('ResponsePkt', value);
 				log('#10 I2C(0x'+hex(value.getUint8(2), 2)+') ['+hex(value.getUint8(3),2)+'] = '+hex(value.getUint16(4,true),4));
 			} else if(idx == 0x81) {
-				SendStartMeasurement();
-				stage_read = 2;
-
-			} else if(idx == 0x8C && stage_read > 2 && err_rd_i2c < 3) {
+				SendInit(0,1);
+			} else if(idx == 0x8C && err_rd_i2c < 3) {
 				err_rd_i2c++;
 				log('Error '+err_rd_i2c+' #0C I2C data [' + ds + '], re...');
-				if (stage_read == 2) {
-					log('Send command #0C: Read Trimming parameter...');
-					characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0x98, 0xEC, 0x88]));
-				} else if (stage_read == 3) {
-					SendStartMeasurement();
-				} else if (stage_read == 4) {
-					log('Send command #0C: Read measurement values...');
-					characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0x8a, 0xEC, 0xF3]));
+				if (stage_read == 1) {
+					SendInit(0,0);
+				} else {
+//					log('Send command #0C: Read Measurement Data...');
+					characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0x94, 0xD0, 0x3B]));
 				}
 			} else if(idx >= 0x80) {
 				ResponsePkt('ErrorPkt', value);

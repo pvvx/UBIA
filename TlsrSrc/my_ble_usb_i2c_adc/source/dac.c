@@ -131,7 +131,7 @@ static void set_dac_out(signed short value) {
 		single_out_buf[i] = value;
 //	reg_aud_rptr = 0;
 	reg_aud_base_adr = (unsigned short)((u32)single_out_buf);
-//	reg_aud_buff_size = 1; // min step
+	reg_aud_buff_size = 1; // min step
 }
 
 //===== TEST! ==============
@@ -184,24 +184,29 @@ unsigned int dac_cmd(dev_dac_cfg_t *p) {
 	switch(p->mode) {
 	case 1: // вывод в DAC (10 ms start! -> первая запись устанавливает внуренний уровень, последующие выводятся на выход GPIO )
 		set_dac_out(p->value[0]);
+		sleep_mode = 1; // |= 2;
 		sdm_init(p->slk_mhz, 1, 0x41);
 		break;
 	case 2: // test! out value (adc off!)
 		ADC_Stop();
 		gen_u(p->value[0]);
+		sleep_mode |= 2;
 		sdm_init(p->slk_mhz, p->step, 0x40);
 		break;
 	case 3: // test! out triangular (adc off!)
 		ADC_Stop();
 		gen_triangular();
+		sleep_mode |= 2;
 		sdm_init(p->slk_mhz, p->step, 0x40);
 		break;
 	case 4: // test! adc->dac
 		ADC_Stop();
 		sdm_set_buf(dfifo, sizeof(dfifo));
+		sleep_mode |= 2;
 		sdm_init(p->slk_mhz, p->step, 0x40);
 		break;
 	case 5: // test! set adc->dac
+		sleep_mode |= 2;
 		test(p);
 		break;
 //	case 0x10: // set volume

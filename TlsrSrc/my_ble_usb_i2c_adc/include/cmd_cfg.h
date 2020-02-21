@@ -44,7 +44,8 @@
 #define CMD_DEV_DAC  0x09 // DAC cfg
 // ADC out samples
 #define CMD_DEV_ADC  0x0A // blk out regs ADC data
-// 0x0B
+// TST device
+#define CMD_DEV_TST  0x0B // blk out X data, cfg TST device
 // I2C rd/wr
 #define CMD_DEV_UTR  0x0C // I2C read/write
 // Debug
@@ -70,6 +71,14 @@ typedef struct  __attribute__((packed)) _dev_err_t{
 	uint16_t id; // тип ошибки (RTERR)
 	uint16_t err; // номер/значение ошибки
 } dev_err_t;
+#define HX711_DATA_OUT 10
+// CMD_DEV_TST HX711 blk out X data, cfg TST device
+typedef struct  __attribute__((packed)) _hx711_out_t{
+	uint32_t data[HX711_DATA_OUT];
+} hx711_out_t;
+typedef struct  __attribute__((packed)) _hx711_set_t{
+	uint8_t mode; // 0 - off, 25, 26, 27
+} hx711_set_t;
 
 // CMD_DEV_GRG Get reg I2C
 typedef struct  __attribute__((packed)) _reg_rd_t{
@@ -142,14 +151,16 @@ extern dev_i2c_cfg_t cfg_i2c; // store in eep
 
 // CMD_DEV_PWR Power On/Off, Sleep
 typedef struct  __attribute__((packed)) _dev_pwr_slp_t{
-	uint8_t ExtDevPowerOn	: 1; //0x01
-	uint8_t I2CDevWakeUp	: 1; //0x02
-	uint8_t ExtDevPowerOff	: 1; //0x04
-	uint8_t DAC_off			: 1; //0x08
-	uint8_t I2CDevSleep		: 1; //0x10
-	uint8_t ADC_Stop		: 1; //0x20
-	uint8_t none			: 1; //0x40
-	uint8_t Test			: 1; //0x80
+	uint16_t ExtDevPowerOn	: 1; //0x01
+	uint16_t I2CDevWakeUp	: 1; //0x02
+	uint16_t ExtDevPowerOff	: 1; //0x04
+	uint16_t DAC_off			: 1; //0x08
+	uint16_t I2CDevSleep		: 1; //0x10
+	uint16_t ADC_Stop		: 1; //0x20
+	uint16_t Sleep_off		: 1; //0x40
+	uint16_t Sleep_CPU		: 1; //0x80
+	uint16_t Sleep_On		: 1; //0x100
+	uint16_t Test			: 1; //0x200
 } dev_pwr_slp_t;
 
 // BLE connection config
@@ -242,6 +253,7 @@ typedef struct __attribute__((packed)) _blk_tx_pkt_t{
 		dev_dbg_t dbg;
 		dev_scf_t scf;
 		dev_dac_cfg_t dac;
+		hx711_out_t hxo;
 	} data;
 } blk_tx_pkt_t;
 
@@ -266,6 +278,7 @@ typedef struct __attribute__((packed)) _blk_rx_pkt_t{
 		dev_dbg_t dbg;
 		dev_scf_t scf;
 		dev_dac_cfg_t dac;
+		hx711_set_t hxi;
 	} data;
 } blk_rx_pkt_t;
 

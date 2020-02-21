@@ -22,11 +22,14 @@
 #include "flash_eep.h"
 #include "eep_id.h"
 #include "usbCDC/drivers.h"
-#if USE_I2C
+#if (USE_I2C)
 #include "i2cbus.h"
 #endif
-#if (USE_ADC_TST)
+#if (USE_INT_ADC)
 #include "adc.h"
+#endif
+#if (USE_HX711)
+#include "hx711.h"
 #endif
 #include "dac.h"
 
@@ -49,7 +52,7 @@ u32 not_send_count = 0; // status
 u32 ble_loop_count;
 #endif
 
-volatile u8 sleep_disable = 0; // flag, pm not sleep
+volatile unsigned char sleep_mode = 0; // flag, = 1 -> pm not sleep, = 2 -> cpu only sleep
 u32 connection_time;
 u8 device_in_connection_state = 0; // flag
 u8 wrk_enable = 1; // flag connect & run device, in BLE mode
@@ -61,7 +64,7 @@ u8 tx_len = 0; // flag - есть данные для передачи в send_p
 blk_rx_pkt_t read_pkt; // приемный буфер
 blk_tx_pkt_t send_pkt; // буфер отправки
 
-#if USE_I2C_INA
+#if USE_I2C_DEV
 u32 t_rd_us = 0; // flag и время в us работы опроса без таймера
 volatile u8 timer_flg = 0; // flag временного отключения чтения I2C regs по irq
 // GENERAL CALL RESET: internal reset, similar to a power-on-reset
@@ -79,18 +82,37 @@ u8 rd_next_cnt = 0;
 u8 i2c_buf_wr = 0;
 u8 i2c_buf_rd = 0;
 #endif
-#endif // USE_I2C_INA
+#endif // USE_I2C_DEV
+#if USE_HX711
+#define HX711_BUF_CNT 16 // 8,16,32
+u32 hx711_buf[HX711_BUF_CNT]; // 64 bytes
+u8 hx711_wr = 0;
+u8 hx711_rd = 0;
+u8 hx711_mode = 0;
+#endif // USE_HX711
+
+//----------------------------- BLE stack
+my_fifo_t			blt_rxfifo;
+u8					blt_rxfifo_b[];
+
+my_fifo_t			blt_txfifo;
+u8					blt_txfifo_b[];
+
+MYFIFO_INIT(blt_rxfifo, 64, 8); 	// 512 bytes + headers
+MYFIFO_INIT(blt_txfifo, 40, 16);	// 640 bytes + headers
 
 #if USE_USB_CDC
+//----------------------------- USB stack
 // Define USB rx/tx buffer
 #define RX_BUF_LEN    USB_CDC_MAX_RX_BLK_SIZE // in bytes
 #define TX_BUF_LEN    MTU_DATA_SIZE // in bytes
 
-struct {
+typedef struct _usb_buf_t{
 	unsigned char rx[RX_BUF_LEN]; // 64 bytes
 	unsigned char tx[TX_BUF_LEN]; // 241 bytes
-}usb_buf;
-
+}usb_buf_t;
+#define usb_buf_rx ((unsigned char *)&blt_rxfifo)
+#define usb_buf_tx ((unsigned char *)&blt_txfifo)
 volatile u8 usb_actived; // flag
 #endif // USE_USB_CDC
 
@@ -156,15 +178,6 @@ ble_con_t cur_ble_con_ini;
 const ble_con_t def_ble_con_ini = {DEF_CONN_PARMS};
 ble_adv_t ble_adv_ini;
 const ble_adv_t def_ble_adv_ini = {DEF_ADV_INTERVAL};
-
-my_fifo_t			blt_rxfifo;
-u8					blt_rxfifo_b[];
-
-my_fifo_t			blt_txfifo;
-u8					blt_txfifo_b[];
-
-MYFIFO_INIT(blt_rxfifo, 64, 8); 	// 512 bytes + headers
-MYFIFO_INIT(blt_txfifo, 40, 16);	// 640 bytes + headers
 
 const u8 ble_dev_name[8] = { BLE_DEV_NAME, 0 };
 
@@ -244,7 +257,7 @@ _attribute_ram_code_ void USBCDC_RxCb(unsigned char *data, unsigned int len){
 			rx_len = data[0]+sizeof(blk_head_t);
 			memcpy(&read_pkt, data, rx_len);
 		}
-		USBCDC_RxBufSet(usb_buf.rx); // назначить новый буфер (в данном приложении единственный)
+		USBCDC_RxBufSet(usb_buf_rx); // назначить новый буфер (в данном приложении единственный)
 	}
 }
 
@@ -297,6 +310,24 @@ int att_sig_proc_handler(u16 connHandle, u8 * p)
 }
 #endif
 
+#if (USE_HX711)
+void hx711_go_sleep(void) {
+//	bls_app_registerEventCallback(BLT_EV_FLAG_GPIO_EARLY_WAKEUP, NULL);
+	hx711_mode = 0;
+	hx711_wr = 0;
+	hx711_rd = 0;
+	gpio_setup_up_down_resistor(HX711_SCK, PM_PIN_PULLUP_1M);
+	gpio_set_wakeup(HX711_DOUT, 0, 0); // отключить пробуждение от hx711
+}
+
+//void hx711_wakeup(void) {
+//	bls_app_registerEventCallback(BLT_EV_FLAG_GPIO_EARLY_WAKEUP, &ble_ev_gpio_wakeup);
+//	hx711_wr = 0;
+//	gpio_setup_up_down_resistor(HX711_SCK, PM_PIN_PULLDOWN_100K);
+//	if(!sleep_mode) gpio_set_wakeup(HX711_DOUT, 0, 1);  // core(gpio) low wakeup suspend
+//}
+#endif // USE_HX711
+
 void ExtDevPowerOff() {
 	gpio_setup_up_down_resistor(EXT_POWER_OFF, PM_PIN_PULLUP_10K);
 	gpio_setup_up_down_resistor(EXT_POWER_4MA, PM_PIN_PULLDOWN_100K);
@@ -314,7 +345,7 @@ void ExtDevPowerOn() {
 	gpio_set_data_strength(EXT_POWER_4MA, 1);
 }
 
-#if USE_I2C_INA
+#if USE_I2C_DEV
 
 void FlushI2CBuf(void) {
 	u8 r = irq_disable();
@@ -327,7 +358,7 @@ void FlushI2CBuf(void) {
 void Timer_Stop(void) {
 	t_rd_us = 0;
 	timer_flg = 0;
-	sleep_disable = 0;
+	sleep_mode = 0;
 	reg_tmr1_tick = 0;
 	reg_tmr_sta = FLD_TMR_STA_TMR1;
 	reg_irq_mask1 &= ~FLD_IRQ_TMR1_EN;
@@ -335,7 +366,7 @@ void Timer_Stop(void) {
 }
 
 void Timer_Init(uint32_t period_us) {
-	sleep_disable = 1;
+	sleep_mode = 1; // not sleep
 	reg_tmr1_tick = 0;
 //	if(usb_actived) period_us CLOCK in USB!
 	reg_tmr1_capt = period_us * CLOCK_SYS_CLOCK_1US;
@@ -427,7 +458,7 @@ int InitI2CDevice(void) {
 }
 #endif
 
-#if USE_ADC_TST
+#if USE_INT_ADC
 
 void ADC_Stop(void) {
 	cfg_adc.pktcnt  = 0;
@@ -445,6 +476,7 @@ int InitADCDevice(void) {
 			cfg_adc.pktcnt  = 0;
 			return 0;
 		}
+		sleep_mode |= 2;
 	}
 	return 1;
 }
@@ -478,10 +510,10 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 			pbufo->head.cmd = pbufi->head.cmd;
 			switch (pbufi->head.cmd) {
 			case CMD_DEV_VER: // Get Ver
-#if USE_I2C_INA && !USE_ADC_TST
+#if USE_I2C_DEV && !USE_INT_ADC
 				pbufo->data.ui[0] = 0x1016; // DevID = 0x1016
 				pbufo->data.ui[1] = 0x0010; // Ver 0.0.1.0 = 0x0010
-#elif USE_ADC_TST && !USE_I2C_INA
+#elif USE_INT_ADC && !USE_I2C_DEV
 				pbufo->data.ui[0] = 0x0020; // DevID = 0x0020
 				pbufo->data.ui[1] = 0x0002; // Ver 0.0.0.2 = 0x0002
 #else
@@ -490,7 +522,7 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 #endif					
 				txlen = sizeof(u16) + sizeof(u16) + sizeof(blk_head_t);
 				break;
-#if USE_I2C_INA
+#if USE_I2C_DEV
 			case CMD_DEV_CFG: // Get/Set CFG/ini & Start measure
 				if (pbufi->head.size) {
 					timer_flg = 0;
@@ -501,7 +533,7 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 						txlen = 0 + sizeof(blk_head_t);
 						break;
 					}
-					if(usb_actived || sleep_disable)
+					if(usb_actived || (sleep_mode&1))
 						timer_flg = 1;
 				}
 				memcpy(&pbufo->data, &cfg_i2c, sizeof(cfg_i2c));
@@ -552,7 +584,7 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				};
 				break;
 #endif					
-#if USE_ADC_TST
+#if USE_INT_ADC
 			case CMD_DEV_CAD: // Get/Set CFG/ini ADC & Start measure
 				if (pbufi->head.size) {
 					memcpy(&cfg_adc, &pbufi->data.cadc,
@@ -565,6 +597,26 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				}
 				memcpy(&pbufo->data, &cfg_adc, sizeof(cfg_adc));
 				txlen = sizeof(cfg_adc) + sizeof(blk_head_t);
+				break;
+#endif
+#if USE_HX711
+			case CMD_DEV_TST: // Get/Set CFG/ini ADC & Start measure
+				if (pbufi->head.size) {
+					hx711_wr = 0;
+					hx711_rd = 0;
+					hx711_mode = pbufi->data.hxi.mode & 3;
+					if(hx711_mode) {
+						hx711_mode += HX711MODE_A128 - 1;
+						hx711_gpio_wakeup();
+						if(!(sleep_mode&1))
+							gpio_set_wakeup(HX711_DOUT, 0, 1);  // core(gpio) low wakeup suspend
+					} else {
+						hx711_gpio_go_sleep();
+					}
+				} else {
+					pbufo->head.cmd |= CMD_ERR_FLG; // Error cmd
+				}
+				txlen = 0 + sizeof(blk_head_t);
 				break;
 #endif
 			//-------
@@ -666,6 +718,15 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				if(pbufi->data.pwr.ADC_Stop) {
 					ADC_Stop();
 				}
+				if(pbufi->data.pwr.Sleep_On) {
+					sleep_mode = 0;
+				}
+				if(pbufi->data.pwr.Sleep_off) {
+					sleep_mode = 1;
+				}
+				if(pbufi->data.pwr.Sleep_CPU) {
+					sleep_mode |= 2;
+				}
 				if(pbufi->data.pwr.Test) {
 					test();
 				}
@@ -736,7 +797,7 @@ int event_handler(u32 h, u8 *para, int n)
 			case BLT_EV_FLAG_TERMINATE:
 			{
 				cur_ble_con_ini.intervalMin = 0;
-				sleep_disable = 0;
+				sleep_mode = 0;
 				device_in_connection_state = 0;
 				SppDataServer2ClientDataCCC = 0;
 				rx_len = 0;
@@ -828,18 +889,25 @@ int event_handler(u32 h, u8 *para, int n)
 				// set new advertising
 			break;
 			case BLT_EV_FLAG_SUSPEND_ENTER:
-				if(sleep_disable) {
+				if(sleep_mode&1) {
 					bls_pm_setSuspendMask(SUSPEND_DISABLE);
 					bls_pm_setManualLatency(0);
 				}
 				else {
+#if USE_HX711
+				if(hx711_mode && !gpio_read(HX711_DOUT)) {
+					hx711_buf[hx711_wr++] = hx711_get_data(hx711_mode);
+					hx711_wr &= HX711_BUF_CNT-1;
+					all_rd_count++;
+				}
+#endif
 				}
 				break;
 			case BLT_EV_FLAG_SUSPEND_EXIT:
 #if LOOP_MIN_CYCLE
 				ble_loop_count = 0;
 #endif
-#if USE_I2C_INA
+#if USE_I2C_DEV
 				if(t_rd_us) {
 					GetNewRegData();
 				}
@@ -855,7 +923,7 @@ int event_handler(u32 h, u8 *para, int n)
 
 void entry_ota_mode(void)
 {
-	sleep_disable = 1;
+	sleep_mode = 1;
 
 	bls_ota_setTimeout(100 * 1000000); //set OTA timeout  100 S
 #ifdef BLUE_LED
@@ -912,11 +980,11 @@ int MtuSizeExchanged_callback(u16 conn, u16 txmtu) {
 		not_send_count = 0;
 		rx_len = 0;
 		tx_len = 0;
-#if USE_I2C_INA
+#if USE_I2C_DEV
 //		I2CDevWakeUp();
 //		FlushI2CBuf();
 #endif
-#if USE_ADC_TST
+#if USE_INT_ADC
 //		reg_audio_wr_ptr = 0;
 //		dfifo_rd_ptr = 0;
 #endif
@@ -940,14 +1008,14 @@ void eep_init(void)
 	if (dev_cfg.vbat_check_step_ms < 50)
 		dev_cfg.vbat_check_step_ms = 50;
 #endif
-#if USE_I2C_INA
+#if USE_I2C_DEV
 	if (flash_read_cfg(&cfg_i2c, EEP_ID_I2C_CFG, sizeof(cfg_i2c)) != sizeof(cfg_i2c)) {
 		memcpy(&cfg_i2c, &def_cfg_i2c, sizeof(cfg_i2c));
 	}
 	cfg_i2c.pktcnt = 0; // read off
 //	I2CDevSleep();
 #endif
-#if USE_ADC_TST
+#if USE_INT_ADC
 	if (flash_read_cfg(&cfg_adc, EEP_ID_ADC_CFG, sizeof(cfg_adc)) != sizeof(cfg_adc)) {
 		memcpy(&cfg_adc, &def_cfg_adc, sizeof(cfg_adc));
 	}
@@ -1114,7 +1182,7 @@ void user_init()
 #endif
 				| FLD_CLK_MCU_EN
 				| FLD_CLK_MAC_EN
-#if USE_ADC_TST
+#if USE_INT_ADC
 				| FLD_CLK_ADC_EN
 #endif
 //				| FLD_CLK_ZB_EN
@@ -1187,7 +1255,7 @@ void user_init()
 #endif // hw init
 		/* Initialize usb cdc */
 		USB_Init();
-		USBCDC_RxBufSet(usb_buf.rx);
+		USBCDC_RxBufSet(usb_buf_rx);
 		USBCDC_CBSet(USBCDC_RxCb, NULL); // CDC_TxDoneCb);
 		usb_dp_pullup_en(1);
 #if 0
@@ -1216,7 +1284,7 @@ void user_init()
 #endif
 				| FLD_CLK_MCU_EN
 				| FLD_CLK_MAC_EN
-#if USE_ADC_TST
+#if USE_INT_ADC
 //				| FLD_CLK_ADC_EN
 #endif
 				| FLD_CLK_ZB_EN
@@ -1277,9 +1345,12 @@ void main_ble_loop() {
 	if((device_in_connection_state // blc_ll_getCurrentState() == BLS_LINK_STATE_CONN
 			&& SppDataServer2ClientDataCCC)) {
 		if(!wrk_enable) {
-//#if USE_I2C_INA
+//#if USE_I2C_DEV
 			ExtDevPowerOn();
 //#endif
+#if (USE_HX711)
+//			hx711_wakeup();
+#endif
 			//  packet_length 20 + 27 * x байт, MTU_DATA_SIZE = packet_length +7
 			i = blc_att_requestMtuSizeExchange(BLS_CONN_HANDLE, MTU_DATA_SIZE);
 			if (i != BLE_SUCCESS) {
@@ -1297,6 +1368,15 @@ void main_ble_loop() {
 		else { // wrk_enable
 			switch(wrk_tick) {
 			case 1: // рабочий цикл
+#if USE_HX711
+				if(hx711_mode && !gpio_read(HX711_DOUT)) {
+//					bls_pm_setSuspendMask(SUSPEND_DISABLE);
+//					gpio_set_wakeup(HX711_DOUT, 0, 0);  // core(gpio) low wakeup disable
+					hx711_buf[hx711_wr++] = hx711_get_data(hx711_mode);
+					hx711_wr &= HX711_BUF_CNT-1;
+					all_rd_count++;
+				}
+#endif
 				if(tx_len) { // требуется передача
 					if(blc_ll_getTxFifoNumber() < 10) {
 						i = bls_att_pushIndicateData(SPP_Server2Client_INPUT_DP_H, (u8 *) &send_pkt, tx_len);
@@ -1314,43 +1394,17 @@ void main_ble_loop() {
 //					tick_wakeup = clock_time();
 				}// else
 				if(!tx_len) {
-#if USE_ADC_TST
+#if USE_INT_ADC
 				if(cfg_adc.pktcnt // вывод ADC samples активен
 //					&& blc_ll_getTxFifoNumber() < 10
-#if 1
 					&& (i = get_adc_dfifo((u16 *)&send_pkt.data.ui, cfg_adc.pktcnt, SMPS_BLK_CNT)) != 0) {
 					all_rd_count += i;
 					send_pkt.head.cmd = CMD_DEV_ADC;
 					send_pkt.head.size = i*2;
 					tx_len = i*2+sizeof(blk_head_t);
-					if(blc_ll_getTxFifoNumber() < 10) {
-						i = bls_att_pushIndicateData(SPP_Server2Client_INPUT_DP_H, (u8 *) &send_pkt, tx_len);
-						if(i == BLE_SUCCESS) {
-							tx_len = 0;
-						} else if(i != ATT_ERR_PREVIOUS_INDICATE_DATA_HAS_NOT_CONFIRMED) {
-							send_ble_err(RTERR_PIND, i);
-							wrk_tick = 0xff;
-						}
-					}
-#else
-					&& (i = get_adc_dfifo((u16 *)&send_pkt.data.ui, cfg_adc.pktcnt, SMPS_BLK_CNT) != 0) {
-					all_rd_count += cfg_adc.pktcnt;
-					send_pkt.head.cmd = CMD_DEV_ADC;
-					send_pkt.head.size = cfg_adc.pktcnt*2;
-					tx_len = cfg_adc.pktcnt*2+sizeof(blk_head_t);
-					if(blc_ll_getTxFifoNumber() < 10) {
-						i = bls_att_pushIndicateData(SPP_Server2Client_INPUT_DP_H, (u8 *) &send_pkt, tx_len);
-						if(i == BLE_SUCCESS) {
-							tx_len = 0;
-						} else if(i != ATT_ERR_PREVIOUS_INDICATE_DATA_HAS_NOT_CONFIRMED) {
-							send_ble_err(RTERR_PIND, i);
-							wrk_tick = 0xff;
-						}
-					}
-#endif
 				} else
 #endif
-#if USE_I2C_INA
+#if USE_I2C_DEV
 				if(cfg_i2c.pktcnt
 //					&&	blc_ll_getTxFifoNumber() < 10
 					&& ((i2c_buf_wr - i2c_buf_rd) & (I2C_BUF_SIZE - 1)) > cfg_i2c.pktcnt) {
@@ -1364,15 +1418,17 @@ void main_ble_loop() {
 					send_pkt.head.cmd = CMD_DEV_I2C;
 					send_pkt.head.size = cfg_i2c.pktcnt*2;
 					tx_len = cfg_i2c.pktcnt*2+sizeof(blk_head_t);
-					if(blc_ll_getTxFifoNumber() < 10) {
-						i = bls_att_pushIndicateData(SPP_Server2Client_INPUT_DP_H, (u8 *) &send_pkt, tx_len);
-						if(i == BLE_SUCCESS) {
-							tx_len = 0;
-						} else if(i != ATT_ERR_PREVIOUS_INDICATE_DATA_HAS_NOT_CONFIRMED) {
-							send_ble_err(RTERR_PIND, i);
-							wrk_tick = 0xff;
-						}
+				} else
+#endif
+#if USE_HX711
+				if(((hx711_wr - hx711_rd) & (HX711_BUF_CNT-1)) > HX711_DATA_OUT) {
+					for(i = 0; i < HX711_DATA_OUT; i ++) {
+						send_pkt.data.hxo.data[i] = hx711_buf[hx711_rd++];
+						hx711_rd &= HX711_BUF_CNT-1;
 					}
+					send_pkt.head.cmd = CMD_DEV_TST;
+					send_pkt.head.size = sizeof(hx711_out_t);
+					tx_len = sizeof(hx711_out_t)+sizeof(blk_head_t);
 				} else
 #endif
 				if(rx_len) { // пришла команда
@@ -1381,6 +1437,22 @@ void main_ble_loop() {
 					rx_len = 0;
 				} else if(clock_tik_exceed(connection_time, 25000000*CLOCK_SYS_CLOCK_1US)) { // > 25 sec ?
 					wrk_tick = 0xff; // на отключение
+				}
+				if(tx_len) { // требуется передача
+					if(blc_ll_getTxFifoNumber() < 10) {
+						i = bls_att_pushIndicateData(SPP_Server2Client_INPUT_DP_H, (u8 *) &send_pkt, tx_len);
+//						if(i == HCI_ERR_CONN_NOT_ESTABLISH) {
+//							tx_len = 0;
+//							wrk_tick = 0xff;
+//						}
+						if(i == BLE_SUCCESS) {
+							tx_len = 0;
+						} else if(i != ATT_ERR_PREVIOUS_INDICATE_DATA_HAS_NOT_CONFIRMED) {
+							send_ble_err(RTERR_PIND, i);
+							wrk_tick = 0xff;
+						}
+					}// else not_send_count++;
+	//					tick_wakeup = clock_time();
 				}
 				} // if(!tx_len)
 				break;
@@ -1399,12 +1471,15 @@ void main_ble_loop() {
 	}
 	else { // отключение
 		if(wrk_enable) {
-#if USE_I2C_INA		
+#if USE_I2C_DEV
 			Timer_Stop();
 			I2CDevSleep();
 #endif
-#if USE_ADC_TST
+#if USE_INT_ADC
 			ADC_Stop();
+#endif
+#if (USE_HX711)
+			hx711_go_sleep();
 #endif			
 			sdm_off();
 			ExtDevPowerOff();
@@ -1418,8 +1493,8 @@ void main_ble_loop() {
 		}
 	}
 //-------------------------------------------------
-	/* if(sleep_disable) в обр. события BLT_EV_FLAG_SUSPEND_ENTER */
-	if(!sleep_disable) {
+	/* if(sleep_mode) в обр. события BLT_EV_FLAG_SUSPEND_ENTER */
+	if((sleep_mode&1)==0) {
 		if(!device_in_connection_state) {
 			if(!gpio_read(KEY_K1)) {
 				gpio_setup_up_down_resistor(KEY_K1, PM_PIN_PULLDOWN_100K);
@@ -1432,8 +1507,8 @@ void main_ble_loop() {
 				cpu_sleep_wakeup(DEEPSLEEP_MODE, PM_WAKEUP_PAD, 0);
 			}
 		}
-#if USE_ADC_TST
-		if(cfg_adc.pktcnt) {
+#if USE_INT_ADC
+		if(sleep_mode&2) {
 			bls_pm_setSuspendMask(SUSPEND_DISABLE);
 /*
 #if LOOP_MIN_CYCLE
@@ -1453,7 +1528,8 @@ void main_ble_loop() {
 			bls_pm_setSuspendMask(MCU_STALL | SUSPEND_ADV | SUSPEND_CONN);
 //			bls_pm_setSuspendMask(SUSPEND_ADV | SUSPEND_CONN);
 		}
-		bls_pm_setWakeupSource(PM_WAKEUP_CORE | PM_WAKEUP_TIMER);  // GPIO_WAKEUP_MODULE needs to be wakened, PM_WAKEUP_TIMER ?
+//		bls_pm_setWakeupSource(PM_WAKEUP_CORE | PM_WAKEUP_TIMER);  // GPIO_WAKEUP_MODULE needs to be wakened, PM_WAKEUP_TIMER ?
+		bls_pm_setWakeupSource(PM_WAKEUP_CORE | PM_WAKEUP_TIMER | PM_WAKEUP_PAD);  // GPIO_WAKEUP_MODULE needs to be wakened, PM_WAKEUP_TIMER ?
 	}
 }
 /////////////////////////////////////////////////////////////////////
@@ -1463,14 +1539,21 @@ void main_ble_loop() {
 #define usb_pwup wrk_tick
 void main_usb_loop() {
 	u32 i;
+#if USE_HX711
+	if(hx711_mode && !gpio_read(HX711_DOUT)) {
+		hx711_buf[hx711_wr++] = hx711_get_data(hx711_mode);
+		hx711_wr &= HX711_BUF_CNT-1;
+		all_rd_count++;
+	}
+#endif
 	if(tx_len) { // есть данные для передачи
 		if(USBCDC_IsAvailable()) {
-			memcpy(&usb_buf.tx, &send_pkt, tx_len);
-			USBCDC_DataSend((unsigned char *)&usb_buf.tx, tx_len);
+			memcpy(usb_buf_tx, &send_pkt, tx_len);
+			USBCDC_DataSend(usb_buf_tx, tx_len);
 			tx_len = 0;
 		}
 	} else
-#if USE_ADC_TST
+#if USE_INT_ADC
 	if(cfg_adc.pktcnt
 		&& (i = get_adc_dfifo((u16 *)&send_pkt.data.ui, cfg_adc.pktcnt, SMPS_BLK_CNT)) != 0) {
 		all_rd_count += i;
@@ -1481,7 +1564,7 @@ void main_usb_loop() {
 		tx_len = i*2+sizeof(blk_head_t);
 	} else
 #endif
-#if USE_I2C_INA	
+#if USE_I2C_DEV
 	if(cfg_i2c.pktcnt
 //		&& timer_flg
 		&& ((i2c_buf_wr - i2c_buf_rd) & (I2C_BUF_SIZE - 1)) > cfg_i2c.pktcnt) {
@@ -1500,17 +1583,34 @@ void main_usb_loop() {
 		tx_len = cfg_i2c.pktcnt*2+sizeof(blk_head_t);
 	} else
 #endif
+#if USE_HX711
+	if(((hx711_wr - hx711_rd) & (HX711_BUF_CNT-1)) > HX711_DATA_OUT) {
+		for(i = 0; i < HX711_DATA_OUT; i ++) {
+			send_pkt.data.hxo.data[i] = hx711_buf[hx711_rd++];
+			hx711_rd &= HX711_BUF_CNT-1;
+		}
+		send_pkt.head.cmd = CMD_DEV_TST;
+		send_pkt.head.size = sizeof(hx711_out_t);
+		tx_len = sizeof(hx711_out_t)+sizeof(blk_head_t);
+	} else
+#endif
 	if(rx_len) {
 		tx_len = cmd_decode(&send_pkt, &read_pkt, rx_len);
 		rx_len = 0;
 	} else
 	if(usb_pwd) { // Events: USB_SET_CTRL_UART DTR Off, USB_PWDN, USB_RESET
-#if USE_I2C_INA
+#if USE_I2C_DEV
 		Timer_Stop();
 		I2CDevSleep();
 #endif
-#if USE_ADC_TST
+#if USE_INT_ADC
 		ADC_Stop();
+#endif
+#if (USE_HX711)
+		hx711_gpio_go_sleep();
+		hx711_mode = 0;
+		hx711_wr = 0;
+		hx711_rd = 0;
 #endif
 		sdm_off();
 		ExtDevPowerOff();
@@ -1518,9 +1618,12 @@ void main_usb_loop() {
 	}
 	else if(usb_pwup) { // Events: USB_SET_CTRL_UART DTR Off, USB_PWDN, USB_RESET
 		ExtDevPowerOn();
-#if USE_I2C_INA
+#if USE_I2C_DEV
 		sleep_us(100);
 		I2CDevWakeUp();
+#endif
+#if (USE_HX711)
+//		hx711_gpio_wakeup();
 #endif
 		usb_pwup = 0;
 	}

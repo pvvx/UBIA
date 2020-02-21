@@ -20,4 +20,17 @@ typedef enum {
 //_attribute_ram_code_
 int hx711_get_data(hx711_mode_t mode);
 
+inline void hx711_gpio_go_sleep(void) {
+//	bls_app_registerEventCallback(BLT_EV_FLAG_GPIO_EARLY_WAKEUP, NULL);
+//	gpio_set_wakeup(HX711_DOUT, 0, 0); // отключить пробуждение от hx711
+	gpio_setup_up_down_resistor(HX711_SCK, PM_PIN_PULLUP_1M);
+}
+
+inline void hx711_gpio_wakeup(void) {
+	gpio_setup_up_down_resistor(HX711_SCK, PM_PIN_PULLDOWN_100K);
+//	bls_app_registerEventCallback(BLT_EV_FLAG_GPIO_EARLY_WAKEUP, &ble_ev_gpio_wakeup);
+//	gpio_set_wakeup(HX711_DOUT, 0, 1);  // core(gpio) low wakeup suspend
+}
+
+
 #endif /* HX711_H_ */

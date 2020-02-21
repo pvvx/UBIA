@@ -12,9 +12,10 @@
 #include "proj/mcu/config.h"
 
 // Project type:
-#define USE_I2C_INA 	1
-#define USE_ADC_TST 	1
-#define USE_I2C_DAC 	1
+#define USE_I2C_DEV 	1
+#define USE_INT_ADC 	1
+#define USE_INT_DAC 	1
+#define USE_HX711 		1
 // -----
 
 /* Enable C linkage for C++ Compilers: */
@@ -23,31 +24,14 @@ extern "C" {
 #endif
 
 ////////// BLE product  Information  ////////////
-#if USE_I2C_INA && !USE_ADC_TST
-#define DEV_NAME		"tBLEI2C"
-#define BLE_DEV_NAME	't', 'B', 'L', 'E', 'I', '2', 'C'
-////////// USB product  Information  ////////////
-#define STRING_VENDOR        L"Telink"
-#define STRING_PRODUCT       L"USB_BLE_I2C"
-#define STRING_SERIAL        L"TestI2C"
-#elif USE_ADC_TST && !USE_I2C_INA
-#define DEV_NAME		"tBLEADC"
-#define BLE_DEV_NAME	't', 'B', 'L', 'E', 'A', 'D', 'C'
-////////// USB product  Information  ////////////
-#define STRING_VENDOR        L"Telink"
-#define STRING_PRODUCT       L"USB_BLE_ADC"
-#define STRING_SERIAL        L"TestADC"
-#else
 #define DEV_NAME		"tBLETST"
 #define BLE_DEV_NAME	't', 'B', 'L', 'E', 'T', 'S', 'T'
 ////////// USB product  Information  ////////////
 #define STRING_VENDOR        L"Telink"
 #define STRING_PRODUCT       L"USB_BLE_TST"
 #define STRING_SERIAL        L"Test123"
-#endif
 extern const unsigned char ble_dev_name[8];
 // PnP_ID characteris -> см. my_PnPtrs[]
-
 
 typedef struct _dev_config_t {
 	unsigned short vbat_min_mv; // = VBAT_ALARM_THRES
@@ -76,6 +60,7 @@ extern unsigned char wrk_tick;
 #define USB_SET_CTRL_UART(a) { if(a & 1) wrk_tick = 1; else wrk_enable = 1; }
 
 extern volatile unsigned char usb_actived;
+extern volatile unsigned char sleep_mode; // flag, = 1 -> pm not sleep, = 2 -> cpu only sleep
 
 /****** module CLK (& IRQ ?, & GPIO ?) *******/
 /*
@@ -89,7 +74,7 @@ extern volatile unsigned char usb_actived;
 //#define USE_WATCHDOG				(62*8192) // us
 
 /* StartupInits */
-#if USE_ADC_TST
+#if (USE_INT_ADC)
 #define USE_ADC			1	// StartupInits() включит CLK ADC
 #else
 #define USE_ADC			0	// StartupInits() включит CLK ADC
@@ -99,7 +84,7 @@ extern volatile unsigned char usb_actived;
 #define USE_USB			1	// StartupInits() включит CLK USB
 #define USE_DMA			1	// StartupInits() включит CLK DMA
 #define USE_SPI 		1	// StartupInits() включит CLK SPI
-#if USE_I2C_INA || USE_I2C_DAC
+#if (USE_I2C_DEV)
 #define USE_I2C 		1	// StartupInits() включит CLK I2C
 #else
 #define USE_I2C 		0	// StartupInits() включит CLK I2C
@@ -139,6 +124,23 @@ extern volatile unsigned char usb_actived;
 #define USE_PGA								0
 
 #define BLE_LOW_POWER						0	// =1 меняет тайминги по умолчанию на максимальные и ...
+
+#if (USE_HX711)
+//#define HX711_SCK	GPIO_PC0
+//#define HX711_DOUT  GPIO_PC1
+typedef struct _weight_config_t {
+	unsigned short check_step_ms; // in 1/1024 ms
+	unsigned short coef;  //
+	unsigned short zero;
+} weight_config_t;
+
+typedef struct _weight_val_t {
+	unsigned short kg005;
+	unsigned short idx;
+	unsigned int adc[4];
+}weight_val_t;
+extern weight_config_t weight_cfg;
+#endif // WEIGHT_SERVICE_ENABLE
 
 typedef struct
 {
@@ -256,7 +258,6 @@ extern gap_periConnectParams_t my_periConnParameters;
 #define	PD5_FUNC							AS_GPIO // ADC0, -diff
 //------------------- DAC
 #define	PE5_FUNC							AS_GPIO // SDMN
-
 //------------------- USB/BLE
 #define GPIO_WAKEUP_MODULE					GPIO_PA1   // mcu wakeup module (Key PWRC)
 #define	PA1_FUNC							AS_GPIO
@@ -266,6 +267,15 @@ extern gap_periConnectParams_t my_periConnParameters;
 #define GPIO_WAKEUP_MODULE_HIGH				gpio_setup_up_down_resistor(GPIO_WAKEUP_MODULE, PM_PIN_PULLUP_10K);
 #define GPIO_WAKEUP_MODULE_LOW				gpio_setup_up_down_resistor(GPIO_WAKEUP_MODULE, PM_PIN_PULLDOWN_100K);
 //-------------------
+#if (USE_HX711)
+#define HX711_SCK	GPIO_PC6
+#define HX711_DOUT  GPIO_PC7
+#define PC6_INPUT_ENABLE					1
+#define	PC6_OUTPUT_ENABLE					0
+#define PC7_INPUT_ENABLE					1
+#define	PC7_OUTPUT_ENABLE					0
+#endif // USE_HX711
+
 #elif	(BOARD == BOARD_E104_BT05)
 //#define BLUE_LED	LED_B
 //#define GREEN_LED   LED_G

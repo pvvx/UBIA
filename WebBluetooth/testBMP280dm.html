@@ -142,7 +142,7 @@ function ShowGrf(value) {
 	if(rend) {
 //		let P = (value.getInt16(8,false)<<8)|value.getUint8(10);
 //		let T = (value.getInt16(11,false)<<8)|value.getUint8(13);
-		datau.push([cur_idx/smprate, CalkTemp(value), CalkPressure(value)]);
+		datau.push([cur_idx/smprate, CalkTemp(value), bmp280CalcAltitude(CalkPressure(value))]);
 		cur_idx++;
 		if(cur_idx >= samples) datau.shift();
 	}
@@ -155,18 +155,18 @@ function ShowGrf(value) {
 			$("div_v"),
 		    datau,
 			{
-				title: 'Pressure and Temperature Sensor BMP280',
+				title: 'Altitude and Temperature Sensor BMP280',
 				showRangeSelector: true,
 				showRoller: true,
 				rollPeriod: 5,
 				xlabel: 'Time(sec)',
 				ylabel: 'Temp(C&deg;)',
-				y2label: 'P(hPa)',
+				y2label: 'H(m)',
 				colors: ['green', 'red'],
-				series : { 'P(hPa)': { axis: 'y2' } },
+				series : { 'H(m)': { axis: 'y2' } },
 				axes: {
 					x: {valueFormatter: function(x){return this.getLabels()[0] + ': '+ x.toPrecision(5);}}},
-					labels: ['T(sec)', 'T(C°)', 'P(hPa)'],
+					labels: ['T(sec)', 'T(C°)', 'H(m)'],
 					labelsDiv: $('labdiv'),
 					legend: 'always',  // "follow"
 					digitsAfterDecimal: 3,

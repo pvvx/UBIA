@@ -2,7 +2,7 @@
 <html>
   <head>
 	<link rel="stylesheet" href="tests.css">
-	<title>Get BMP280 data</title>
+	<title>Get HX711 data</title>
 	<script type="text/javascript" src="dygraph.min.js"></script>
   </head>
   <body>
@@ -27,8 +27,14 @@ var $ = function(id) {
 // Вывод в терминал
 function log(data) {console.log(data);}
 //-------------------------
-var smprate = 10; // 0.5..25 sps (BMP280 Set Measurement rate 10[Hz])
+var smprate = 10; // 10 sps
+// 10 sps -> 1.7 mA (HX711 no Load cell, Load cell + 3.2V/Rls)
 // Disconnect -> 0.09 mA
+const 
+HUnits = 'Value', // 'kg', 'mV'
+HUnitsK = 0.000625,
+HUnitsZ = 0, 
+HX711CHNL = 1; // Channel & Gain: =1 -> A x128, =2 -> B x32, =3 -> A x64
 //-------------------------
 var devcnn = 0;
 var stg = 0;
@@ -36,7 +42,7 @@ var smps = smprate;
 var sttim = 0;
 var cur_idx = 0;
 var old_idx = 0;
-var samples = 40000;
+var samples = 100000;
 var rend = 1;
 var oldblkid = 0;
 var rdnextflg = false;
@@ -79,72 +85,18 @@ $("butClr").onclick =  function() {
 	stg = 0;
 	gu.destroy();
 }
-//BMP280 http://www.adafruit.com/datasheets/BST-BMP180-DS000-09.pdf
-var trim;
-// Save Trimming parameters
-function SaveTrimmingParameters(value) {
-	trim = {};
-	trim.t1 = value.getUint16(4,true);
-	trim.t2 = value.getInt16(6,true);
-	trim.t3 = value.getInt16(8,true);
-	trim.p1 = value.getUint16(10,true);
-	trim.p2 = value.getInt16(12,true);
-	trim.p3 = value.getInt16(14,true);
-	trim.p4 = value.getInt16(16,true);
-	trim.p5 = value.getInt16(18,true);
-	trim.p6 = value.getInt16(20,true);
-	trim.p7 = value.getInt16(22,true);
-	trim.p8 = value.getInt16(24,true);
-	trim.p9 = value.getInt16(26,true);
-	log('Trimming parameters:');
-	log('Tx = '+ trim.t1 +', '+trim.t2 +', '+trim.t3);
-	log('Px = '+ trim.p1 +', '+trim.p2 +', '+trim.p3+', '+trim.p4 +', '+trim.p5+', '+trim.p6 +', '+trim.p7+', '+trim.p8 +', '+trim.p9);
-}
-var t_fine;
-function CalkTemp(value) {
-	let adc_T = (value.getUint16(11,false)<<4)|(value.getUint8(13)>>4);
-//	log('adc_T = '+ adc_T);
-	let var1 = (adc_T/16384.0 - trim.t1/1024.0) * trim.t2;
-	let var2 = ((adc_T/131072.0 - trim.t1/8192.0) * (adc_T/131072.0 - trim.t1/8192.0)) * trim.t3;
-	t_fine = var1 + var2;
-	return (t_fine / 5120.0);
-}
-function CalkPressure(value) {
-	adc_P = (value.getUint16(8,false)<<4)|(value.getUint8(10)>>4);
-//	log('adc_P = '+ adc_P);
-	let var1 = (t_fine / 2.0) - 64000.0;
-	let var2 = var1 * var1 * trim.p6 / 32768.0;
-	var2 = var2 + var1 * trim.p5 * 2.0;
-	var2 = (var2 / 4.0) + (trim.p4 * 65536.0);
-	var1 = (trim.p3 * var1 * var1 / 524288.0 + trim.p2 * var1) / 524288.0;
-	var1 = (1.0 + var1 / 32768.0) * trim.p1;
-	if (var1 == 0.0) 
-		return 0; // avoid exception caused by division by zero
-	let x = 1048576.0 - adc_P;
-	x = (x - var2 / 4096.0) * 6250.0 / var1;
-	var1 = trim.p9 * x * x / 2147483648.0;
-	var2 = x * trim.p8 / 32768.0;
-	return (x + (var1 + var2 + trim.p7) / 16.0);
-}
-function seaLevelForAltitude(altitude, atmospheric) {
-  return atmospheric/Math.pow(1.0 - (altitude / 44330.0), 5.255);
-}
-var seaLevelhPa = seaLevelForAltitude(16, 99714);
-//get altitude in m
-function bmp280CalcAltitude(press) {
-	return 44330.0 * (1.0 - Math.pow(press/seaLevelhPa, 0.19029));
-}
 function ShowGrf(value) {
 	if(!sttim) {
 		sttim = new Date().getTime();
 		setInterval(function(){wsSmpRate()}, 500);
 	}
 	if(rend) {
-//		let P = (value.getInt16(8,false)<<8)|value.getUint8(10);
-//		let T = (value.getInt16(11,false)<<8)|value.getUint8(13);
-		datau.push([cur_idx/smprate, CalkTemp(value), CalkPressure(value)]);
-		cur_idx++;
-		if(cur_idx >= samples) datau.shift();
+	    let x = 0;
+		for (let i=2;i<value.byteLength;i+=4) {
+			datau.push([cur_idx/smprate, value.getInt32(i,true)*HUnitsK+HUnitsZ]);
+			cur_idx++;
+			if(cur_idx >= samples) datau.shift();
+		}
 	}
 	else {
 		sttim = new Date().getTime();
@@ -155,18 +107,16 @@ function ShowGrf(value) {
 			$("div_v"),
 		    datau,
 			{
-				title: 'Pressure and Temperature Sensor BMP280',
+				title: 'ADC HX711',
 				showRangeSelector: true,
 				showRoller: true,
-				rollPeriod: 5,
-				xlabel: 'Time(sec)',
-				ylabel: 'Temp(C&deg;)',
-				y2label: 'P(hPa)',
-				colors: ['green', 'red'],
-				series : { 'P(hPa)': { axis: 'y2' } },
+				rollPeriod: 7,
+				xlabel: 'T(sec)',
+				ylabel: HUnits,
+				colors: ['green'],
 				axes: {
 					x: {valueFormatter: function(x){return this.getLabels()[0] + ': '+ x.toPrecision(5);}}},
-					labels: ['T(sec)', 'T(C°)', 'P(hPa)'],
+					labels: ['T', HUnits],
 					labelsDiv: $('labdiv'),
 					legend: 'always',  // "follow"
 					digitsAfterDecimal: 3,
@@ -276,18 +226,8 @@ function ConnParUpdate(tms) {
 } dev_i2c_cfg_t; */
 var pack_samples = 8;
 function SendInit(){
-//	log('Send command#01: Init I2C/SMBUS CLK 400 kHz...'); // - init I2C 
-//	characteristicCache.writeValue(new Uint8Array([7, 1, 0, 0, 255, 255, 0x90, 1, 0]));
-	log('Send command#01: Init I2C/SMBUS CLK 1 MHz...'); // - init I2C 
-	characteristicCache.writeValue(new Uint8Array([7, 1, 0, 0, 255, 255, 0xe8, 3, 0]));
-}
-function SendStartMeasurement(){
-	log('Send command #0C: Set Contfig registor & Start Measurement...');
-	characteristicCache.writeValue(new Uint8Array([0x05, 0x0c, 0x00, 0x00, 0xEC, 0xf4, 0xb7]));
-}
-function SetCntlMeasurement(){
-	log('Send command #0C: Set Controls Measurement registor...');
-	characteristicCache.writeValue(new Uint8Array([0x05, 0x0c, 0x00, 0x00, 0xEC, 0xf5, 0x10]));
+	log('Send command#0B: WakeUp & Run HX711...'); // - init I2C 
+	characteristicCache.writeValue(new Uint8Array([1, 0x0B, HX711CHNL]));
 }
 function hex(number, length) {
     var str = (number.toString(16)).toUpperCase();
@@ -321,38 +261,27 @@ function handleCharacteristicValueChanged(event) {
 		let ds = value.getUint8(0);
 		if(ds+2 >= value.byteLength) {
 			let idx = value.getUint8(1);
-			if(idx == 0x0C) {
+			if(idx == 0x0B) {
 //				ResponsePkt('ResponsePkt', value);
-//				log('#0C I2C data [' + ds + ']');
-				if(ds == 12) {
-//					if(value.getUint8(5) & 0x9) stage_read = 3; // reread
-//					else 
+//				log('#0B HX711 data [' + ds + ']');
+				if(ds >= 4) {
 					ShowGrf(value);
-				} 
-				if (stage_read == 2) {
-					log('Send command #0C: Read Trimming parameter...');
-					characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0x98, 0xEC, 0x88]));
-					stage_read = 3;
-				} else if (stage_read == 3) { // ds == 24
-					ResponsePkt('ResponsePkt', value);
-					SaveTrimmingParameters(value);
-					SendStartMeasurement();
-					stage_read = 4;
-				} else if (stage_read == 4) {
-//					log('Send command #0C: Read measurement values...');
-					characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0x8a, 0xEC, 0xF3]));
 				}
-				err_rd_i2c = 0;
-			} else if(idx == 0x0A) {
-//				ResponsePkt('ResponsePkt', value);
-				log('#0A ADC data [' + ds + ']');
-//				ShowGrf(value);
 				if(ping_timer != 0) {
 					ping_timer = 0;
 					log('Send command #03: Get Status...');
 					characteristicCache.writeValue(new Uint8Array([0x00, 0x03]));
 					setTimeout(PingTimeout, 20000);
 				}
+			} else if(idx == 0x0C) {
+//				ResponsePkt('ResponsePkt', value);
+				log('#0C I2C data [' + ds + ']');
+				if(ds >= 8) {
+					ShowGrf(value);
+				}
+			} else if(idx == 0x0A) {
+//				ResponsePkt('ResponsePkt', value);
+				log('#0A ADC data [' + ds + ']');
 			} else if(idx == 0x07) {
 /* typedef struct {
 	uint8_t size;	// размер данных пакета (=0 байт)
@@ -400,8 +329,6 @@ function handleCharacteristicValueChanged(event) {
 					s+=', I2C CLK: '+value.getUint16(6,true) +' kHz, ...';
 				}
 				log(s);
-				SetCntlMeasurement();
-				stage_read = 2;				
 			}
 			else if(idx == 0x00 && ds > 3) {
 				err_rd_i2c = 0;
@@ -419,9 +346,9 @@ function handleCharacteristicValueChanged(event) {
 					disconnect();
 					alert('DeviceID: '+ hex(dev_id,4)+', Ver: '+hex(ver_id, 4)+'\r\nUnknown BLE Device!');
 				} else {
-					if(smprate > 50) smprate = 50
-					else if(smprate < 0.5) smprate = 0.5;
-					ConnParUpdate(250/smprate); // Set interval 25+ ms (min 7.5 ms)
+					if(smprate > 80) smprate = 80
+					else if(smprate < 10) smprate = 10;
+					ConnParUpdate(2500/smprate); // Set interval 25+ ms (min 7.5 ms)
 				}
 			}
 			else if(idx == 0x04 && ds >= 16) {
@@ -450,7 +377,8 @@ function handleCharacteristicValueChanged(event) {
 					} else {
 						stage_read = 1; // stage 1
 						SendInit();
-						setTimeout(PingTimeout, 20000);
+						setTimeout(PingTimeout, 10000);
+						start_time = Date.now();
 					}
 				}
 			} else if(idx == 0x03 && ds >= 8) {
@@ -465,7 +393,7 @@ function handleCharacteristicValueChanged(event) {
 				log('#03 DevStatus: samples count '+smpcnt+', tspcount '+nscnt);
 				let tt = smpcnt-nscnt*pack_samples;
 				if(tt > 0) {
-					tt = tt*500/(Date.now() - start_time);
+					tt = tt*1000/(Date.now() - start_time);
 					log('Real sps: '+ tt.toFixed(3) + '?');
 				}
 			} else if(idx == 0x10 && ds > 3) {
@@ -478,22 +406,6 @@ function handleCharacteristicValueChanged(event) {
 } dev_rdregi2c_t; */
 //				ResponsePkt('ResponsePkt', value);
 				log('#10 I2C(0x'+hex(value.getUint8(2), 2)+') ['+hex(value.getUint8(3),2)+'] = '+hex(value.getUint16(4,true),4));
-			} else if(idx == 0x81) {
-				SendStartMeasurement();
-				stage_read = 2;
-
-			} else if(idx == 0x8C && stage_read > 2 && err_rd_i2c < 3) {
-				err_rd_i2c++;
-				log('Error '+err_rd_i2c+' #0C I2C data [' + ds + '], re...');
-				if (stage_read == 2) {
-					log('Send command #0C: Read Trimming parameter...');
-					characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0x98, 0xEC, 0x88]));
-				} else if (stage_read == 3) {
-					SendStartMeasurement();
-				} else if (stage_read == 4) {
-					log('Send command #0C: Read measurement values...');
-					characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0x8a, 0xEC, 0xF3]));
-				}
 			} else if(idx >= 0x80) {
 				ResponsePkt('ErrorPkt', value);
 				disconnect();
@@ -521,7 +433,7 @@ function startNotifications(characteristic) {
         ShowConnect()
         stage_read = 0;
 		setTimeout(SendWhoIs, 400);
-		setTimeout(WaitConnection, 5000+7500/smprate);
+		setTimeout(WaitConnection, 7000+7500/smprate);
 	});
 }
 function ResponsePkt(head, value) {
