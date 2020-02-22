@@ -285,4 +285,31 @@ typedef struct __attribute__((packed)) _blk_rx_pkt_t{
 extern blk_rx_pkt_t read_pkt;
 extern blk_tx_pkt_t send_pkt;
 
+#if (USE_USB_CDC && USE_BLE)
+volatile u8 usb_actived; // flag =1 -> usb, =0 -> ble
+extern volatile unsigned char usb_actived;
+int tst_usb_actived(void);
+#endif
+
+extern u32 all_rd_count; // count read
+extern u32 not_send_count; // diag count
+
+extern u8 rx_len; // flag - пришла команда в read_pkt
+extern u8 tx_len; // flag - есть данные для передачи в send_pkt
+
+#if (USE_USB_CDC)
+void send_usb_err(u16 err_id, u16 err);
+#endif
+#if (USE_BLE)
+void send_ble_err(u16 err_id, u16 err);
+#endif
+
+/*******************************************************************************
+ * Function Name : usb_ble_cmd_decode.
+ * Description	 : Main loop routine.
+ * Input		 : blk_tx_pkt_t * pbufo, blk_tx_pkt_t * pbufi, int rxlen
+ * Return		 : txlen.
+ *******************************************************************************/
+unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int rxlen);
+
 #endif /* _CMD_CFG_H_ */

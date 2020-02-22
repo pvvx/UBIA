@@ -56,6 +56,7 @@ void sdm_off(void) {
 		gpio_set_func(GPIO_SDMP,AS_GPIO);  //disable gpio function
 		gpio_set_func(GPIO_SDMN,AS_GPIO);  //disable gpio function
 #endif
+		gpio_setup_up_down_resistor(HX711_DOUT, PM_PIN_PULLDOWN_100K);
 		reg_i2s_step = 16;
 		reg_aud_ctrl = 0; //BM_CLR(reg_aud_ctrl,FLD_AUD_SDM_PLAY_EN);  //close sdm player
 		reg_clk_en2  &= ~(FLD_CLK2_AUD_EN | FLD_RST_ADC | FLD_CLK2_DIFIO_EN);	// disable audio clock
@@ -184,29 +185,39 @@ unsigned int dac_cmd(dev_dac_cfg_t *p) {
 	switch(p->mode) {
 	case 1: // вывод в DAC (10 ms start! -> первая запись устанавливает внуренний уровень, последующие выводятся на выход GPIO )
 		set_dac_out(p->value[0]);
+#if (USE_BLE)
 		sleep_mode = 1; // |= 2;
+#endif
 		sdm_init(p->slk_mhz, 1, 0x41);
 		break;
 	case 2: // test! out value (adc off!)
 		ADC_Stop();
 		gen_u(p->value[0]);
+#if (USE_BLE)
 		sleep_mode |= 2;
+#endif
 		sdm_init(p->slk_mhz, p->step, 0x40);
 		break;
 	case 3: // test! out triangular (adc off!)
 		ADC_Stop();
 		gen_triangular();
+#if (USE_BLE)
 		sleep_mode |= 2;
+#endif
 		sdm_init(p->slk_mhz, p->step, 0x40);
 		break;
 	case 4: // test! adc->dac
 		ADC_Stop();
 		sdm_set_buf(dfifo, sizeof(dfifo));
+#if (USE_BLE)
 		sleep_mode |= 2;
+#endif
 		sdm_init(p->slk_mhz, p->step, 0x40);
 		break;
 	case 5: // test! set adc->dac
+#if (USE_BLE)
 		sleep_mode |= 2;
+#endif
 		test(p);
 		break;
 //	case 0x10: // set volume

@@ -5,6 +5,7 @@
  *      Author: pvvx
  */
 #include "proj/tl_common.h"
+#if USE_HX711
 #include "hx711.h"
 
 #ifndef HX711_SCK
@@ -13,6 +14,31 @@
 #ifndef HX711_DOUT
 #define HX711_DOUT	GPIO_PC1
 #endif
+
+u32 hx711_buf[HX711_BUF_CNT]; // 64 bytes
+u8 hx711_wr = 0;
+u8 hx711_rd = 0;
+u8 hx711_mode = 0;
+
+void hx711_go_sleep(void) {
+//	bls_app_registerEventCallback(BLT_EV_FLAG_GPIO_EARLY_WAKEUP, NULL);
+	hx711_mode = 0;
+	hx711_wr = 0;
+	hx711_rd = 0;
+	gpio_setup_up_down_resistor(HX711_SCK, PM_PIN_PULLUP_1M);
+	gpio_setup_up_down_resistor(HX711_DOUT, PM_PIN_PULLUP_1M);
+#if (USE_BLE)
+	gpio_set_wakeup(HX711_DOUT, 0, 0); // отключить пробуждение от hx711
+#endif
+}
+
+//void hx711_wakeup(void) {
+//	bls_app_registerEventCallback(BLT_EV_FLAG_GPIO_EARLY_WAKEUP, &ble_ev_gpio_wakeup);
+//	hx711_wr = 0;
+//	gpio_setup_up_down_resistor(HX711_SCK, PM_PIN_PULLDOWN_100K);
+//	if(!sleep_mode) gpio_set_wakeup(HX711_DOUT, 0, 1);  // core(gpio) low wakeup suspend
+//}
+
 
 _attribute_ram_code_
 int hx711_get_data(hx711_mode_t mode) {
@@ -54,3 +80,6 @@ int hx711_get_data(hx711_mode_t mode) {
 		irq_restore(r);
 		return dout;
 }
+
+#endif // USE_HX711
+

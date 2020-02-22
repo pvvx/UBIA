@@ -5,13 +5,16 @@
  *      Author: pvvx
  */
 #include "proj/tl_common.h"
-//#include "proj/drivers/adc.h"
+#include "adc.h"
 #if (MCU_CORE_TYPE == MCU_CORE_8266)
 #include "proj/mcu_spec/adc_8266.h"
+///////////// avoid ADC module current leakage (when module on suspend status) //////////////////////////////
+#define ADC_MODULE_CLOSED               BM_CLR(reg_adc_mod, FLD_ADC_CLK_EN)  // adc clk disable
+#define ADC_MODULE_ENABLE               BM_SET(reg_adc_mod, FLD_ADC_CLK_EN)  // adc clk open
+
 #else
 #include "proj/mcu_spec/adc_8267.h"
 #endif
-//#include "proj/mcu_spec/anareg_8886.h"
 
 // analog regs PGA
 #define rega_aud_ctrl			0x86
@@ -108,6 +111,12 @@ u32 per, per12;
 		return 0;
 	/** adc stop**/
  	reg_adc_ctrl = 0;
+
+ 	gpio_setup_up_down_resistor(PC4_FUNC, PM_PIN_UP_DOWN_FLOAT);
+	gpio_setup_up_down_resistor(PC2_FUNC, PM_PIN_UP_DOWN_FLOAT);
+	gpio_setup_up_down_resistor(PC1_FUNC, PM_PIN_UP_DOWN_FLOAT);
+	gpio_setup_up_down_resistor(PD5_FUNC, PM_PIN_UP_DOWN_FLOAT);
+
 	/** dfifo stop**/
  	// 	reg_dfifo_ana_in = 0;
 	reg_dfifo_ana_in = 0;
@@ -304,6 +313,12 @@ void deinit_adc(void) {
 	 | ADC_SAMPLING_RES_14BIT << 24; 			// reg_adc_res_lr
 	ADC_MODULE_CLOSED;
 	reg_rst_clk0 &= ~FLD_CLK_ADC_EN;
+
+	gpio_setup_up_down_resistor(PC4_FUNC, PM_PIN_PULLDOWN_100K);
+	gpio_setup_up_down_resistor(PC2_FUNC, PM_PIN_PULLDOWN_100K);
+	gpio_setup_up_down_resistor(PC1_FUNC, PM_PIN_PULLDOWN_100K);
+	gpio_setup_up_down_resistor(PD5_FUNC, PM_PIN_PULLDOWN_100K);
+
 //	reg_adc_ref = MASK_VAL(FLD_ADC_REF_M, ADC_REF_VOL_AVDD)
 //		| MASK_VAL(FLD_ADC_REF_L, ADC_REF_VOL_AVDD)
 //		| MASK_VAL(FLD_ADC_REF_R, ADC_REF_VOL_AVDD);

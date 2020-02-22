@@ -351,6 +351,7 @@ function handleCharacteristicValueChanged(event) {
 				}
 				log(s);
 				SendStartMeasurement();
+				start_time = new Date().getTime();
 			}
 			else if(idx == 0x00 && ds > 3) {
 				err_rd_i2c = 0;

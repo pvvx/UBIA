@@ -21,7 +21,7 @@
  *******************************************************************************************************/
 #include "proj/tl_common.h"
 #ifdef USE_USB_CDC
-#include "usbCDC/drivers.h"
+#include "usb.h"
 
 const USB_Descriptor_String_t language_desc = { 
     {sizeof(USB_Descriptor_Header_t) + 2, DTYPE_String},

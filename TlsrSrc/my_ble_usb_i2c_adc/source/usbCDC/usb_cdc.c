@@ -21,8 +21,7 @@
  *******************************************************************************************************/
 #include "proj/tl_common.h"
 #ifdef USE_USB_CDC
-#include "usbCDC/drivers.h"
-
+#include "usb.h"
 
 static void USBCDC_Write32(unsigned int value);
 static void USBCDC_Read32(unsigned int *value);

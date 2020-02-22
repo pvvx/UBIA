@@ -21,18 +21,22 @@
  *******************************************************************************************************/
 
 #include "proj/tl_common.h"
-#include "proj/mcu/watchdog_i.h"
-//#include "vendor/common/user_config.h"
-#include "proj_lib/rf_drv.h"
-#include "proj_lib/pm.h"
-#include "proj_lib/ble/blt_config.h"
-#include "proj_lib/ble/ll/ll.h"
-#include "usbCDC/drivers.h"
+#if (USE_BLE)
+#include "ble.h"
+#else
+#include "inits.h"
+#endif
+#if (USE_USB_CDC)
+#include "usb.h"
+#endif
+#if (USE_I2C_DEV)
+#include "i2c_dev.h"
+#endif
 #include "app.h"
 
 _attribute_ram_code_ void irq_handler(void)
 {
-#if USE_I2C_INA
+#if (USE_I2C_DEV)
 	if((reg_irq_mask1 & FLD_IRQ_TMR1_EN) != 0 && (reg_irq_src & FLD_IRQ_TMR1_EN) != 0) {
 		reg_tmr_sta = FLD_TMR_STA_TMR1; // clear irq status
 		reg_irq_src =  FLD_IRQ_TMR1_EN;
@@ -43,13 +47,20 @@ _attribute_ram_code_ void irq_handler(void)
 			GetNewRegData();
 	}
 #endif
+#if (USE_USB_CDC && USE_BLE)
 	if(usb_actived)
 		USB_IrqHandle(reg_irq_src);
 	else
 		irq_blt_sdk_handler();
+#elif (USE_BLE)
+	irq_blt_sdk_handler();
+#elif (USE_USB_CDC)
+	USB_IrqHandle(reg_irq_src);
+#endif
 }
 
 int main (void) {
+#if (USE_BLE)
 	blc_pm_select_internal_32k_crystal();
 
 	cpu_wakeup_init(CRYSTAL_TYPE);
@@ -64,11 +75,20 @@ int main (void) {
 
 	///NOTE:This function must be placed before the following function rf_drv_init().
 	blc_app_loadCustomizedParameters();  //load customized freq_offset cap value and tp value
-
 	user_init();
 
     irq_enable();
+#else // USE_USB_CDC
+	// пнуть мозги SoC
+	reg_rst_clk0 = FLD_CLK_SPI_EN | FLD_CLK_MCU_EN | FLD_CLK_ZB_EN;// After reset [0x60] = 0x130F3FE4
+	// Утановить регистры SoC согласно флагам в хидерах
+	StartUpInits();
+	// задать задачи и т.д.
+	user_init();
+    irq_enable();
+#endif // USE_BLE
 
+#if (USE_USB_CDC && USE_BLE)
     if(usb_actived) {
     	while (1) {
 #if (MODULE_WATCHDOG_ENABLE)
@@ -84,4 +104,19 @@ int main (void) {
     		main_ble_loop();
     	}
     }
+#elif (USE_BLE)
+	while (1) {
+#if (MODULE_WATCHDOG_ENABLE)
+		wd_clear(); //clear watch dog
+#endif
+		main_ble_loop();
+	}
+#elif (USE_USB_CDC)
+	while (1) {
+#if (MODULE_WATCHDOG_ENABLE)
+		wd_clear(); //clear watch dog
+#endif
+		main_usb_loop();
+	}
+#endif
 }

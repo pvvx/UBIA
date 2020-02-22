@@ -335,7 +335,10 @@ function handleCharacteristicValueChanged(event) {
 				}
 				if (stage_read == 1) {
 					ResponsePkt('ResponsePkt', value);
-					if (SendInit(1, value)==1) stage_read = 2;
+					if (SendInit(1, value)==1) {
+						start_time = new Date().getTime();
+						stage_read = 2;
+					}
 				} else {
 //					log('Send command #0C: Read Measurement Data...');
 					characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0x94, 0xD0, 0x3B]));

@@ -21,7 +21,7 @@
  *******************************************************************************************************/
 #include "proj/tl_common.h"
 #ifdef USE_USB_CDC
-#include "usbCDC/drivers.h"
+#include "usb.h"
 
 // some API:
 // Endpont8 is the alias of endpoint0

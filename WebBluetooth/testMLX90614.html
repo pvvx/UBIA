@@ -373,6 +373,7 @@ function handleCharacteristicValueChanged(event) {
 					} else {
 						stage_read = 1; // stage 1
 						SendInit();
+						start_time = new Date().getTime();
 						setTimeout(PingTimeout, 20000);
 					}
 				}

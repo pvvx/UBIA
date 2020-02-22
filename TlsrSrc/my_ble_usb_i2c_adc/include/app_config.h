@@ -11,17 +11,22 @@
 
 #include "proj/mcu/config.h"
 
+/* Enable C linkage for C++ Compilers: */
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 // Project type:
+#define USE_BLE 		1
+#define USE_USB_CDC 	1
 #define USE_I2C_DEV 	1
 #define USE_INT_ADC 	1
 #define USE_INT_DAC 	1
 #define USE_HX711 		1
 // -----
 
-/* Enable C linkage for C++ Compilers: */
-#if defined(__cplusplus)
-extern "C" {
-#endif
+#define INT_DEV_ID	0x1021  // DevID = 0x1021
+#define INT_DEV_VER 0x0004  // Ver 1.2.3.4 = 0x1234
 
 ////////// BLE product  Information  ////////////
 #define DEV_NAME		"tBLETST"
@@ -33,6 +38,7 @@ extern "C" {
 extern const unsigned char ble_dev_name[8];
 // PnP_ID characteris -> см. my_PnPtrs[]
 
+/*
 typedef struct _dev_config_t {
 	unsigned short vbat_min_mv; // = VBAT_ALARM_THRES
 	unsigned short vbat_nom_mv; // = VBAT_NOM_MV
@@ -43,6 +49,7 @@ typedef struct _dev_config_t {
 //  RF_POWER_8dBm
 } dev_config_t;
 extern dev_config_t dev_cfg;
+*/
 
 /////////////////////HCI ACCESS OPTIONS/////////////////////
 #define HCI_USE_USB		0
@@ -50,16 +57,8 @@ extern dev_config_t dev_cfg;
 #define HCI_USE_NONE	2
 #define HCI_ACCESS		HCI_USE_NONE // HCI_USE_UART
 
-#define USE_USB_CDC 	1
-#define USB_CDC_MAX_RX_BLK_SIZE	64
 extern unsigned char wrk_enable;
 extern unsigned char wrk_tick;
-#define USB_RESET() wrk_enable = 1
-#define USB_PWDN() wrk_enable = 1
-// DTR рукопожатия на линии
-#define USB_SET_CTRL_UART(a) { if(a & 1) wrk_tick = 1; else wrk_enable = 1; }
-
-extern volatile unsigned char usb_actived;
 extern volatile unsigned char sleep_mode; // flag, = 1 -> pm not sleep, = 2 -> cpu only sleep
 
 /****** module CLK (& IRQ ?, & GPIO ?) *******/
@@ -74,21 +73,13 @@ extern volatile unsigned char sleep_mode; // flag, = 1 -> pm not sleep, = 2 -> c
 //#define USE_WATCHDOG				(62*8192) // us
 
 /* StartupInits */
-#if (USE_INT_ADC)
-#define USE_ADC			1	// StartupInits() включит CLK ADC
-#else
-#define USE_ADC			0	// StartupInits() включит CLK ADC
-#endif
+#define USE_ADC			USE_INT_ADC	// StartupInits() включит CLK ADC
 #define USE_AES 		1	// StartupInits() включит CLK AES
 #define USE_AUD 		0	// StartupInits() включит CLK AUD
 #define USE_USB			1	// StartupInits() включит CLK USB
 #define USE_DMA			1	// StartupInits() включит CLK DMA
 #define USE_SPI 		1	// StartupInits() включит CLK SPI
-#if (USE_I2C_DEV)
-#define USE_I2C 		1	// StartupInits() включит CLK I2C
-#else
-#define USE_I2C 		0	// StartupInits() включит CLK I2C
-#endif
+#define USE_I2C 		USE_I2C_DEV	// StartupInits() включит CLK I2C
 #define USE_UART 		0	// StartupInits() включит CLK UART
 #define USE_PWM 		0	// StartupInits() включит CLK PWM
 #define USE_KEYSCAN 	0 	// StartupInits() включит CLK ADC
@@ -98,10 +89,6 @@ extern volatile unsigned char sleep_mode; // flag, = 1 -> pm not sleep, = 2 -> c
 #define USE_TIMER0 		0	// StartupInits() включит TIMER0 с циклом прерывания USE_TIMER0 us
 #define USE_TIMER1 		0	// StartupInits() включит TIMER1 с циклом прерывания USE_TIMER1 us
 #define USE_TIMER2 		0	// StartupInits() включит TIMER2 с циклом прерывания USE_TIMER2 us
-
-///////////// avoid ADC module current leakage (when module on suspend status) //////////////////////////////
-#define ADC_MODULE_CLOSED               BM_CLR(reg_adc_mod, FLD_ADC_CLK_EN)  // adc clk disable
-#define ADC_MODULE_ENABLE               BM_SET(reg_adc_mod, FLD_ADC_CLK_EN)  // adc clk open
 
 /////////////////// MODULE /////////////////////////////////
 #define BLE_MODULE_SECURITY_ENABLE          0
@@ -225,7 +212,9 @@ extern gap_periConnectParams_t my_periConnParameters;
 //<TX> - PC6, ADC-CH11
 //-------------------
 // PE6 RTS, SPI_CS
+#define	PULL_WAKEUP_SRC_PE6				PM_PIN_PULLUP_1M
 // PF0 CTS, SPI_DO
+#define	PULL_WAKEUP_SRC_PF0				PM_PIN_PULLUP_1M
 //-------------------
 #define	KEY_K1	 						GPIO_PB0 // K1 /DeepSleep 30 sec
 #define PB0_FUNC						AS_GPIO
@@ -259,17 +248,17 @@ extern gap_periConnectParams_t my_periConnParameters;
 //------------------- DAC
 #define	PE5_FUNC							AS_GPIO // SDMN
 //------------------- USB/BLE
-#define GPIO_WAKEUP_MODULE					GPIO_PA1   // mcu wakeup module (Key PWRC)
+#define KEY_BLE_USB							GPIO_PA1   // mcu wakeup module (Key PWRC) GPIO_WAKEUP_MODULE
 #define	PA1_FUNC							AS_GPIO
 #define PA1_INPUT_ENABLE					1
 #define	PA1_OUTPUT_ENABLE					0
 #define	PA1_DATA_OUT						0
-#define GPIO_WAKEUP_MODULE_HIGH				gpio_setup_up_down_resistor(GPIO_WAKEUP_MODULE, PM_PIN_PULLUP_10K);
-#define GPIO_WAKEUP_MODULE_LOW				gpio_setup_up_down_resistor(GPIO_WAKEUP_MODULE, PM_PIN_PULLDOWN_100K);
+#define KEY_BLE_USB_HIGH				gpio_setup_up_down_resistor(KEY_BLE_USB, PM_PIN_PULLUP_10K);
+#define KEY_BLE_USB_LOW					gpio_setup_up_down_resistor(KEY_BLE_USB, PM_PIN_PULLDOWN_100K);
 //-------------------
 #if (USE_HX711)
-#define HX711_SCK	GPIO_PC6
-#define HX711_DOUT  GPIO_PC7
+#define HX711_SCK	GPIO_PC6	//TX
+#define HX711_DOUT  GPIO_PC7	//RX
 #define PC6_INPUT_ENABLE					1
 #define	PC6_OUTPUT_ENABLE					0
 #define PC7_INPUT_ENABLE					1

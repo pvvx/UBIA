@@ -20,8 +20,8 @@
  *           
  *******************************************************************************************************/
 #include "proj/tl_common.h"
-#include "usbCDC/drivers.h"
 #ifdef USE_USB_CDC
+#include "usb.h"
 
 #ifndef USB_RESET
 #define USB_RESET()

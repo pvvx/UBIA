@@ -337,6 +337,7 @@ function handleCharacteristicValueChanged(event) {
 					ResponsePkt('ResponsePkt', value);
 					SaveTrimmingParameters(value);
 					SendStartMeasurement();
+					start_time = new Date;
 					stage_read = 4;
 				} else if (stage_read == 4) {
 //					log('Send command #0C: Read measurement values...');
@@ -401,6 +402,7 @@ function handleCharacteristicValueChanged(event) {
 				}
 				log(s);
 				SetCntlMeasurement();
+				start_time = new Date;
 				stage_read = 2;				
 			}
 			else if(idx == 0x00 && ds > 3) {
@@ -450,6 +452,7 @@ function handleCharacteristicValueChanged(event) {
 					} else {
 						stage_read = 1; // stage 1
 						SendInit();
+						start_time = new Date;
 						setTimeout(PingTimeout, 20000);
 					}
 				}
@@ -480,6 +483,7 @@ function handleCharacteristicValueChanged(event) {
 				log('#10 I2C(0x'+hex(value.getUint8(2), 2)+') ['+hex(value.getUint8(3),2)+'] = '+hex(value.getUint16(4,true),4));
 			} else if(idx == 0x81) {
 				SendStartMeasurement();
+				start_time = new Date;
 				stage_read = 2;
 
 			} else if(idx == 0x8C && stage_read > 2 && err_rd_i2c < 3) {

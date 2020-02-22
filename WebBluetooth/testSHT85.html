@@ -271,7 +271,7 @@ var ping_timer = 0;
 function PingTimeout() { ping_timer = 1; }
 var err_rd_i2c = 0;
 var stage_read = 0;
-var start_time = new Date;
+var start_time = new Date().getTime();
 function handleCharacteristicValueChanged(event) {
 	let value = event.target.value.buffer ? event.target.value : new DataView(event.target.value);
 //	log('blk['+value.byteLength+'] '+value.getUint16(2,true)+','+value.getUint16(4,true)+'...');
@@ -347,6 +347,7 @@ function handleCharacteristicValueChanged(event) {
 				}
 				log(s);
 				SendStartMeasurement();
+				start_time = new Date().getTime();
 			}
 			else if(idx == 0x00 && ds > 3) {
 				err_rd_i2c = 0;
