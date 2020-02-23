@@ -27,7 +27,9 @@
 #if (USE_INT_DAC)
 #include "dac.h"
 #endif
-
+#if	(USE_INT_UART)
+#include "uart_dev.h"
+#endif
 
 u32 all_rd_count = 0; // status
 u32 not_send_count = 0; // status
@@ -89,6 +91,36 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				pbufo->data.ui[1] = INT_DEV_VER; // Ver 1.2.3.4 = 0x1234
 				txlen = sizeof(u16) + sizeof(u16) + sizeof(blk_head_t);
 				break;
+#if (USE_INT_UART)
+			case CMD_DEV_UAR: // Send UART
+				txlen = pbufi->head.size;
+				if (pbufi->head.size) {
+					if(txlen > UART_TX_BUFF_SIZE-4-1)
+						txlen = UART_TX_BUFF_SIZE-4-1;
+					memcpy(&uart_tx_buff[4], &pbufi->data.uc, txlen);
+					uart_tx_buff[0] = txlen;
+					if(!uart_send(uart_tx_buff)){
+						pbufo->head.cmd |= CMD_ERR_FLG; // Error cmd
+						txlen = 0 + sizeof(blk_head_t);
+						break;
+					}
+				}
+//				pbufo->data.uc[0] = txlen;
+				txlen = 0; // 1 + sizeof(blk_head_t);
+				break;
+			case CMD_DEV_UAC: // Set UART CFG/ini
+				if (pbufi->head.size) {
+					memcpy(&cfg_uart, &pbufi->data.ua,
+						(pbufi->head.size > sizeof(cfg_uart))? sizeof(cfg_uart) : pbufi->head.size);
+				}
+				uart_init(&cfg_uart);
+#if (USE_BLE)
+				sleep_mode |= 4;
+#endif
+				memcpy(&pbufo->data, &cfg_uart, sizeof(cfg_uart));
+				txlen = sizeof(cfg_uart) + sizeof(blk_head_t);
+				break;
+#endif
 #if (USE_I2C_DEV)
 			case CMD_DEV_CFG: // Get/Set CFG/ini & Start measure
 				if (pbufi->head.size) {
@@ -119,15 +151,27 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 					break;
 				}
 				pbufo->data.ud[0] = 0;
+#if	(USE_I2C_DEV)
 				if(pbufi->data.scf.i2c)
 					pbufo->data.scf.i2c = flash_write_cfg(&cfg_i2c, EEP_ID_I2C_CFG, sizeof(cfg_i2c));
+#endif
+#if	(USE_INT_ADC)
 				if(pbufi->data.scf.adc)
 					pbufo->data.scf.adc = flash_write_cfg(&cfg_adc, EEP_ID_ADC_CFG, sizeof(cfg_adc));
+#endif
 #if	(USE_BLE)
 				if(pbufi->data.scf.con)
 					pbufo->data.scf.con = flash_write_cfg(&ble_con_ini, EEP_ID_CON_CFG, sizeof(ble_con_ini));
 				if(pbufi->data.scf.adv)
 					pbufo->data.scf.adv = flash_write_cfg(&ble_adv_ini, EEP_ID_ADV_CFG, sizeof(ble_adv_ini));
+#endif
+#if	(USE_INT_DAC)
+				if(pbufi->data.scf.dac)
+					pbufo->data.scf.dac = flash_write_cfg(&cfg_dac, EEP_ID_DAC_CFG, sizeof(cfg_dac));
+#endif
+#if	(USE_INT_UART)
+				if(pbufi->data.scf.uart)
+					pbufo->data.scf.uart = flash_write_cfg(&cfg_uart, EEP_ID_UART_CFG, sizeof(cfg_uart));
 #endif
 				txlen = sizeof(dev_scf_t) + sizeof(blk_head_t);
 				break;
@@ -313,6 +357,11 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 					ADC_Stop();
 				}
 #endif
+#if (USE_INT_UART)
+				if(pbufi->data.pwr.Uart_off) {
+					uart_deinit();
+				}
+#endif
 #if (USE_BLE)
 				if(pbufi->data.pwr.Sleep_On) {
 					sleep_mode = 0;
@@ -321,7 +370,7 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 					sleep_mode = 1;
 				}
 				if(pbufi->data.pwr.Sleep_CPU) {
-					sleep_mode |= 2;
+					sleep_mode |= 4;
 				}
 #endif
 				if(pbufi->data.pwr.Test) {
@@ -331,13 +380,16 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				break;
 #if (USE_INT_DAC)
 			case CMD_DEV_DAC: // Dac cfg
-				if(pbufi->head.size < sizeof(dev_dac_cfg_t) - 2) {
-					pbufo->head.cmd |= CMD_ERR_FLG; // Error cmd
-					txlen = 0 + sizeof(blk_head_t);
-					break;
+				txlen = pbufi->head.size;
+				if (txlen) {
+					if(txlen > sizeof(cfg_dac))
+						txlen = sizeof(cfg_dac);
+					memcpy(&cfg_dac, &pbufi->data.dac, txlen);
+					dac_cmd(&cfg_dac);
 				}
-				pbufo->data.uc[0] = dac_cmd(&pbufi->data.dac);
-				txlen = 1 + sizeof(blk_head_t);
+//				pbufo->data.uc[0] = dac_cmd(&pbufi->data.dac);
+				memcpy(&pbufo->data.dac, &cfg_dac, sizeof(cfg_dac));
+				txlen = sizeof(cfg_dac) + sizeof(blk_head_t);
 				break;
 #endif
 			case CMD_DEV_DBG: // Debug

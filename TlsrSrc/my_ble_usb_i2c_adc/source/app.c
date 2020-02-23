@@ -28,7 +28,9 @@
 #if (USE_INT_DAC)
 #include "dac.h"
 #endif
-
+#if	(USE_INT_UART)
+#include "uart_dev.h"
+#endif
 
 #if (BATT_SERVICE_ENABLE)
 	extern u8  my_batVal[20];
@@ -96,7 +98,17 @@ void eep_init(void)
 	}
 //	cfg_adc.pktcnt = 0;
 	ADC_Stop();
-#endif	
+#endif
+#if USE_INT_DAC
+	if (flash_read_cfg(&cfg_dac, EEP_ID_DAC_CFG, sizeof(cfg_dac)) != sizeof(cfg_dac)) {
+		memcpy(&cfg_dac, &def_cfg_dac, sizeof(cfg_dac));
+	}
+#endif
+#if USE_INT_UART
+	if (flash_read_cfg(&cfg_uart, EEP_ID_UART_CFG, sizeof(cfg_uart)) != sizeof(cfg_uart)) {
+		memcpy(&cfg_uart, &def_cfg_uart, sizeof(cfg_uart));
+	}
+#endif
 }
 
 void user_init()

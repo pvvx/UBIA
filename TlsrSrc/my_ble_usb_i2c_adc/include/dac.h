@@ -14,6 +14,10 @@
  * @param[in] size_buff - the size of pbuff (bytes).
  * @return    none
  */
+
+extern dev_dac_cfg_t cfg_dac;
+extern  const dev_dac_cfg_t def_cfg_dac;
+
 inline void sdm_set_buf(signed short* pbuff, unsigned int size_buff)
 {
 	reg_aud_base_adr = (unsigned short)((u32)pbuff);

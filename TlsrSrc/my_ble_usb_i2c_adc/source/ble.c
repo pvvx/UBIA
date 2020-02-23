@@ -26,6 +26,9 @@
 #if (USE_INT_DAC)
 #include "dac.h"
 #endif
+#if	(USE_INT_UART)
+#include "uart_dev.h"
+#endif
 
 extern u16 SppDataServer2ClientDataCCC;
 
@@ -572,6 +575,7 @@ void main_ble_loop() {
 #if (USE_HX711)
 //			hx711_wakeup();
 #endif
+#if 1 // NO_MTU_SET
 			//  packet_length 20 + 27 * x байт, MTU_DATA_SIZE = packet_length +7
 			i = blc_att_requestMtuSizeExchange(BLS_CONN_HANDLE, MTU_DATA_SIZE);
 			if (i != BLE_SUCCESS) {
@@ -583,6 +587,10 @@ void main_ble_loop() {
 				wrk_tick = 0;
 				I2CDevWakeUp();
 			}
+#else
+			wrk_tick = 1;
+			I2CDevWakeUp();
+#endif
 			wrk_enable = 1;
 			connection_time = clock_time();
 		}
@@ -652,6 +660,16 @@ void main_ble_loop() {
 					tx_len = sizeof(hx711_out_t)+sizeof(blk_head_t);
 				} else
 #endif
+#if (USE_INT_UART)
+				if(reg_dma_rx_rdy0 & FLD_DMA_UART_RX) {
+					tx_len = uart_rx_buff[0];
+					memcpy(&send_pkt.data, &uart_rx_buff[4], tx_len);
+					reg_dma_irq_src = FLD_DMA_UART_RX;
+					send_pkt.head.cmd = CMD_DEV_UAR;
+					send_pkt.head.size = tx_len;
+					tx_len += sizeof(blk_head_t);
+				} else
+#endif
 				if(rx_len) { // пришла команда
 					tx_len = cmd_decode(&send_pkt, &read_pkt, rx_len);
 					connection_time = clock_time();
@@ -678,8 +696,8 @@ void main_ble_loop() {
 				} // if(!tx_len)
 				break;
 			case 0: // ожидание переключения MTU
-				if(clock_tik_exceed(tick_start, 500000*CLOCK_SYS_CLOCK_1US)) { // > 500 ms ?
-					send_ble_err(RTERR_TOMT, 5000); // time
+				if(clock_tik_exceed(tick_start, 1500000*CLOCK_SYS_CLOCK_1US)) { // > 500 ms ?
+					send_ble_err(RTERR_TOMT, ATT_ERR_DATA_LENGTH_EXCEED_MTU_SIZE);
 					wrk_tick = 0xff; // на отключение
 				}
 				break;
@@ -702,7 +720,11 @@ void main_ble_loop() {
 #if (USE_HX711)
 			hx711_go_sleep();
 #endif
+#if USE_INT_ADC
+			uart_deinit();
+#endif
 			sdm_off();
+
 			ExtDevPowerOff();
 		}
 		wrk_tick = 0xff;
@@ -728,7 +750,7 @@ void main_ble_loop() {
 				cpu_sleep_wakeup(DEEPSLEEP_MODE, PM_WAKEUP_PAD, 0);
 			}
 		}
-#if USE_INT_ADC
+#if 1 // (USE_INT_ADC)
 		if(sleep_mode&2) {
 			bls_pm_setSuspendMask(SUSPEND_DISABLE);
 /*
@@ -743,6 +765,11 @@ void main_ble_loop() {
 			bls_pm_setSuspendMask(MCU_STALL);
 #endif
 */
+		} else
+#endif
+#if 1 // (USE_INT_UART  || USE_INT_DAC)
+		if(sleep_mode&4) {
+			bls_pm_setSuspendMask(MCU_STALL);
 		} else
 #endif
 		{

@@ -57,7 +57,10 @@
 // I2C/SMBUS rd/wr regs
 #define CMD_DEV_GRG  0x10 // Get reg I2C
 #define CMD_DEV_SRG  0x11 // Set reg I2C
-//
+// UART
+#define CMD_DEV_UAC  0x12 // Set UART
+#define CMD_DEV_UAR  0x13 // Send UART
+
 #define CMD_ERR_FLG   0x80 // send error cmd mask
 
 // Runtime Errors
@@ -98,12 +101,20 @@ typedef struct  __attribute__((packed)) _dev_dbg_t{
 	uint16_t addr; // адрес
 } dev_dbg_t;
 
+// CMD_DEV_UAC Set UART
+typedef struct  __attribute__((packed)) _dev_uart_cfg_t{
+	uint16_t baud;   // 3..53333 -> 300 baud to 4 Mbaud (16M/4,5,6,7,8..262144)
+	uint8_t  stop;   // =0 ->1, =1 -> 1.5, =2 => 2
+	uint8_t  parity; // =0 -> none, =1 -> even, =2 -> odd
+} dev_uart_cfg_t;
+
 // CMD_DEV_DAC Dac cfg
 typedef struct  __attribute__((packed)) _dev_dac_cfg_t{
+	int16_t value[1]; // значение вывода
 	uint8_t mode;  // 0..4 !первая запись устанавливает внуренний уровень, последующие выводятся на выход GPIO!
 	uint8_t slk_mhz;  // 1..16
 	uint16_t step; // 0..3ff
-	int16_t value[1]; // значение вывода
+	uint8_t volume; // 0..7f
 } dev_dac_cfg_t;
 
 // CMD_DEV_SRG  Set reg I2C
@@ -119,6 +130,8 @@ typedef struct  __attribute__((packed)) _dev_scf_t{
 	uint8_t adc	: 1; //0x02
 	uint8_t con	: 1; //0x04
 	uint8_t adv	: 1; //0x08
+	uint8_t dac	: 1; //0x10
+	uint8_t uart: 1; //0x20
 } dev_scf_t;
 // Структура конфигурации опроса и инициализации устройства ADC
 // Выходной пакет непрерывного опроса формируется по данному описанию
@@ -154,13 +167,14 @@ typedef struct  __attribute__((packed)) _dev_pwr_slp_t{
 	uint16_t ExtDevPowerOn	: 1; //0x01
 	uint16_t I2CDevWakeUp	: 1; //0x02
 	uint16_t ExtDevPowerOff	: 1; //0x04
-	uint16_t DAC_off			: 1; //0x08
-	uint16_t I2CDevSleep		: 1; //0x10
+	uint16_t DAC_off		: 1; //0x08
+	uint16_t I2CDevSleep	: 1; //0x10
 	uint16_t ADC_Stop		: 1; //0x20
-	uint16_t Sleep_off		: 1; //0x40
-	uint16_t Sleep_CPU		: 1; //0x80
-	uint16_t Sleep_On		: 1; //0x100
-	uint16_t Test			: 1; //0x200
+	uint16_t Uart_off		: 1; //0x40
+	uint16_t Sleep_off		: 1; //0x80
+	uint16_t Sleep_CPU		: 1; //0x100
+	uint16_t Sleep_On		: 1; //0x200
+	uint16_t Test			: 1; //0x400
 } dev_pwr_slp_t;
 
 // BLE connection config
@@ -254,6 +268,7 @@ typedef struct __attribute__((packed)) _blk_tx_pkt_t{
 		dev_scf_t scf;
 		dev_dac_cfg_t dac;
 		hx711_out_t hxo;
+		dev_uart_cfg_t ua;
 	} data;
 } blk_tx_pkt_t;
 
@@ -279,6 +294,7 @@ typedef struct __attribute__((packed)) _blk_rx_pkt_t{
 		dev_scf_t scf;
 		dev_dac_cfg_t dac;
 		hx711_set_t hxi;
+		dev_uart_cfg_t ua;
 	} data;
 } blk_rx_pkt_t;
 

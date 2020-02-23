@@ -10,6 +10,15 @@
 #include "hw.h"
 #include "dac.h"
 
+dev_dac_cfg_t cfg_dac;
+const dev_dac_cfg_t def_cfg_dac = {
+		.value[0] = 0x8000,
+		.mode = 1,
+		.slk_mhz = 8,
+		.step = 1,
+		.volume = 0x40
+};
+
 s16 single_out_buf[16]; // minimal size audio buf
 
 /*
@@ -186,37 +195,37 @@ unsigned int dac_cmd(dev_dac_cfg_t *p) {
 	case 1: // вывод в DAC (10 ms start! -> первая запись устанавливает внуренний уровень, последующие выводятся на выход GPIO )
 		set_dac_out(p->value[0]);
 #if (USE_BLE)
-		sleep_mode = 1; // |= 2;
+		sleep_mode |= 4;
 #endif
-		sdm_init(p->slk_mhz, 1, 0x41);
+		sdm_init(p->slk_mhz, 1, p->volume);
 		break;
 	case 2: // test! out value (adc off!)
 		ADC_Stop();
 		gen_u(p->value[0]);
 #if (USE_BLE)
-		sleep_mode |= 2;
+		sleep_mode |= 4;
 #endif
-		sdm_init(p->slk_mhz, p->step, 0x40);
+		sdm_init(p->slk_mhz, p->step, p->volume);
 		break;
 	case 3: // test! out triangular (adc off!)
 		ADC_Stop();
 		gen_triangular();
 #if (USE_BLE)
-		sleep_mode |= 2;
+		sleep_mode |= 4;
 #endif
-		sdm_init(p->slk_mhz, p->step, 0x40);
+		sdm_init(p->slk_mhz, p->step, p->volume);
 		break;
 	case 4: // test! adc->dac
 		ADC_Stop();
 		sdm_set_buf(dfifo, sizeof(dfifo));
 #if (USE_BLE)
-		sleep_mode |= 2;
+		sleep_mode |= 4;
 #endif
-		sdm_init(p->slk_mhz, p->step, 0x40);
+		sdm_init(p->slk_mhz, p->step, p->volume);
 		break;
 	case 5: // test! set adc->dac
 #if (USE_BLE)
-		sleep_mode |= 2;
+		sleep_mode |= 4;
 #endif
 		test(p);
 		break;

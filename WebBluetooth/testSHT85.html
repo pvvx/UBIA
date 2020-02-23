@@ -27,12 +27,14 @@ var $ = function(id) {
 // Вывод в терминал
 function log(data) {console.log(data);}
 //-------------------------
-var smprate = 10; // 0.5..10 sps
-// 10 sps -> 1.36 mA
-// 4 sps -> 0.58 mA
-// 2 sps -> 0.32 mA
-// 1 sps -> 0.19 mA
-// 0.5 sps -> 0.12 mA
+var smprate = 0.1; // 0.1..10 sps
+// 10 sps -> 1.15..1.36 mA
+// 4 sps -> 0.50..0.58 mA
+// 2 sps -> 0.29..0.32 mA
+// 1 sps -> 0.17..0.19 mA
+// 0.5 sps -> 0.11..0.12 mA
+// 0.25 sps -> 0.09 mA
+// 0.1 sps -> 0.066 mA (interval: 3250 ms)
 // Disconnect -> 0.09 mA
 //-------------------------
 var devcnn = 0;
@@ -366,9 +368,10 @@ function handleCharacteristicValueChanged(event) {
 					alert('DeviceID: '+ hex(dev_id,4)+', Ver: '+hex(ver_id, 4)+'\r\nUnknown BLE Device!');
 				} else {
 					if(smprate > 33.3) smprate = 33.3
-					else if(smprate < 0.5) smprate = 0.5;
+					else if(smprate < 0.1) smprate = 0.1;
 //					pack_samples = (smprate*44/50 + 7) & 0xFE;
-					ConnParUpdate(250/smprate); // Set interval 25+ ms (min 7.5 ms)
+//					ConnParUpdate(250/smprate); // Set interval 25+ ms (min 7.5 ms)
+					ConnParUpdate(325/smprate); // Set interval 25+ ms (min 7.5 ms)
 				}
 			}
 			else if(idx == 0x04 && ds >= 16) {
@@ -429,7 +432,10 @@ function handleCharacteristicValueChanged(event) {
 				SendStartMeasurement();
 			} else if(idx == 0x8C && stage_read == 2 && err_rd_i2c < 3) {
 				err_rd_i2c++;
-				log('Error '+err_rd_i2c+' #0C I2C data [' + ds + '], reread...');
+				if(err_rd_i2c == 1)
+					log('SHT85 ready? #0C I2C data [' + ds + '], reread...');
+				else					
+					log('Error '+err_rd_i2c+' #0C I2C data [' + ds + '], reread...');
 				characteristicCache.writeValue(new Uint8Array([0x05, 0x0C, 0x02, 0x86, 0x88, 0xE0, 0x00]));
 			} else if(idx >= 0x80) {
 				ResponsePkt('ErrorPkt', value);

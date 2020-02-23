@@ -246,8 +246,12 @@ function SendInit(){
 }
 function SetDAC(value){
 	let u = Math.round(32768-value);
-	log('Send command #09: Set DAC(0x'+hex(value,4)+' '+(0.058791*(value-4812)).toFixed(5)+' mV)');
-	characteristicCache.writeValue(new Uint8Array([6, 9, 1, 16, 1,0, u&0xff, (u>>8)&0xff]));
+	const step = 1;
+	const slk_mhz = 16;
+	const mode = 1;
+	const volume = 0x41;
+	log('Send command #09: Set DAC(0x'+hex(value&0xffff,4)+' '+(0.058791*(value-4812)).toFixed(5)+' mV)');
+	characteristicCache.writeValue(new Uint8Array([7, 0x09, u&0xff, (u>>8)&0xff, mode, slk_mhz, step&0xff, (step>>8)&0xff, volume]));
 }
 function hex(number, length) {
     var str = (number.toString(16)).toUpperCase();
@@ -444,8 +448,19 @@ function handleCharacteristicValueChanged(event) {
 } dev_rdregi2c_t; */
 //				ResponsePkt('ResponsePkt', value);
 				log('#10 I2C(0x'+hex(value.getUint8(2), 2)+') Register['+hex(value.getUint8(3),2)+'] = '+hex(value.getUint16(4,true),4));
-//			} else if(idx == 0x09) {
-//				log('#09 DAC set');
+			} else if(idx == 0x09) {
+/* typedef struct {
+	uint16_t value;
+	uint8_t size;	// размер данных пакета (=0 байт)
+	uint8_t cmd;	// номер команды / тип пакета (=0x10)
+	int16_t value[1]; // значение вывода 0x8000 = 0.65V
+	uint8_t mode;  // 0..4 !первая запись устанавливает внуренний уровень, последующие выводятся на выход GPIO!
+	uint8_t slk_mhz;  // 1..16
+	uint16_t step; // 0..3ff
+	uint8_t volume; // 0..7f
+} dev_dac_t; */
+	    		log('#09 DAC set: ' +value.getInt16(2,true)+', mode: '+value.getUint8(4)+', slk_mhz: '+value.getUint8(5)+ 
+	    		', step: '+value.getUint8(6,true)+', volume: ' +value.getUint8(8)); 
 			} else
 				ResponsePkt('ResponsePkt', value);
 		} else

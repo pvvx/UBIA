@@ -20,6 +20,9 @@
 #if (USE_INT_DAC)
 #include "dac.h"
 #endif
+#if	(USE_INT_UART)
+#include "uart_dev.h"
+#endif
 
 #if (USE_BLE)
 extern u8 blt_rxfifo_b[];
@@ -124,6 +127,16 @@ void main_usb_loop() {
 		tx_len = sizeof(hx711_out_t)+sizeof(blk_head_t);
 	} else
 #endif
+#if (USE_INT_UART)
+	if(reg_dma_rx_rdy0 & FLD_DMA_UART_RX) {
+		tx_len = uart_rx_buff[0];
+		memcpy(&send_pkt.data, &uart_rx_buff[4], tx_len);
+		reg_dma_irq_src = FLD_DMA_UART_RX;
+		send_pkt.head.cmd = CMD_DEV_UAR;
+		send_pkt.head.size = tx_len;
+		tx_len += sizeof(blk_head_t);
+	} else
+#endif
 	if(rx_len) {
 		tx_len = cmd_decode(&send_pkt, &read_pkt, rx_len);
 		rx_len = 0;
@@ -141,6 +154,9 @@ void main_usb_loop() {
 		hx711_mode = 0;
 		hx711_wr = 0;
 		hx711_rd = 0;
+#endif
+#if USE_INT_ADC
+		uart_deinit();
 #endif
 		sdm_off();
 		ExtDevPowerOff();

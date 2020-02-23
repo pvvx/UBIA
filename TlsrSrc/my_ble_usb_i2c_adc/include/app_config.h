@@ -23,6 +23,7 @@ extern "C" {
 #define USE_INT_ADC 	1
 #define USE_INT_DAC 	1
 #define USE_HX711 		1
+#define USE_INT_UART 	1
 // -----
 
 #define INT_DEV_ID	0x1021  // DevID = 0x1021
