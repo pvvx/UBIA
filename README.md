@@ -35,8 +35,8 @@ Universal I2C/SMBus + ADC/DAC + UART to USB / BLE adapter.
 
 #### Chip Programming:
 >[COM-port](https://github.com/pvvx/TlsrComProg)
-[STM32-BluePill](https://github.com/pvvx/TlsrTools)
-[EVK_ET104-BT10-EVK](https://github.com/pvvx/TLSR8269-EVK)
+>[STM32-BluePill](https://github.com/pvvx/TlsrTools)
+>[EVK_ET104-BT10-EVK](https://github.com/pvvx/TLSR8269-EVK)
 
 [IDE](http://wiki.telink-semi.cn/dokuwiki/doku.php?id=menu:tools:ide_quick_start)
 
