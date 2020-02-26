@@ -6,32 +6,32 @@ Universal I2C/SMBus + ADC/DAC + UART to USB / BLE adapter.
 
 ### I2C/SMBus:
 >* SLC clock 100..2000 kHz.
-* #### SMBus auto-read mode:
- * USB: 20000 transactions per sec
- * BLE: 1250 transactions per sec
-* #### I2C/SMBus host write-read:
- * USB: 500 transactions per sec
- * BLE: 50 transactions per sec
+>* #### SMBus auto-read mode:
+> * USB: 20000 transactions per sec
+> * BLE: 1250 transactions per sec
+>* #### I2C/SMBus host write-read:
+> * USB: 500 transactions per sec
+> * BLE: 50 transactions per sec
 
 ### ADC(SAR):
 >* 15..16 bits, Ref 1.3V, PGA 0..42.5 dB
-* SNR 73..96 dB (x1 to x8 decimation, 50 ksps to 250 sps)
-* USB: 250..50000 sps 
-* BLE: 250..5000 sps
+>* SNR 73..96 dB (x1 to x8 decimation, 50 ksps to 250 sps)
+>* USB: 250..50000 sps 
+>* BLE: 250..5000 sps
 
 ### DAC(SDM):
 >* 14..15 bits, Out p-p: 0..Vcc, SDM CLK 0.5..16 MHz
-* 2..200000 sps
+>* 2..200000 sps
 
 ### UART:
 >* 300..4000000 Buad rate
-* 58 bytes block
-* BLE throughput: 30 transactions (half duplex, tx-rx) per sec (4 kbytes)
+>* 58 bytes block
+>* BLE throughput: 30 transactions (half duplex, tx-rx) per sec (4 kbytes)
 
 ### BLE Power (default config)
 >* Disconnect 0.09 mA (800 ms sleep: 17 uA, 5 ms active: TX impulse 33 mA +8dB)
-* Deep-sleep 1.7 / 3 uA (KEY2 - WakeUp KEY2 / KEY1 - Timer 30 sec)
-* Connect (7.5ms..4sec - sleep 17 uA, 3..5 ms active: TX impulse 33 mA +8dB)
+>* Deep-sleep 1.7 / 3 uA (KEY2 - WakeUp KEY2 / KEY1 - Timer 30 sec)
+>* Connect (7.5ms..4sec - sleep 17 uA, 3..5 ms active: TX impulse 33 mA +8dB)
 
 #### Chip Programming:
 >[COM-port](https://github.com/pvvx/TlsrComProg)
