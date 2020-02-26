@@ -33,10 +33,10 @@ Universal I2C/SMBus + ADC/DAC + UART to USB / BLE adapter.
 >* Deep-sleep 1.7 / 3 uA (KEY2 - WakeUp KEY2 / KEY1 - Timer 30 sec)
 >* Connect (7.5ms..4sec - sleep 17 uA, 3..5 ms active: TX impulse 33 mA +8dB)
 
-#### Chip Programming:
->[COM-port](https://github.com/pvvx/TlsrComProg)
->[STM32-BluePill](https://github.com/pvvx/TlsrTools)
->[EVK_ET104-BT10-EVK](https://github.com/pvvx/TLSR8269-EVK)
+### Chip Programming:
+>* [COM-port](https://github.com/pvvx/TlsrComProg)
+>* [STM32-BluePill](https://github.com/pvvx/TlsrTools)
+>* [EVK_ET104-BT10-EVK](https://github.com/pvvx/TLSR8269-EVK)
 
 [IDE](http://wiki.telink-semi.cn/dokuwiki/doku.php?id=menu:tools:ide_quick_start)
 
