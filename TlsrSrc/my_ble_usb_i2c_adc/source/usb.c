@@ -28,9 +28,9 @@
 extern u8 blt_rxfifo_b[];
 extern u8 blt_txfifo_b[];
 extern u8 wrk_enable;
-extern u8 wrk_tick;
+extern u8 wrk_stage;
 #define usb_pwd wrk_enable // Events: USB_SET_CTRL_UART DTR Off, USB_PWDN, USB_RESET
-#define usb_pwup wrk_tick // Events: USB_SET_CTRL_UART DTR On
+#define usb_pwup wrk_stage // Events: USB_SET_CTRL_UART DTR On
 #define usb_buf_rx ((unsigned char *)&blt_rxfifo_b)
 #define usb_buf_tx ((unsigned char *)&blt_txfifo_b)
 #else

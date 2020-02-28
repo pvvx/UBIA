@@ -16,7 +16,7 @@
 #define EEP_ID_WEIGHT_CFG 	0xc711
 #define EEP_ID_UART_CFG		0x0232
 
-#define EEP_ID_CON_CFG 		0xB0C0
-#define EEP_ID_ADV_CFG 		0xB0A0
+#define EEP_ID_CON_CFG 		0x0B0C
+#define EEP_ID_BLE_CFG 		0x0B1E
 
 #endif /* EEEP_ID_H_ */

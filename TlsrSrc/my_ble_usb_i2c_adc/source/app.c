@@ -70,11 +70,11 @@ void led_init(void) {
 void eep_init(void)
 {
 #if (USE_BLE)
+	if (flash_read_cfg(&ble_cfg_ini, EEP_ID_BLE_CFG, sizeof(ble_cfg_ini)) != sizeof(ble_cfg_ini)) {
+		memcpy(&ble_cfg_ini, &def_ble_cfg_ini, sizeof(ble_cfg_ini));
+	}
 	if (flash_read_cfg(&ble_con_ini, EEP_ID_CON_CFG, sizeof(ble_con_ini)) != sizeof(ble_con_ini)) {
 		memcpy(&ble_con_ini, &def_ble_con_ini, sizeof(ble_con_ini));
-	}
-	if (flash_read_cfg(&ble_adv_ini, EEP_ID_ADV_CFG, sizeof(ble_adv_ini)) != sizeof(ble_adv_ini)) {
-		memcpy(&ble_adv_ini, &def_ble_adv_ini, sizeof(ble_adv_ini));
 	}
 #endif
 #if (BATT_SERVICE_ENABLE)
@@ -138,5 +138,3 @@ void user_init()
 	usb_init();
 #endif
 }
-
-

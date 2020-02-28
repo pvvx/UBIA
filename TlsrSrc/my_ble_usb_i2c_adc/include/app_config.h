@@ -27,11 +27,11 @@ extern "C" {
 // -----
 
 #define INT_DEV_ID	0x1021  // DevID = 0x1021
-#define INT_DEV_VER 0x0004  // Ver 1.2.3.4 = 0x1234
+#define INT_DEV_VER 0x0005  // Ver 1.2.3.4 = 0x1234
 
 ////////// BLE product  Information  ////////////
 #define DEV_NAME		"tBLETST"
-#define BLE_DEV_NAME	't', 'B', 'L', 'E', 'T', 'S', 'T'
+#define BLE_DEV_NAME	't', 'B', 'L', 'E', 'T', 'S', 'T' // current project max name = 16 char!
 ////////// USB product  Information  ////////////
 #define STRING_VENDOR        L"Telink"
 #define STRING_PRODUCT       L"USB_BLE_TST"
@@ -59,8 +59,8 @@ extern dev_config_t dev_cfg;
 #define HCI_ACCESS		HCI_USE_NONE // HCI_USE_UART
 
 extern unsigned char wrk_enable;
-extern unsigned char wrk_tick;
-extern volatile unsigned char sleep_mode; // flag, = 1 -> pm not sleep, = 2 -> cpu only sleep
+extern unsigned char wrk_stage;
+extern volatile unsigned char sleep_mode; // flag, bit0 = 1 -> pm not sleep, bit1 = 1 -> SUSPEND_DISABLE, bit2 = 1 0-> MCU_STALL
 
 /****** module CLK (& IRQ ?, & GPIO ?) *******/
 /*
@@ -114,8 +114,6 @@ extern volatile unsigned char sleep_mode; // flag, = 1 -> pm not sleep, = 2 -> c
 #define BLE_LOW_POWER						0	// =1 меняет тайминги по умолчанию на максимальные и ...
 
 #if (USE_HX711)
-//#define HX711_SCK	GPIO_PC0
-//#define HX711_DOUT  GPIO_PC1
 typedef struct _weight_config_t {
 	unsigned short check_step_ms; // in 1/1024 ms
 	unsigned short coef;  //
@@ -146,7 +144,7 @@ typedef struct
 #define DEF_ADV_INTERVAL ADV_INTERVAL_1_28_S, ADV_INTERVAL_1_28_S + 16
 #else
 //#define DEF_CONN_PARMS 50, 100, 0, 400
-#define DEF_CONN_PARMS 20, 80, 0, 200 // 8*1.25 = 10 ms (=5 -> 7.5 ms cамый низкий разрешенный спецификацией !)
+#define DEF_CONN_PARMS 20, 100, 0, 200 // 8*1.25 = 10 ms (=5 -> 7.5 ms cамый низкий разрешенный спецификацией !)
 #define DEF_ADV_INTERVAL ADV_INTERVAL_400MS*2, ADV_INTERVAL_400MS*2+16
 #endif
 #define MY_APP_ADV_CHANNEL				BLT_ENABLE_ADV_ALL
@@ -267,28 +265,76 @@ extern gap_periConnectParams_t my_periConnParameters;
 #endif // USE_HX711
 
 #elif	(BOARD == BOARD_E104_BT05)
-//#define BLUE_LED	LED_B
-//#define GREEN_LED   LED_G
+// Project use
+//KEY_BLE/USB	GPIO_PA1 PWM3
+//KEY_K2		GPIO_PA5 <STAT>
+//KEY_K1		GPIO_PB0 PWM5
+//EXT_POWER_OFF GPIO_PC0 PWM0 PGA_R
+//ADCp			GPIO_PC1 ADC-+PGA_L
+//ADC7			GPIO_PC2 ADC-CH7 PGA_R
+//ADC9			GPIO_PC4 ADC-CH9
+//EXT_POWER_4MA GPIO_PD4 <ADV_LED> ADC-CH5
+//ADC6d			GPIO_PD5 <PWRC> ADC-CH6-DIFF
+//DAC 			GPIO_PE5 SDMN
+//SDA 			GPIO_PE7 SPI_DI
+//SCL			GPIO_PF1 SPI_CK
 //-------------------
-#define GPIO_WAKEUP_MODULE					GPIO_PC5   // mcu wakeup module (Key SW1)
-#define	PC5_FUNC							AS_GPIO
-#define PC5_INPUT_ENABLE					1
-#define	PC5_OUTPUT_ENABLE					0
-#define	PC5_DATA_OUT						0
-#define GPIO_WAKEUP_MODULE_HIGH				gpio_setup_up_down_resistor(GPIO_PC5, PM_PIN_PULLUP_10K);
-#define GPIO_WAKEUP_MODULE_LOW				gpio_setup_up_down_resistor(GPIO_PC5, PM_PIN_PULLDOWN_100K);
-/*
-#define GPIO_WAKEUP_MCU						GPIO_PC4	// module wakeup mcu (LED DEBUG?) // -> TX UART
-#define	PC4_FUNC							AS_GPIO
-#define PC4_INPUT_ENABLE					1
-#define	PC4_OUTPUT_ENABLE					1
-#define	PC4_DATA_OUT						0
-#define GPIO_WAKEUP_MCU_HIGH				do{gpio_set_output_en(GPIO_PC4, 1); gpio_write(GPIO_PC4, 1);}while(0)
-#define GPIO_WAKEUP_MCU_LOW					do{gpio_set_output_en(GPIO_PC4, 1); gpio_write(GPIO_PC4, 0);}while(0)
-#define GPIO_WAKEUP_MCU_FLOAT				do{gpio_set_output_en(GPIO_PC4, 0); gpio_write(GPIO_PC4, 0);}while(0)
-*/
+//<RX> - PC7, ADC-CH10
+//<TX> - PC6, ADC-CH11
 //-------------------
-#elif	(BOARD == BOARD_E104_BT10)
+// PE6 RTS, SPI_CS
+#define	PULL_WAKEUP_SRC_PE6				PM_PIN_PULLUP_1M
+// PF0 CTS, SPI_DO
+#define	PULL_WAKEUP_SRC_PF0				PM_PIN_PULLUP_1M
+//-------------------
+#define	KEY_K1	 						GPIO_PB0 // K1 /DeepSleep 30 sec
+#define PB0_FUNC						AS_GPIO
+#define PB0_OUTPUT_ENABLE				0
+#define PB0_INPUT_ENABLE				1
+#define	PULL_WAKEUP_SRC_PB0				PM_PIN_PULLUP_1M
+
+#define	KEY_K2	 						GPIO_PA5 // K2 WaikUp/DeepSleep
+#define PA5_OUTPUT_ENABLE				0
+#define PA5_INPUT_ENABLE				1
+#define	PULL_WAKEUP_SRC_PA5				PM_PIN_PULLUP_1M
+
+//-------------------------- Ext Power
+#define EXT_POWER_OFF					GPIO_PC0	// =1 Pow.Off
+#define PC0_FUNC						AS_GPIO
+#define	PULL_WAKEUP_SRC_PC0				PM_PIN_PULLDOWN_100K
+
+#define EXT_POWER_4MA					GPIO_PD4	// =1 Pow.On
+#define PD4_FUNC						AS_GPIO
+#define	PULL_WAKEUP_SRC_PD4				PM_PIN_PULLUP_10K
+
+//------------------- ADC
+//#define	PC0_FUNC							AS_GPIO // ?
+#define	PC1_FUNC							AS_GPIO	// ADC3, -diff ADC PC1/PC2
+#define	PC2_FUNC							AS_GPIO // ADC2, +diff ADC PC2/PC1
+#define	PC3_FUNC							AS_GPIO // --- none ---
+#define	PC4_FUNC							AS_GPIO // ADC1
+#define	PC6_FUNC							AS_GPIO // ADCx TX
+#define	PC7_FUNC							AS_GPIO // ADCx RX
+#define	PD5_FUNC							AS_GPIO // ADC0, -diff
+//------------------- DAC
+#define	PE5_FUNC							AS_GPIO // SDMN
+//------------------- USB/BLE
+#define KEY_BLE_USB							GPIO_PA1   // mcu wakeup module (Key PWRC) GPIO_WAKEUP_MODULE
+#define	PA1_FUNC							AS_GPIO
+#define PA1_INPUT_ENABLE					1
+#define	PA1_OUTPUT_ENABLE					0
+#define	PA1_DATA_OUT						0
+#define KEY_BLE_USB_HIGH				gpio_setup_up_down_resistor(KEY_BLE_USB, PM_PIN_PULLUP_10K);
+#define KEY_BLE_USB_LOW					gpio_setup_up_down_resistor(KEY_BLE_USB, PM_PIN_PULLDOWN_100K);
+//-------------------
+#if (USE_HX711)
+#define HX711_SCK	GPIO_PC6	//TX
+#define HX711_DOUT  GPIO_PC7	//RX
+#define PC6_INPUT_ENABLE					1
+#define	PC6_OUTPUT_ENABLE					0
+#define PC7_INPUT_ENABLE					1
+#define	PC7_OUTPUT_ENABLE					0
+#endif // USE_HX711#elif	(BOARD == BOARD_E104_BT10)
 //-------------------
 // Project use
 //KEY_K1	GPIO_PD2

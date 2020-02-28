@@ -340,13 +340,15 @@ function ConnParUpdate(tms) {
 	let t = tms/1.25;
 	if (t < 6) t = 6; // min interval 6 * 1.25 = 7.5 ms
 	else if (t > 3200) t = 3200; // max interval 0x0C80 * 1.25 = 4000 ms
-	t = t & 0xfff;
+	t = t & 0xffff;
 	con_interval = t;
-	let lt = 8; // Number of LL latency connection events (0x0000 - 0x03e8)
-	let tt = t; // max tmeout 0x0C80 * 10 = 32000 ms
-	if(t < 200) tt = 200; // tmeout 200*10 = 2000 ms
-	log('Set Connect parameters #04: interval '+tms.toFixed(2)+' ms (real '+(t*1.25)+'), timeout '+(tt*10)+' ms');
-	characteristicCache.writeValue(new Uint8Array([8, 4, t&0xff,(t>>8)&0xff, t&0xff,(t>>8)&0xff, lt&0xff,(lt>>8)&0xff, tt&0xff,(tt>>8)&0xff]));
+	// cni 6..3200 -> tmeout (100..1600)*10 = 1..16 sec
+	let tt = (t-6)*0.5 + 100; // max tmeout 0x0C80 * 10 = 32000 ms
+	let lce = 0; // latency connection events
+	if(t < 25) lce = 4;
+	log('Set Connect parameters #04: interval '+tms.toFixed(2)+' ms (real '+(t*1.25)+'), latency '+lce+', timeout '+(tt*10)+' ms');
+	t |= 0x8000;
+	characteristicCache.writeValue(new Uint8Array([8, 4, t&0xff,(t>>8)&0xff, t&0xff,(t>>8)&0xff, lce,0, tt&0xff,(tt>>8)&0xff]));
 }
 /* typedef struct { // TLSR8266 ADC + DFIFO
 	uint8_t size;	// размер данных пакета (0..4 байт: 0 - get, 1..4 set)

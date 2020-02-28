@@ -112,7 +112,7 @@ The high speed clock (FHS) is selectable via address
 #define CLOCK_SYS_TYPE  SYS_CLK_HS_DIV  // SYS_CLK_HS_DIV, SYS_CLK_RC, SYS_CLK_QUARTZ
 
 #if (CLOCK_SYS_TYPE == SYS_CLK_HS_DIV)
-#define CLOCK_SYS_CLOCK_HZ  	48000000	// 192000000/n, n = 4..15 : 48000000, ..
+#define CLOCK_SYS_CLOCK_HZ  	16000000	// 192000000/n, n = 4..15 : 48000000, ..
 #elif (CLOCK_SYS_TYPE == SYS_CLK_RC)
 #define CLOCK_SYS_CLOCK_HZ  	32000000	// 32000000/n, n = 1..15
 #elif (CLOCK_SYS_TYPE == SYS_CLK_QUARTZ)
@@ -122,6 +122,7 @@ The high speed clock (FHS) is selectable via address
 #endif
 #endif // #ifndef CLOCK_SYS_TYPE
 //-------------------------- KEYs
+/*
 #define	KEY_SW0							GPIO_PD4
 #define PD4_FUNC						AS_GPIO
 #define PD4_OUTPUT_ENABLE				0
@@ -207,7 +208,7 @@ The high speed clock (FHS) is selectable via address
 
 	#define UART_PIN_CFG				UART_GPIO_CFG_PC6_PC7()
 #endif
-
+*/
 //-------------------------- USB
 #if USE_USB
 #define PULL_WAKEUP_SRC_PB5           	PM_PIN_PULLDOWN_100K // PM_PIN_PULLUP_1M  // USB DM

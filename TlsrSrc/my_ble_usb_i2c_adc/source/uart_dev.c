@@ -91,20 +91,23 @@ void uart_init(dev_uart_cfg_t * p) {
 	BM_CLR(reg_dma1_ctrl, FLD_DMA_BUF_SIZE);
 	reg_dma1_ctrl |= MASK_VAL(FLD_DMA_BUF_SIZE, UART_TX_BUFF_SIZE>>4); //set receive buffer size
 
-	#if ((MCU_CORE_TYPE == MCU_CORE_8261)||(MCU_CORE_TYPE == MCU_CORE_8267)||(MCU_CORE_TYPE == MCU_CORE_8269))
-		UART_GPIO_CFG_PC2_PC3();  //enable uart function and enable input
-	#elif CHIP_TYPE == CHIP_TYPE_8266
-//		gpio_set_func(GPIO_PC6, AS_UART);
-//		gpio_set_func(GPIO_PC7, AS_UART);
-		gpio_setup_up_down_resistor(GPIO_PC6, PM_PIN_UP_DOWN_FLOAT); // TX
-		gpio_setup_up_down_resistor(GPIO_PC7, PM_PIN_PULLUP_1M); // RX
-		BM_CLR(reg_gpio_gpio_func(GPIO_PC6), GPIO_PC6 & 0xFF);
-		BM_CLR(reg_gpio_gpio_func(GPIO_PC7), GPIO_PC7 & 0xFF);
-		BM_CLR(reg_gpio_config_func(GPIO_PC6), GPIO_PC6 & 0xFF);
-		BM_CLR(reg_gpio_config_func(GPIO_PC7), GPIO_PC7 & 0xFF);
-		BM_SET(reg_gpio_ie(GPIO_PC6), GPIO_PC6 & 0xFF);  //enable input (set in config?)
-		BM_SET(reg_gpio_ie(GPIO_PC7), GPIO_PC7 & 0xFF);  //enable input (set in config?)
-	#endif
+	// enable uart function and enable input
+#if (MCU_CORE_TYPE == MCU_CORE_8269)
+		// UART_GPIO_CFG_PC2_PC3(): 	gpio_set_func(GPIO_PC2, AS_UART);		gpio_set_func(GPIO_PC3, AS_UART);
+		analog_write(0x0f, (analog_read(0x0f) & 0xf0) | PM_PIN_UP_DOWN_FLOAT | (PM_PIN_PULLUP_1M<<2));
+		BM_CLR(reg_gpio_gpio_func(GPIO_PC2), (GPIO_PC2 | GPIO_PC3) & 0xFF);
+		BM_SET(reg_gpio_config_func(GPIO_PC2), (GPIO_PC2 | GPIO_PC3) & 0xFF);
+		BM_SET(reg_gpio_ie(GPIO_PC2), (GPIO_PC2 | GPIO_PC3) & 0xFF);  //enable input
+
+#elif CHIP_TYPE == CHIP_TYPE_8266
+		// UART_GPIO_CFG_PC6_PC7():	gpio_set_func(GPIO_PC6, AS_UART); gpio_set_func(GPIO_PC7, AS_UART);
+		analog_write(0x10, (analog_read(0x10) & 0xf0) | PM_PIN_UP_DOWN_FLOAT | (PM_PIN_PULLUP_1M<<2));
+		BM_CLR(reg_gpio_gpio_func(GPIO_PC6), (GPIO_PC7 | GPIO_PC6) & 0xFF); // disable PC6/PC7 as gpio
+		BM_CLR(reg_gpio_config_func(GPIO_PC6), (GPIO_PC7 | GPIO_PC6) & 0xFF); // disable PC6/PC7 keyscan function
+		BM_SET(reg_gpio_ie(GPIO_PC6), (GPIO_PC7 | GPIO_PC6) & 0xFF);  // enable input
+#else
+	@error 'CHIP_TYPE? Not Code!'
+#endif
 }
 
 unsigned char uart_send(unsigned char* addr) {
@@ -117,12 +120,17 @@ unsigned char uart_send(unsigned char* addr) {
 }
 
 void uart_deinit(void) {
-	BM_SET(reg_gpio_gpio_func(GPIO_PC6), GPIO_PC6 & 0xFF);
-	BM_SET(reg_gpio_gpio_func(GPIO_PC7), GPIO_PC7 & 0xFF);
-	BM_SET(reg_gpio_config_func(GPIO_PC6), GPIO_PC6 & 0xFF);
-	BM_SET(reg_gpio_config_func(GPIO_PC7), GPIO_PC7 & 0xFF);
-	gpio_setup_up_down_resistor(GPIO_PC6, PM_PIN_PULLUP_1M); // TX
-	gpio_setup_up_down_resistor(GPIO_PC7, PM_PIN_PULLUP_1M); // RX
+#if (MCU_CORE_TYPE == MCU_CORE_8269)
+	analog_write(0x10, (analog_read(0x10) & 0xf0) | PM_PIN_UP_DOWN_FLOAT | (PM_PIN_PULLUP_1M<<2));
+	BM_SET(reg_gpio_gpio_func(GPIO_PC6), (GPIO_PC7 | GPIO_PC6) & 0xFF);
+	BM_SET(reg_gpio_config_func(GPIO_PC6), (GPIO_PC7 | GPIO_PC6) & 0xFF);
+#elif CHIP_TYPE == CHIP_TYPE_8266
+	analog_write(0x10, (analog_read(0x10) & 0xf0) | PM_PIN_PULLUP_1M | (PM_PIN_PULLUP_1M<<2));
+	BM_SET(reg_gpio_gpio_func(GPIO_PC6), (GPIO_PC7 | GPIO_PC6) & 0xFF);
+	BM_SET(reg_gpio_config_func(GPIO_PC6), (GPIO_PC7 | GPIO_PC6) & 0xFF);
+#else
+	@error 'CHIP_TYPE? Not Code!'
+#endif
 	BM_CLR(reg_uart_ctrl0, FLD_UART_RX_DMA_EN | FLD_UART_TX_DMA_EN);
 	reg_uart_clk_div = 0x3fff;
 	reg_clk_en1 &= ~FLD_CLK_UART_EN;

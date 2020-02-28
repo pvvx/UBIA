@@ -34,7 +34,7 @@
 #define CMD_DEV_STA  0x03 // Status
 // BLE cfg
 #define CMD_DEV_CPU  0x04 // Connect parameters Update (BLE)
-#define CMD_DEV_ADV  0x05 // Advertising parameters Update (BLE)
+#define CMD_DEV_BLE  0x05 // BLE parameters Update (BLE)
 // 0x06
 // I2C/SMBUS out regs
 #define CMD_DEV_I2C  0x07 // blk out regs i2c data
@@ -171,10 +171,12 @@ typedef struct  __attribute__((packed)) _dev_pwr_slp_t{
 	uint16_t I2CDevSleep	: 1; //0x10
 	uint16_t ADC_Stop		: 1; //0x20
 	uint16_t Uart_off		: 1; //0x40
-	uint16_t Sleep_off		: 1; //0x80
-	uint16_t Sleep_CPU		: 1; //0x100
-	uint16_t Sleep_On		: 1; //0x200
-	uint16_t Test			: 1; //0x400
+	uint16_t Disconnect		: 1; //0x80
+	uint16_t Sleep_off		: 1; //0x100
+	uint16_t Sleep_CPU		: 1; //0x200
+	uint16_t Sleep_On		: 1; //0x400
+	uint16_t Reset			: 1; //0x800
+	uint16_t Test			: 1; //0x8000
 } dev_pwr_slp_t;
 
 // BLE connection config
@@ -190,9 +192,9 @@ typedef struct __attribute__((packed)){
   unsigned short timeout;
 } ble_con_t;
 
-extern ble_con_t ble_con_ini; // store in eep
+//extern ble_con_t ble_con_ini; // store in eep
 
-// (BLE)
+// CMD_DEV_BLE  BLE parameters Update (BLE)
 typedef struct __attribute__((packed)) {
   /** Advertising Interval minimum value (interval * 625 us) */
   unsigned short intervalMin;
@@ -201,18 +203,10 @@ typedef struct __attribute__((packed)) {
 
   unsigned char rf_power; // 0..16 8dB,4dB,0dB,-4dB,-10dB,-14dB,..RF_POWER_OFF
 
+  unsigned char name[16];
 } ble_cfg_t;
 
-/* Advertising config */
-// CMD_DEV_ADV  Advertising parameters Update (BLE)
-typedef struct __attribute__((packed)) {
-  /** Advertising Interval minimum value (interval * 625 us) */
-  unsigned short intervalMin;
-  /** Advertising Interval maximum value (interval * 625 us) */
-  unsigned short intervalMax;
-} ble_adv_t;
-
-extern ble_adv_t ble_adv_ini; // store in eep
+//extern ble_cfg_t ble_cfg_ini; // store in eep
 
 typedef struct __attribute__((packed)) {
 	uint8_t size; // размер пакета
@@ -258,7 +252,7 @@ typedef struct __attribute__((packed)) _blk_tx_pkt_t{
 		dev_i2c_cfg_t ci2c;
 		dev_adc_cfg_t cadc;
 		ble_con_t con;
-		ble_adv_t adv;
+		ble_cfg_t ble;
 		reg_wr_t reg;
 		i2c_rd_t rd;
 		i2c_wr_t wr;
@@ -284,7 +278,7 @@ typedef struct __attribute__((packed)) _blk_rx_pkt_t{
 		dev_i2c_cfg_t ci2c;
 		dev_adc_cfg_t cadc;
 		ble_con_t con;
-		ble_adv_t adv;
+		ble_cfg_t ble;
 		reg_wr_t reg;
 		i2c_rd_t rd;
 		i2c_wr_t wr;

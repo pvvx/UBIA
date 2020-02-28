@@ -14,11 +14,11 @@
 //extern u8 blt_rxfifo_b[];
 //extern u8 blt_txfifo_b[];
 //extern u8 wrk_enable;
-//extern u8 wrk_tick;
+//extern u8 wrk_stage;
 #define USB_RESET() wrk_enable = 1 // Events: USB_SET_CTRL_UART DTR Off, USB_PWDN, USB_RESET
 #define USB_PWDN() wrk_enable = 1 // Events: USB_SET_CTRL_UART DTR Off, USB_PWDN, USB_RESET
 // DTR рукопожатия на линии
-#define USB_SET_CTRL_UART(a) { if(a & 1) wrk_tick = 1; else wrk_enable = 1; }
+#define USB_SET_CTRL_UART(a) { if(a & 1) wrk_stage = 1; else wrk_enable = 1; }
 #else
 extern u8 usb_pwd;
 extern u8 usb_pwup;

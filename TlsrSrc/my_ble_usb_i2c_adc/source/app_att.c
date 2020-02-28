@@ -26,6 +26,7 @@
 #include "proj_lib/ble/service/ble_ll_ota.h"
 #include "proj_lib/ble/att.h"
 #include "proj_lib/ble/gap.h"
+#include "ble.h"
 
 #if 1
 
@@ -67,7 +68,7 @@ const u16 serviceChangeUIID = GATT_UUID_SERVICE_CHANGE;
 u16 serviceChangeVal[2] = {0};
 static u8 serviceChangeCCC[2]={0,0};
 
-extern u8  ble_devName[];
+//extern u8  ble_devName[];
 
 /* Device Name Characteristic Properties
 PnP_ID characteris
@@ -169,45 +170,6 @@ int module_onSendData(void *par) {
 //	if (!SppDataServer2ClientDataLen) return 1;
 	return 0;
 }
-
-extern int module_onReceiveData(void *par);
-/*
-int module_onReceiveData(void *par)
-{
-	rf_packet_att_write_t *pp = par;
-	u8 len = pp->l2capLen - 3;
-	u8 * p = &pp->opcode;
-//	mini_printf("\r\nonReceiveData %d\r\n", len);
-//	if(len > 2)
-//	{
-#if 0
-		u32 n;
-		static u32 sn = 0;
-		memcpy (&n, &p->value, 4);
-		if (sn != n)
-		{
-			sn = 0;
-			bls_ll_terminateConnection (0x13);
-		}
-		else
-		{
-			sn = n + 1;
-		}
-#endif
-		if(len >= 4 && len <= sizeof(ina226_cfg) + 2
-			&& p[0] == BLK_IDX_CFG
-			&& p[1] <= len
-			) {
-
-			memcpy(&blk_rx, &p[2], p[1]);
-		}
-//		extern int hci_send_data (u32 h, u8 *para, int n);
-//		hci_send_data(header, &p->opcode, len + 3);		// HCI_FLAG_EVENT_TLK_MODULE
-
-//	}
-	return 0;
-}
-*/
 #endif // #if (SPP_SERVICE_ENABLE)
 
 // Include attribute (Battery service)
@@ -319,7 +281,7 @@ const attribute_t my_Attributes[] = {
 	// 0001 - 0007  gap
 	{7,ATT_PERMISSIONS_READ,2,2,(u8*)(&my_primaryServiceUUID), 	(u8*)(&my_gapServiceUUID), 0},
 	{0,ATT_PERMISSIONS_READ,2,sizeof(my_devNameCharVal),(u8*)(&my_characterUUID), (u8*)(my_devNameCharVal), 0},
-	{0,ATT_PERMISSIONS_READ,2,MAX_DEV_NAME_LEN, (u8*)(&my_devNameUUID), (u8*)(&ble_devName), 0},
+	{0,ATT_PERMISSIONS_READ,2,sizeof(ble_cfg_ini.name), (u8*)(&my_devNameUUID), (u8*)(&ble_cfg_ini.name), 0},
 	{0,ATT_PERMISSIONS_READ,2,sizeof(my_appearanceCharVal),(u8*)(&my_characterUUID), (u8*)(my_appearanceCharVal), 0},
 	{0,ATT_PERMISSIONS_READ,2,sizeof (my_appearance), (u8*)(&my_appearanceUIID), 	(u8*)(&my_appearance), 0},
 	{0,ATT_PERMISSIONS_READ,2,sizeof(my_periConnParamCharVal),(u8*)(&my_characterUUID), (u8*)(my_periConnParamCharVal), 0},
@@ -344,7 +306,7 @@ const attribute_t my_Attributes[] = {
 
 	// Server2Client / UART RX/TX
 	{0,ATT_PERMISSIONS_READ, 2,sizeof(my_SPP_S2C_CharVal),(u8*)(&my_characterUUID),	(u8*)(my_SPP_S2C_CharVal), 0},				//prop
-	{0,ATT_PERMISSIONS_RDWR,16,MTU_RX_DATA_SIZE,(u8*)(&TelinkSppDataServer2ClientUUID), (u8*)&read_pkt, (att_readwrite_callback_t)&module_onReceiveData, 0}, //(att_readwrite_callback_t)&module_onSendData},	//value
+	{0,ATT_PERMISSIONS_RDWR,16,DLE_DATA_SIZE,(u8*)(&TelinkSppDataServer2ClientUUID), (u8*)&send_pkt, (att_readwrite_callback_t)&module_onReceiveData, 0}, //(att_readwrite_callback_t)&module_onSendData},	//value
 	{0,ATT_PERMISSIONS_RDWR, 2,sizeof(SppDataServer2ClientDataCCC),(u8*)(&clientCharacterCfgUUID), 	(u8*)(SppDataServer2ClientDataCCC), 0},	//value
 	{0,ATT_PERMISSIONS_READ, 2,sizeof(TelinkSPPS2CDescriptor),(u8*)&userdesc_UUID,(u8*)(&TelinkSPPS2CDescriptor)},
 /*
@@ -393,14 +355,5 @@ const attribute_t my_Attributes[] = {
 	{0,ATT_PERMISSIONS_READ, 2,sizeof(my_OtaName),(u8*)(&userdesc_UUID), (u8*)(my_OtaName), 0},
 
 };
-
-void my_att_init()
-{
-	bls_att_setAttributeTable ((u8 *)my_Attributes);
-	bls_att_setDeviceName((u8 *)ble_dev_name, sizeof(ble_dev_name));
-#if (BATT_SERVICE_ENABLE)
-	my_batVal[0] = 99;
-#endif
-}
 
 #endif

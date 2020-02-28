@@ -163,7 +163,7 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				if(pbufi->data.scf.con)
 					pbufo->data.scf.con = flash_write_cfg(&ble_con_ini, EEP_ID_CON_CFG, sizeof(ble_con_ini));
 				if(pbufi->data.scf.adv)
-					pbufo->data.scf.adv = flash_write_cfg(&ble_adv_ini, EEP_ID_ADV_CFG, sizeof(ble_adv_ini));
+					pbufo->data.scf.adv = flash_write_cfg(&ble_cfg_ini, EEP_ID_BLE_CFG, sizeof(ble_cfg_ini));
 #endif
 #if	(USE_INT_DAC)
 				if(pbufi->data.scf.dac)
@@ -249,63 +249,68 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 			//-------
 #if (USE_BLE)
 			case CMD_DEV_CPU: // Connect parameters Update
-				memcpy(&pbufo->data, &ble_con_ini, sizeof(ble_con_ini));
-				txlen = sizeof(blk_head_t) + sizeof(ble_con_ini);
+				txlen = pbufi->head.size;
+				if (txlen) {
+					if(txlen > sizeof(ble_con_ini))
+						txlen = sizeof(ble_con_ini);
+					memcpy(&pbufo->data.con, &ble_con_ini, sizeof(ble_con_ini));
+					memcpy(&pbufo->data.con, &pbufi->data, txlen);
+					if(pbufi->data.con.intervalMax & 0x8000)
+						pbufo->data.con.intervalMax &= 0x7fff;
+					else
+						memcpy(&ble_con_ini, &pbufo->data.con, sizeof(ble_con_ini));
 #if (USE_USB_CDC)
-				if(!usb_actived){
+					if(!usb_actived)
 #endif
-					if(pbufi->head.size) {
-						if(pbufi->head.size > sizeof(ble_con_ini))
-							pbufi->head.size = sizeof(ble_con_ini);
-						tmp = sizeof(ble_con_ini) - pbufi->head.size;
-						if(tmp)
-							memcpy(&pbufi->data.uc[pbufi->head.size], ((u8*)&ble_con_ini) + pbufi->head.size, tmp);
 						bls_l2cap_requestConnParamUpdate(
-								pbufi->data.con.intervalMin,
-								pbufi->data.con.intervalMax,
-								pbufi->data.con.latency,
-								pbufi->data.con.timeout);
-					}
-					cur_ble_con_ini.intervalMax = bls_ll_getConnectionInterval();
-					cur_ble_con_ini.latency = bls_ll_getConnectionLatency();
-					cur_ble_con_ini.timeout = bls_ll_getConnectionTimeout();
-					memcpy(&pbufo->data.uc[sizeof(ble_con_ini)], &cur_ble_con_ini, sizeof(cur_ble_con_ini));
-					txlen += sizeof(cur_ble_con_ini);
-#if (USE_USB_CDC)
+							pbufo->data.con.intervalMin &= 0x7fff,
+							pbufo->data.con.intervalMax,
+							pbufo->data.con.latency,
+							pbufo->data.con.timeout);
 				}
-#endif
-				break;
-			//--------
-			case CMD_DEV_ADV: // Advertising parameters Update
 #if (USE_USB_CDC)
 				if(!usb_actived) {
 #endif
-					if (pbufi->head.size) {
-						if(pbufi->head.size > sizeof(ble_adv_ini))
-							pbufi->head.size = sizeof(ble_adv_ini);
-						memcpy(&ble_adv_ini, &pbufi->data, pbufi->head.size);
+					cur_ble_con_ini.interval = bls_ll_getConnectionInterval();
+					cur_ble_con_ini.latency = bls_ll_getConnectionLatency();
+					cur_ble_con_ini.timeout = bls_ll_getConnectionTimeout();
+					memcpy(&pbufo->data.uc[sizeof(ble_con_ini)], &cur_ble_con_ini, sizeof(cur_ble_con_ini));
+					txlen = sizeof(blk_head_t) + sizeof(ble_con_ini) + sizeof(cur_ble_con_ini);
+#if (USE_USB_CDC)
+				}
+				else txlen = sizeof(blk_head_t) + sizeof(ble_con_ini);
+#endif
+				break;
+			//--------
+			case CMD_DEV_BLE: // BLE parameters Update
+				txlen = pbufi->head.size;
+				if(txlen) {
+					if(txlen > sizeof(ble_cfg_ini))
+						txlen = sizeof(ble_cfg_ini);
+					memcpy(&ble_cfg_ini, &pbufi->data, txlen);
+#if (USE_USB_CDC)
+					if(!usb_actived) {
+#endif
 						if(bls_ll_setAdvParam(
-								ble_adv_ini.intervalMin,
-								ble_adv_ini.intervalMax,
-								ADV_TYPE_CONNECTABLE_UNDIRECTED, OWN_ADDRESS_PUBLIC,
-								0,  NULL, MY_APP_ADV_CHANNEL,
-								ADV_FP_NONE) != BLE_SUCCESS) {
-							memcpy(&ble_adv_ini, &ble_adv_ini, sizeof(ble_adv_ini));
+							ble_cfg_ini.intervalMin,
+							ble_cfg_ini.intervalMax,
+							ADV_TYPE_CONNECTABLE_UNDIRECTED, OWN_ADDRESS_PUBLIC,
+							0,  NULL, MY_APP_ADV_CHANNEL,
+							ADV_FP_NONE) != BLE_SUCCESS) {
 							pbufo->head.cmd |= CMD_ERR_FLG; // Error cmd
 							txlen = 0 + sizeof(blk_head_t);
 							break;
 						}
-					}
-					memcpy(&pbufo->data, &ble_adv_ini, sizeof(ble_adv_ini));
-					txlen = sizeof(ble_adv_ini) + sizeof(blk_head_t);
+						rf_set_power_level_index(ble_cfg_ini.rf_power);
+						// use restart!
 #if (USE_USB_CDC)
-				} else {
-					pbufo->head.cmd |= CMD_ERR_FLG; // Error cmd
-					txlen = 0 + sizeof(blk_head_t);
+					}
+#endif
 				}
-#endif
+				memcpy(&pbufo->data, &ble_cfg_ini, sizeof(ble_cfg_ini));
+				txlen = sizeof(ble_cfg_ini) + sizeof(blk_head_t);
 				break;
-#endif
+#endif // USE_BLE
 #if (USE_I2C_DEV)
 			case CMD_DEV_UTR: // I2C read/write
 				txlen = pbufi->data.utr.rdlen & 0x7f;
@@ -363,6 +368,9 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				}
 #endif
 #if (USE_BLE)
+				if(pbufi->data.pwr.Disconnect) {
+					bls_ll_terminateConnection(HCI_ERR_REMOTE_USER_TERM_CONN);
+				}
 				if(pbufi->data.pwr.Sleep_On) {
 					sleep_mode = 0;
 				}
@@ -373,6 +381,9 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 					sleep_mode |= 4;
 				}
 #endif
+				if(pbufi->data.pwr.Reset) {
+					cpu_sleep_wakeup(DEEPSLEEP_MODE, PM_WAKEUP_TIMER, clock_time() + 5000 * CLOCK_SYS_CLOCK_1MS); // <3.5 uA
+				}
 				if(pbufi->data.pwr.Test) {
 					test_function();
 				}

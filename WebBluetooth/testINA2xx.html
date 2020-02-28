@@ -227,10 +227,11 @@ function ConnParUpdate(tms) {
 	// cni 6..3200 -> tmeout (100..1600)*10 = 1..16 sec
 	let tt = (t-6)*0.5 + 100; // max tmeout 0x0C80 * 10 = 32000 ms
 	let lce = 0; // latency connection events
-	if(t < 25) lce = 6;
-	log('Set Connect parameters #4: interval '+tms.toFixed(2)+' ms, timeout '+(tt*10)+' ms');
+	if(t < 25) lce = 4;
+	log('Set Connect parameters #04: interval '+tms.toFixed(2)+' ms (real '+(t*1.25)+'), latency '+lce+', timeout '+(tt*10)+' ms');
+	t |= 0x8000;
 	characteristicCache.writeValue(new Uint8Array([8, 4, t&0xff,(t>>8)&0xff, t&0xff,(t>>8)&0xff, lce,0, tt&0xff,(tt>>8)&0xff]));
-}	
+}
 /* typedef struct {
 	uint8_t size;	// размер данных пакета (=0 байт)
 	uint8_t cmd;	// номер команды / тип пакета (=0)
@@ -398,6 +399,7 @@ function handleCharacteristicValueChanged(event) {
 					} else {
 						stage_read = 1;
 						SendStart(dev_ina_id);
+						start_time = new Date().getTime();
 						setTimeout(PingTimeout, 20000);
 					}							
 				}
