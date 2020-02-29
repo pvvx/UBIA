@@ -27,7 +27,7 @@ extern "C" {
 // -----
 
 #define INT_DEV_ID	0x1021  // DevID = 0x1021
-#define INT_DEV_VER 0x0005  // Ver 1.2.3.4 = 0x1234
+#define INT_DEV_VER 0x0006  // Ver 1.2.3.4 = 0x1234
 
 ////////// BLE product  Information  ////////////
 #define DEV_NAME		"tBLETST"

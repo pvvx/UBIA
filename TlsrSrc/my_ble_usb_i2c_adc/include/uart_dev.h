@@ -8,8 +8,14 @@
 #ifndef UART_DEV_H_
 #define UART_DEV_H_
 
-#define UART_RX_BUFF_SIZE      (64) // max dma read = x-5 = 59 bytes
+#if (MCU_CORE_TYPE == MCU_CORE_8269)
+// MTU BLE max Telink SDK 241 bytes -> 241-2 = 239. 239 + 5 + step 16 bytes = 256
+#define UART_RX_BUFF_SIZE      (256) // max dma read = x-5 = 59 bytes, step 16 bytes
+#define UART_TX_BUFF_SIZE      (256)
+#else
+#define UART_RX_BUFF_SIZE      (64) // max dma read = x-5 = 59 bytes, step 16 bytes
 #define UART_TX_BUFF_SIZE      (64)
+#endif
 
 extern unsigned char uart_rx_buff[UART_RX_BUFF_SIZE];
 extern unsigned char uart_tx_buff[UART_TX_BUFF_SIZE];

@@ -623,10 +623,12 @@ void main_ble_loop() {
 				not_send_count = 0;
 				I2CDevWakeUp();
 			}
-#else
+#else // SET_TX_MTU
 			wrk_stage = 0;
+#if (USE_I2C_DEV)
 			I2CDevWakeUp();
 #endif
+#endif // SET_TX_MTU
 		}
 		else { // wrk_enable
 			switch(wrk_stage) {
@@ -760,11 +762,12 @@ void main_ble_loop() {
 #if (USE_HX711)
 			hx711_go_sleep();
 #endif
-#if USE_INT_ADC
+#if USE_INT_UART
 			uart_deinit();
 #endif
+#if USE_INT_DAC
 			sdm_off();
-
+#endif
 			ExtDevPowerOff();
 		} else	if(device_in_connection_state
 			&& clock_tik_exceed(connection_ping_time, CONNECTION_START_WAIT_TIME_US*CLOCK_SYS_CLOCK_1US)) { // > 10 sec ?

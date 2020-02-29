@@ -155,10 +155,12 @@ void main_usb_loop() {
 		hx711_wr = 0;
 		hx711_rd = 0;
 #endif
-#if USE_INT_ADC
+#if USE_INT_UART
 		uart_deinit();
 #endif
+#if USE_INT_DAC
 		sdm_off();
+#endif
 		ExtDevPowerOff();
 		usb_pwd = 0;
 	}
