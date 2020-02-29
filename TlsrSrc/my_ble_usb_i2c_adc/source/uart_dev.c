@@ -19,6 +19,8 @@ const dev_uart_cfg_t def_cfg_uart = {
 		.parity = 0
 };
 
+unsigned char uart_enabled = 0;
+
 __attribute__((aligned(4))) unsigned char uart_rx_buff[UART_RX_BUFF_SIZE] = {0x00,0x00,0x00,0x00,}; // the first four byte is length to receive data.
 __attribute__((aligned(4))) unsigned char uart_tx_buff[UART_TX_BUFF_SIZE]  = {0x00,0x00,0x00,0x00,}; // the first four byte is length to send data.
 
@@ -30,6 +32,7 @@ void uart_init(dev_uart_cfg_t * p) {
 	unsigned int x = 0xffffffff, dv = p->baud;
 	unsigned int uartCLKdiv;
 	unsigned int bwpc = 15, i;
+
 	dv = (CLOCK_SYS_CLOCK_HZ/100 + (dv/2))/dv;
 	for(i = 4; i <= 16; i++) {
 		uartCLKdiv = dv/i;
@@ -43,17 +46,16 @@ void uart_init(dev_uart_cfg_t * p) {
 	// CLK16M_UART115200;
 	// uart_Init(9,13,PARITY_NONE,STOP_BIT_ONE); //set baud rate, parity bit and stop bit
 	// uart_DmaModeInit(UART_DMA_TX_IRQ_EN, UART_DMA_RX_IRQ_EN);   // enable tx and rx interrupt
-	/*******************1.config bautrate and timeout********************************/
-	reg_clk_en1 |= FLD_CLK_UART_EN;
+	/******************* config bautrate and timeout********************************/
 	//set uart clk divider and enable clock divider
 	reg_uart_clk_div = MASK_VAL(FLD_UART_CLK_DIV, uartCLKdiv, FLD_UART_CLK_DIV_EN, 1); // sclk/(uart_clk_div[14:0]+1)
 
 	//set bit width
-	reg_uart_ctrl0 = MASK_VAL( FLD_UART_BWPC, bwpc);
+	reg_uart_ctrl0 = MASK_VAL(FLD_UART_BWPC, bwpc);
 	//set timeout period
 	reg_uart_rx_timeout = MASK_VAL(FLD_UART_TIMEOUT_BW, (bwpc+1)*12) | FLD_UART_BW_MUL2;
 
-	/*******************2.config parity function*************************************/
+	/******************* config parity function*************************************/
 	if(p->parity) {
 		BM_SET(reg_uart_ctrl0, FLD_UART_PARITY_EN); //enable parity
 		if(p->parity & 1)
@@ -63,33 +65,9 @@ void uart_init(dev_uart_cfg_t * p) {
 	} else {
 		BM_CLR(reg_uart_ctrl0, FLD_UART_PARITY_EN);  //close parity function
 	}
-	/******************3.config stop bit**********************************************/
+	/****************** config stop bit**********************************************/
 	BM_CLR(reg_uart_ctrl0, FLD_UART_STOP_BIT);
 	reg_uart_ctrl0 |= MASK_VAL(FLD_UART_STOP_BIT, p->stop); // 00: 1 bit, 01: 1.5bit 1x: 2bits
-
-	// uart_DmaModeInit(UART_DMA_TX_IRQ_EN, UART_DMA_RX_IRQ_EN);
-
-	//1.enable UART DMA mode
-	BM_SET(reg_uart_ctrl0, FLD_UART_RX_DMA_EN | FLD_UART_TX_DMA_EN);
-
-    //2.config DMAx mode
-	BM_SET(reg_dma0_ctrl, FLD_DMA_WR_MEM); //set DMA0 mode to 0x01 for receive.write to memory
-	BM_CLR(reg_dma1_ctrl, FLD_DMA_WR_MEM); //set DMA1 mode to 0x00 for send. read from memory
-
-	//3.config dma irq
-//	BM_SET(reg_dma_chn_irq_msk, FLD_DMA_UART_RX); //enable uart rx dma interrupt
-//	BM_SET(reg_irq_mask, FLD_IRQ_DMA_EN);
-
-//	BM_SET(reg_dma_chn_irq_msk, FLD_DMA_UART_TX);  //enable uart tx dma interrupt
-//	BM_SET(reg_irq_mask, FLD_IRQ_DMA_EN);
-
-	// uart_RecBuffInit(uart_rec_buff, UART_RX_BUFF_SIZE);  //set uart rev buffer and buffer size
-	reg_dma0_addr = (unsigned short)((u32)(&uart_rx_buff));//set receive buffer address
-	BM_CLR(reg_dma0_ctrl, FLD_DMA_BUF_SIZE);
-	reg_dma0_ctrl |= MASK_VAL(FLD_DMA_BUF_SIZE, UART_RX_BUFF_SIZE>>4);  //set receive buffer size
-	// uart_txBuffInit(UART_TX_BUFF_SIZE);
-	BM_CLR(reg_dma1_ctrl, FLD_DMA_BUF_SIZE);
-	reg_dma1_ctrl |= MASK_VAL(FLD_DMA_BUF_SIZE, UART_TX_BUFF_SIZE>>4); //set receive buffer size
 
 	// enable uart function and enable input
 #if (MCU_CORE_TYPE == MCU_CORE_8269)
@@ -106,13 +84,41 @@ void uart_init(dev_uart_cfg_t * p) {
 		BM_CLR(reg_gpio_config_func(GPIO_PC6), (GPIO_PC7 | GPIO_PC6) & 0xFF); // disable PC6/PC7 keyscan function
 		BM_SET(reg_gpio_ie(GPIO_PC6), (GPIO_PC7 | GPIO_PC6) & 0xFF);  // enable input
 #else
-	@error 'CHIP_TYPE? Not Code!'
+		@error 'CHIP_TYPE? Not Code!'
 #endif
+
+	// uart_DmaModeInit(UART_DMA_TX_IRQ_EN, UART_DMA_RX_IRQ_EN);
+
+    // config DMAx mode
+	BM_SET(reg_dma0_ctrl, FLD_DMA_WR_MEM); //set DMA0 mode to 0x01 for receive.write to memory
+	BM_CLR(reg_dma1_ctrl, FLD_DMA_WR_MEM); //set DMA1 mode to 0x00 for send. read from memory
+
+	// config dma irq
+//	BM_SET(reg_dma_chn_irq_msk, FLD_DMA_UART_RX); //enable uart rx dma interrupt
+//	BM_SET(reg_irq_mask, FLD_IRQ_DMA_EN);
+
+//	BM_SET(reg_dma_chn_irq_msk, FLD_DMA_UART_TX);  //enable uart tx dma interrupt
+//	BM_SET(reg_irq_mask, FLD_IRQ_DMA_EN);
+
+	// uart_RecBuffInit(uart_rec_buff, UART_RX_BUFF_SIZE);  //set uart rev buffer and buffer size
+	reg_dma0_addr = (unsigned short)((u32)(&uart_rx_buff));//set receive buffer address
+	BM_CLR(reg_dma0_ctrl, FLD_DMA_BUF_SIZE);
+	reg_dma0_ctrl |= MASK_VAL(FLD_DMA_BUF_SIZE, UART_RX_BUFF_SIZE>>4);  //set receive buffer size
+	// uart_txBuffInit(UART_TX_BUFF_SIZE);
+	BM_CLR(reg_dma1_ctrl, FLD_DMA_BUF_SIZE);
+	reg_dma1_ctrl |= MASK_VAL(FLD_DMA_BUF_SIZE, UART_TX_BUFF_SIZE>>4); //set receive buffer size
+
+	// enable UART clk
+	reg_clk_en1 |= FLD_CLK_UART_EN;
+
+	// enable UART DMA mode
+	BM_SET(reg_uart_ctrl0, FLD_UART_RX_DMA_EN | FLD_UART_TX_DMA_EN);
+
+	uart_enabled = 1;
 }
 
 unsigned char uart_send(unsigned char* addr) {
-	if(reg_dma_tx_rdy0 & FLD_DMA_UART_TX)
-//	if(!(reg_uart_status1 & FLD_UART_TX_DONE))
+	if(UartTxBusy()) //	if(reg_dma_tx_rdy0 & FLD_DMA_UART_TX)
 		return 0;
 	reg_dma1_addr = (unsigned short)((u32)addr);   //packet data, start address is sendBuff+1
 	reg_dma_tx_rdy0 |= FLD_DMA_UART_TX;
@@ -120,6 +126,7 @@ unsigned char uart_send(unsigned char* addr) {
 }
 
 void uart_deinit(void) {
+	uart_enabled = 0;
 #if (MCU_CORE_TYPE == MCU_CORE_8269)
 	analog_write(0x10, (analog_read(0x10) & 0xf0) | PM_PIN_UP_DOWN_FLOAT | (PM_PIN_PULLUP_1M<<2));
 	BM_SET(reg_gpio_gpio_func(GPIO_PC6), (GPIO_PC7 | GPIO_PC6) & 0xFF);

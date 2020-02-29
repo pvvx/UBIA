@@ -51,27 +51,27 @@ int tst_usb_actived(void) {
 }
 #endif
 
-#if (USE_BLE)
-void send_ble_err(u16 err_id, u16 err) {
+void send_rtm_err(u16 err_id, u16 err) {
 	send_pkt.head.size = sizeof(dev_err_t);
 	send_pkt.head.cmd = CMD_DEV_ERR;
 	send_pkt.data.err.id = err_id;
 	send_pkt.data.err.err = err;
-	bls_att_pushIndicateData(SPP_Server2Client_INPUT_DP_H, (u8 *) &send_pkt, sizeof(blk_head_t) + sizeof(dev_err_t));
-}
-#endif
-
-#if (USE_USB_CDC)
-void send_usb_err(u16 err_id, u16 err) {
-	send_pkt.head.size = sizeof(dev_err_t);
-	send_pkt.head.cmd = CMD_DEV_ERR;
-	send_pkt.data.err.id = err_id;
-	send_pkt.data.err.err = err;
+#if (USE_USB_CDC && USE_BLE)
+	if(usb_actived) {
+		if(USBCDC_IsAvailable()) {
+			USBCDC_DataSend((u8 *) &send_pkt, sizeof(blk_head_t) + sizeof(dev_err_t));
+		}
+	} else {
+		bls_att_pushIndicateData(SPP_Server2Client_INPUT_DP_H, (u8 *) &send_pkt, sizeof(blk_head_t) + sizeof(dev_err_t));
+	}
+#elif (USE_USB_CDC)
 	if(USBCDC_IsAvailable()) {
 		USBCDC_DataSend((u8 *) &send_pkt, sizeof(blk_head_t) + sizeof(dev_err_t));
 	}
-}
+#elif (USE_BLE)
+	bls_att_pushIndicateData(SPP_Server2Client_INPUT_DP_H, (u8 *) &send_pkt, sizeof(blk_head_t) + sizeof(dev_err_t));
 #endif
+}
 
 /*******************************************************************************
  * Function Name : usb_ble_cmd_decode.
@@ -93,10 +93,26 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				break;
 #if (USE_INT_UART)
 			case CMD_DEV_UAR: // Send UART
+				//	if(!(reg_uart_status1 & FLD_UART_TX_DONE))
+
 				txlen = pbufi->head.size;
 				if (pbufi->head.size) {
-					if(txlen > UART_TX_BUFF_SIZE-4-1)
-						txlen = UART_TX_BUFF_SIZE-4-1;
+					if(!uart_enabled) {
+						uart_init(&cfg_uart);
+#if (USE_BLE)
+						sleep_mode |= 4;
+#endif
+					} else
+					if(UartTxBusy()) {
+						pbufo->head.size = sizeof(dev_err_t);
+						pbufo->head.cmd = CMD_DEV_ERR;
+						pbufo->data.err.id = RTERR_UART;
+						pbufo->data.err.err = 0;
+						txlen = sizeof(dev_err_t) + sizeof(blk_head_t);
+						break;
+					}
+					if(txlen > UART_RX_TX_LEN)
+						txlen = UART_RX_TX_LEN;
 					memcpy(&uart_tx_buff[4], &pbufi->data.uc, txlen);
 					uart_tx_buff[0] = txlen;
 					if(!uart_send(uart_tx_buff)){

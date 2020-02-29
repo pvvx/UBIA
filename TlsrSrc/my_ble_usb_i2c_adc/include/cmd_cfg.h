@@ -59,7 +59,7 @@
 #define CMD_DEV_SRG  0x11 // Set reg I2C
 // UART
 #define CMD_DEV_UAC  0x12 // Set UART
-#define CMD_DEV_UAR  0x13 // Send UART
+#define CMD_DEV_UAR  0x13 // Send/Receive UART
 
 #define CMD_ERR_FLG   0x80 // send error cmd mask
 
@@ -68,6 +68,7 @@
 #define RTERR_MTEX  0x01 // blc_att_requestMtuSizeExchange()
 #define RTERR_TOMT  0x02 // timeout blc_att_requestMtuSizeExchange() (>5 sec)
 #define RTERR_PIND  0x03 // bls_att_pushIndicateData()
+#define RTERR_UART  0x04 // UART Busy!
 
 // CMD_DEV_ERR  0x0f // Runtime Error
 typedef struct  __attribute__((packed)) _dev_err_t{
@@ -307,12 +308,7 @@ extern u32 not_send_count; // diag count
 extern u8 rx_len; // flag - пришла команда в read_pkt
 extern u8 tx_len; // flag - есть данные для передачи в send_pkt
 
-#if (USE_USB_CDC)
-void send_usb_err(u16 err_id, u16 err);
-#endif
-#if (USE_BLE)
-void send_ble_err(u16 err_id, u16 err);
-#endif
+void send_rtm_err(u16 err_id, u16 err);
 
 /*******************************************************************************
  * Function Name : usb_ble_cmd_decode.

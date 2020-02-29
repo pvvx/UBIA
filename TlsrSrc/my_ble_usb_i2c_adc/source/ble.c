@@ -35,7 +35,7 @@ extern u16 SppDataServer2ClientDataCCC;
 #define CONNECTION_START_WAIT_TIME_US 	(10*1000000) // 10 sec
 #define CONNECTION_PING_WAIT_TIME_US 	(25*1000000) // 25 sec
 
-#define SET_TX_MTU  0
+#define SET_TX_MTU  1
 
 #define LOOP_MIN_CYCLE 0
 #if LOOP_MIN_CYCLE
@@ -428,7 +428,7 @@ void ble_init(void) {
 #if ((MTU_RX_DATA_SIZE) > 23)
 		blc_att_setRxMtuSize(MTU_RX_DATA_SIZE); 	// If not set RX MTU size, default is: 23 bytes, max 241
 #endif
-#if (!SET_TX_MTU)
+#if 1 //(!SET_TX_MTU)
 		blc_att_requestMtuSizeExchange(BLS_CONN_HANDLE, MTU_DATA_SIZE);
 #endif
 //	blc_ll_exchangeDataLength(LL_LENGTH_RSP, DLE_DATA_SIZE);// LL_LENGTH_REQ, LL_LENGTH_RSP );
@@ -611,7 +611,7 @@ void main_ble_loop() {
 			//  packet_length 20 + 27 * x байт, MTU_DATA_SIZE = packet_length +7
 			i = blc_att_requestMtuSizeExchange(BLS_CONN_HANDLE, MTU_DATA_SIZE);
 			if (i != BLE_SUCCESS) {
-				send_ble_err(RTERR_MTEX, i);
+				send_rtm_err(RTERR_MTEX, i);
 				wrk_stage = 0xff;
 			}
 			else {
@@ -632,6 +632,17 @@ void main_ble_loop() {
 		}
 		else { // wrk_enable
 			switch(wrk_stage) {
+			case 0: // ожидание ???
+#if (SET_TX_MTU)
+				// ожидание переключения MTU
+				if(clock_tik_exceed(connection_wait_tick, 1500000*CLOCK_SYS_CLOCK_1US)) { // > 1500 ms ?
+					send_rtm_err(RTERR_TOMT, ATT_ERR_DATA_LENGTH_EXCEED_MTU_SIZE);
+					// wrk_stage = 0xff; // на отключение
+					wrk_stage = 1;
+				}
+#else
+				wrk_stage = 1;
+#endif
 			case 1: // рабочий цикл
 #if USE_HX711
 				if(hx711_mode && !gpio_read(HX711_DOUT)) {
@@ -652,7 +663,7 @@ void main_ble_loop() {
 						if(i == BLE_SUCCESS) {
 							tx_len = 0;
 						} else if(i != ATT_ERR_PREVIOUS_INDICATE_DATA_HAS_NOT_CONFIRMED) {
-							send_ble_err(RTERR_PIND, i);
+							send_rtm_err(RTERR_PIND, i);
 							wrk_stage = 0xff;
 						}
 					}// else not_send_count++;
@@ -699,7 +710,12 @@ void main_ble_loop() {
 #if (USE_INT_UART)
 				if(reg_dma_rx_rdy0 & FLD_DMA_UART_RX) {
 					tx_len = uart_rx_buff[0];
-					memcpy(&send_pkt.data, &uart_rx_buff[4], tx_len);
+					if(tx_len) {
+						if(tx_len > UART_RX_TX_LEN)
+							tx_len = UART_RX_TX_LEN;
+						memcpy(&send_pkt.data, &uart_rx_buff[4], tx_len);
+
+					}
 					reg_dma_irq_src = FLD_DMA_UART_RX;
 					send_pkt.head.cmd = CMD_DEV_UAR;
 					send_pkt.head.size = tx_len;
@@ -723,24 +739,13 @@ void main_ble_loop() {
 						if(i == BLE_SUCCESS) {
 							tx_len = 0;
 						} else if(i != ATT_ERR_PREVIOUS_INDICATE_DATA_HAS_NOT_CONFIRMED) {
-							send_ble_err(RTERR_PIND, i);
+							send_rtm_err(RTERR_PIND, i);
 							wrk_stage = 0xff;
 						}
 					}// else not_send_count++;
 	//					tick_wakeup = clock_time();
 				}
 				} // if(!tx_len)
-				break;
-			case 0: // ожидание ???
-#if (SET_TX_MTU)
-				// ожидание переключения MTU
-				if(clock_tik_exceed(connection_wait_tick, 1500000*CLOCK_SYS_CLOCK_1US)) { // > 1500 ms ?
-					send_ble_err(RTERR_TOMT, ATT_ERR_DATA_LENGTH_EXCEED_MTU_SIZE);
-					wrk_stage = 0xff; // на отключение
-				}
-#else
-				wrk_stage = 1;
-#endif
 				break;
 			default: // отключение
 				bls_ll_terminateConnection(HCI_ERR_REMOTE_USER_TERM_CONN);
