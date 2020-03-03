@@ -30,7 +30,7 @@
 
 #if(/*__TL_LIB_8266__ || */(MCU_CORE_TYPE == MCU_CORE_8266))
 
-#if ( MODULE_ADC_ENABLE)
+#if (MODULE_ADC_ENABLE)
 #include "../../proj_lib/rf_drv.h"
 #include "adc.h"
 static inline void adc_set_clk_freq(u8 mhz){
@@ -124,8 +124,8 @@ u16 adc_get(void)
 }
 
 /*between start and end must > 200us
- * ½öÊÊÓÃÓÚ8266 A2Ğ¾Æ¬
- * power down step£º
+ * ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½8266 A2Ğ¾Æ¬
+ * power down stepï¿½ï¿½
  * 	1, change input to GND
  * 	2, lower adc clk
  * 	3, start adc

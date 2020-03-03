@@ -109,6 +109,16 @@ _attribute_ram_code_ void GetNewRegData(void) {
 	}
 }
 
+_attribute_ram_code_ void TimerIrq(void) {
+   	if(reg_irq_src & FLD_IRQ_TMR1_EN) {
+		reg_tmr_sta = FLD_TMR_STA_TMR1; // clear irq status
+   		reg_irq_src =  FLD_IRQ_TMR1_EN;
+   		if(timer_flg)
+   			GetNewRegData();
+   	}
+}
+
+
 /* I2C Device go Sleep */
 void I2CDevSleep() {
 	cfg_i2c.pktcnt = 0;

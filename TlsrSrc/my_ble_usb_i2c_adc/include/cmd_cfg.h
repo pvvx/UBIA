@@ -111,8 +111,13 @@ typedef struct  __attribute__((packed)) _dev_uart_cfg_t{
 
 // CMD_DEV_DAC Dac cfg
 typedef struct  __attribute__((packed)) _dev_dac_cfg_t{
-	int16_t value[1]; // значение вывода
-	uint8_t mode;  // 0..4 !первая запись устанавливает внуренний уровень, последующие выводятся на выход GPIO!
+	// ! первый вывод устанавливеат внуренний уровень, последующие выводятся на выход GPIO!
+#if (MCU_CORE_TYPE == MCU_CORE_8266)
+	int16_t value[1]; // значение вывода в DAC0 and DAC1
+#else
+	int16_t value[2]; // значение вывода в DAC0 and DAC1
+#endif
+	uint8_t mode;  // 0..4
 	uint8_t slk_mhz;  // 1..16
 	uint16_t step; // 0..3ff
 	uint8_t volume; // 0..7f
@@ -297,7 +302,6 @@ extern blk_rx_pkt_t read_pkt;
 extern blk_tx_pkt_t send_pkt;
 
 #if (USE_USB_CDC && USE_BLE)
-volatile u8 usb_actived; // flag =1 -> usb, =0 -> ble
 extern volatile unsigned char usb_actived;
 int tst_usb_actived(void);
 #endif

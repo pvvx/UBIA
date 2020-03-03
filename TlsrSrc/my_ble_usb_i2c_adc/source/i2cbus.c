@@ -246,23 +246,32 @@ void I2CBusDeInit(void) {
 	BM_SET(reg_gpio_oen(GPIO_PE7), GPIO_PE7 & 0xff); // disable output
 	BM_SET(reg_gpio_gpio_func(GPIO_PE7), GPIO_PE7 & 0xff); // is gpio
 	BM_SET(reg_gpio_config_func(GPIO_PE7), GPIO_PE7 & 0xff); // is gpio
-//	BM_CLR(reg_gpio_ie(GPIO_PE7), GPIO_PE7 & 0xff);	// disable input
+	BM_CLR(reg_gpio_ie(GPIO_PE7), GPIO_PE7 & 0xff);	// disable input
 	// SCL
 	BM_SET(reg_gpio_oen(GPIO_PF1), GPIO_PF1 & 0xff); // disable output
 	BM_SET(reg_gpio_gpio_func(GPIO_PF1), GPIO_PF1 & 0xff); // is gpio
-//	BM_CLR(reg_gpio_ie(GPIO_PF1), GPIO_PF1 & 0xff);	// disable input
+	BM_CLR(reg_gpio_ie(GPIO_PF1), GPIO_PF1 & 0xff);	// disable input
 	// up_down_resistor
 	analog_write(0x14, (analog_read(0x14) & (~((3 << 2) | (3 <<6))))
 				|  (GPIO_PULL_UP_0 << 2) // PE7
 				|  (GPIO_PULL_UP_0 << 6) // PF1
 				);
 #else
-/*
-	u32 gpio_sda = GPIO_PA3;
-	u32 gpio_scl = GPIO_PA4;
-	gpio_setup_up_down_resistor(gpio_sda, PM_PIN_PULLUP_1M);       // 10k pull_up resistor
-	gpio_setup_up_down_resistor(gpio_scl, PM_PIN_PULLUP_1M);       // 10k pull_up resistor
-*/
+	// SDA
+	BM_SET(reg_gpio_oen(GPIO_PA3), GPIO_PA3 & 0xff); // disable output
+	BM_SET(reg_gpio_gpio_func(GPIO_PA4), GPIO_PA3 & 0xff); // is gpio
+	BM_CLR(reg_gpio_config_func(GPIO_PA3), GPIO_PA3 & 0xff); // is gpio
+	BM_CLR(reg_gpio_ie(GPIO_PA3), GPIO_PA3 & 0xff);	// disable input
+	// SCL
+	BM_SET(reg_gpio_oen(GPIO_PA4), GPIO_PA4 & 0xff); // disable output
+	BM_SET(reg_gpio_gpio_func(GPIO_PA4), GPIO_PA4 & 0xff); // is gpio
+	BM_CLR(reg_gpio_config_func(GPIO_PA3), GPIO_PA3 & 0xff); // is gpio
+	BM_CLR(reg_gpio_ie(GPIO_PA4), GPIO_PA4 & 0xff);	// disable input
+	// up_down_resistor
+	analog_write(0x0b, (analog_read(0x0b) & (~((3 << 2) | (3 <<4))))
+				|  (GPIO_PULL_UP_0 << 2) // PA3
+				|  (GPIO_PULL_UP_0 << 4) // PA4
+				);
 #endif
 	BM_CLR(reg_rst_clk0, FLD_CLK_I2C_EN);
 }
@@ -277,20 +286,20 @@ void I2CBusInit(unsigned int clk_khz) {
 	gpio_set_func(gpio_sda, AS_I2C);  //disable gpio function
 	gpio_set_func(gpio_scl, AS_I2C);  //disable gpio function
 
-	gpio_setup_up_down_resistor(gpio_sda, PM_PIN_PULLUP_10K);
-	gpio_setup_up_down_resistor(gpio_scl, PM_PIN_PULLUP_10K);
+	gpio_set_pull_resistor(gpio_sda, PM_PIN_PULLUP_10K);
+	gpio_set_pull_resistor(gpio_scl, PM_PIN_PULLUP_10K);
 
 	gpio_set_input_en(gpio_sda, 1);
     gpio_set_input_en(gpio_scl, 1);
 #else
     // SCL
 	BM_CLR(reg_gpio_gpio_func(GPIO_PF1), GPIO_PF1 & 0xff);
-	BM_SET(reg_gpio_ie(GPIO_PF1), BIT(1));  //enable input
+	BM_SET(reg_gpio_ie(GPIO_PF1), GPIO_PF1 & 0xff);  //enable input
 	// SDA
 	BM_CLR(reg_gpio_gpio_func(GPIO_PE7), GPIO_PE7 & 0xff);
     BM_CLR(reg_gpio_config_func(GPIO_PE7), GPIO_PE7 & 0xff);
-	BM_SET(reg_gpio_ie(GPIO_PE7), BIT(7));  //enable input
-	BM_CLR(reg_gpio_oen(GPIO_PE7), BIT(7)); //enable output
+	BM_SET(reg_gpio_ie(GPIO_PE7), GPIO_PE7 & 0xff);  //enable input
+	BM_CLR(reg_gpio_oen(GPIO_PE7), GPIO_PE7 & 0xff); //enable output
 	// up_down_resistor
 	analog_write(0x14, (analog_read(0x14) & (~((3 << 2) | (3 <<6))))
 				|  (GPIO_PULL_UP_10K << 2) // PE7
@@ -299,13 +308,15 @@ void I2CBusInit(unsigned int clk_khz) {
 #endif
 
 #else
-	u32 gpio_sda = GPIO_PA3;
-	u32 gpio_scl = GPIO_PA4;
-	gpio_setup_up_down_resistor(gpio_sda, PM_PIN_PULLUP_10K);       // 10k pull_up resistor
-	gpio_setup_up_down_resistor(gpio_scl, PM_PIN_PULLUP_10K);       // 10k pull_up resistor
-
-	gpio_set_func(gpio_sda, AS_I2C);  // disable gpio function
-	gpio_set_func(gpio_scl, AS_I2C);  // disable gpio function
+	BM_CLR(reg_gpio_gpio_func(GPIO_PA3), (GPIO_PA3 | GPIO_PA4) & 0xff); // disable gpio
+	BM_SET(reg_gpio_config_func(GPIO_PA3), (GPIO_PA3 | GPIO_PA4) & 0xff); // disable gpio
+	BM_SET(reg_gpio_ie(GPIO_PA3), (GPIO_PA3 | GPIO_PA4)&0xff);   // enable input
+	BM_CLR(reg_gpio_oen(GPIO_PA3), (GPIO_PA3 | GPIO_PA4)&0xff);  // enable output
+	// up_down_resistor
+	analog_write(0x0b, (analog_read(0x0b) & (~((3 << 2) | (3 <<4))))
+				|  (PM_PIN_PULLUP_10K << 2) // PA3
+				|  (PM_PIN_PULLUP_10K << 4) // PA4
+				);
 #endif
 	// FI2C = (System Clock/(address 0x73[7:4]+1)) / (4 *clock speed configured in address 0x00)
 	// System Clock / (8 * address 0x00)

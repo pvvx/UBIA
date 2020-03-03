@@ -95,8 +95,8 @@ The high speed clock (FHS) is selectable via address
 #define	SYS_CLK_RC		1 // Analog Telink SDK: CLOCK_TYPE_OSC (32,16,..MHz)
 #define	SYS_CLK_QUARTZ	2 // Analog Telink SDK: CLOCK_TYPE_PAD (16,8,..MHz)
 
-#define	QUARTZ_16MHZ	0
-#define	QUARTZ_12MHZ	1
+#define	QUARTZ_16MHZ	16
+#define	QUARTZ_12MHZ	12
 #define SET_PLL 		QUARTZ_16MHZ	// QUARTZ_16MHZ, QUARTZ_12MHZ
 
 #if (SET_PLL == QUARTZ_16MHZ)
@@ -119,6 +119,7 @@ The high speed clock (FHS) is selectable via address
 #error Set CLOCK_SYS_CLOCK_HZ SYS_CLK_HS_DIV, SYS_CLK_RC, SYS_CLK_QUARTZ!
 #endif
 #endif // #ifndef CLOCK_SYS_TYPE
+/*
 //-------------------------- KEYs
 #define	KEY_K1							GPIO_PD2	// GPIO4
 #define PD2_FUNC						AS_GPIO		// AS_ADC, AS_GPIO
@@ -131,14 +132,13 @@ The high speed clock (FHS) is selectable via address
 #define PC4_OUTPUT_ENABLE				0
 #define PC4_INPUT_ENABLE				1
 #define	PULL_WAKEUP_SRC_PC4				GPIO_PULL_UP_10K
-/*
+
 #define	KEY_K2	 						GPIO_PC5	// UART_CTS/PWM5
 #define PC5_FUNC						AS_GPIO		// AS_ADC, AS_GPIO, AS_SPI
 #define PC5_OUTPUT_ENABLE				0
 #define PC5_INPUT_ENABLE				1
 #define	PULL_WAKEUP_SRC_PC5				PM_PIN_PULLUP_10K
-*/
-/*
+
 enum{
 	VK_SW1 = 0x01,
 	VK_SW2 = 0x02
@@ -192,7 +192,7 @@ enum{
 #define PULL_WAKEUP_SRC_PB0           	PM_PIN_PULLUP_1M  // SWS, should be pulled up, otherwise single wire would be triggered
 
 //-------------------------- UART
-#if	(!BLE_AUDIO_ENABLE && USE_UART)
+#if 0 //	(!BLE_AUDIO_ENABLE && USE_UART)
 	#define UART_TX_PIN         		GPIO_PC2
 	#define PC2_FUNC                	AS_UART
 	#define PC2_INPUT_ENABLE        	0
@@ -213,6 +213,8 @@ enum{
 #if USE_USB
 #define PE2_FUNC	AS_USB
 #define PE3_FUNC	AS_USB
+#define PE2_INPUT_ENABLE	1
+#define PE3_INPUT_ENABLE	1
 #define PULL_WAKEUP_SRC_PE2           	PM_PIN_PULLDOWN_100K // PM_PIN_PULLUP_1M  // USB DM
 #define PULL_WAKEUP_SRC_PE3           	PM_PIN_PULLDOWN_100K // PM_PIN_PULLUP_1M  // USB DP
 #endif

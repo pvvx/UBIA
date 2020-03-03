@@ -97,8 +97,8 @@ The high speed clock (FHS) is selectable via address
 #define	SYS_CLK_RC		1 // Analog Telink SDK: CLOCK_TYPE_OSC (32,16,..MHz)
 #define	SYS_CLK_QUARTZ	2 // Analog Telink SDK: CLOCK_TYPE_PAD (16,8,..MHz)
 
-#define	QUARTZ_16MHZ	0
-#define	QUARTZ_12MHZ	1
+#define	QUARTZ_16MHZ	16
+#define	QUARTZ_12MHZ	12
 #define SET_PLL 		QUARTZ_16MHZ	// QUARTZ_16MHZ, QUARTZ_12MHZ
 
 #if (SET_PLL == QUARTZ_16MHZ)

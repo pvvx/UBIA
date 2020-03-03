@@ -54,18 +54,12 @@ void set_sdm_buf(signed short* pbuff, unsigned int size_buff)
 }
 
 void sdm_off(void) {
-#if (MCU_CORE_TYPE == MCU_CORE_8266)
-		/***enable SDMN pins(sdm_n)***/
-		BM_SET(reg_gpio_gpio_func(GPIO_SDMN), GPIO_SDMN & 0xff);
-//		BM_CLR(reg_gpio_config_func(GPIO_SDMN), GPIO_SDMN & 0xff);
-//		BM_CLR(reg_gpio_config_func6, BIT(4));   //clear 0x5b6[4]
-//		BM_SET(reg_gpio_ie(GPIO_SDMN), GPIO_SDMN & 0xff);  //enable input
-#else
 		/***enable SDM pins(sdm_n,sdm_p)***/
-		gpio_set_func(GPIO_SDMP,AS_GPIO);  //disable gpio function
-		gpio_set_func(GPIO_SDMN,AS_GPIO);  //disable gpio function
-#endif
-		gpio_setup_up_down_resistor(HX711_DOUT, PM_PIN_PULLDOWN_100K);
+		BM_SET(reg_gpio_gpio_func(GPIO_SDMP), (GPIO_SDMP | GPIO_SDMN) & 0xff); // enable gpio function
+		BM_CLR(reg_gpio_ie(GPIO_SDMP), (GPIO_SDMP | GPIO_SDMN) & 0xff);  // disable input
+//		gpio_set_pull_resistor(GPIO_SDMP, PM_PIN_PULLDOWN_100K);
+//		gpio_set_pull_resistor(GPIO_SDMN, PM_PIN_PULLDOWN_100K);
+
 		reg_i2s_step = 16;
 		reg_aud_ctrl = 0; //BM_CLR(reg_aud_ctrl,FLD_AUD_SDM_PLAY_EN);  //close sdm player
 		reg_clk_en2  &= ~(FLD_CLK2_AUD_EN | FLD_RST_ADC | FLD_CLK2_DIFIO_EN);	// disable audio clock
@@ -116,29 +110,20 @@ void sdm_init(unsigned char sdm_clk_mhz, unsigned short step, unsigned short vol
 		reg_aud_ctrl = FLD_AUD_ENABLE | FLD_AUD_SDM_PLAY_EN | FLD_AUD_PN2_GENERATOR_EN | FLD_AUD_PN1_GENERATOR_EN;
 #endif
 		if(tmp & FLD_I2S_CLK_EN) {
-#if (MCU_CORE_TYPE == MCU_CORE_8266)
-		/***enable SDMN pins(sdm_n)***/
-		BM_CLR(reg_gpio_gpio_func(GPIO_SDMN), GPIO_SDMN & 0xff);
-//и так в 0 BM_CLR(reg_gpio_config_func(GPIO_SDMN), GPIO_SDMN & 0xff);
-//и так в 0	BM_CLR(reg_gpio_config_func6, BIT(4));   //clear 0x5b6[4]
-		BM_SET(reg_gpio_ie(GPIO_SDMN), GPIO_SDMN & 0xff);  // enable input
-#else
-		/***enable SDM pins(sdm_n,sdm_p)***/
-		gpio_set_func(GPIO_SDMP,AS_SDM);  // disable gpio function
-		gpio_set_func(GPIO_SDMN,AS_SDM);  // disable gpio function
-
-		gpio_set_input_en(GPIO_SDMP,1);   // in sdk, require to enable input.because the gpio_init() function in main() function.
-		gpio_set_input_en(GPIO_SDMN,1);   // in sdk, require to enable input
-#endif
+			/***enable SDM pins(sdm_n,sdm_p)***/
+			BM_CLR(reg_gpio_gpio_func(GPIO_SDMP), (GPIO_SDMP | GPIO_SDMN) & 0xff); // disable gpio function
+			BM_SET(reg_gpio_ie(GPIO_SDMP), (GPIO_SDMP | GPIO_SDMN) & 0xff);  // enable input
+//			gpio_set_pull_resistor(GPIO_SDMP, PM_PIN_UP_DOWN_FLOAT);
+//			gpio_set_pull_resistor(GPIO_SDMN, PM_PIN_UP_DOWN_FLOAT);
 		}
-		// enable dmic function of SDMP and SDMM
-//и так в 0		reg_gpio_config_func4 &= (~(FLD_DMIC_CK_RX_CLK | FLD_I2S_DI_RX_DAT));
 }
 
-static void set_dac_out(signed short value) {
+static void set_dac_out(signed short value_dac0, signed short value_dac1) {
 	int i;
-	for(i=0; i < 16; i++)
-		single_out_buf[i] = value;
+	for(i=0; i < 16; i+=2) {
+		single_out_buf[i] = value_dac0;
+		single_out_buf[i+1] = value_dac1;
+	}
 //	reg_aud_rptr = 0;
 	reg_aud_base_adr = (unsigned short)((u32)single_out_buf);
 	reg_aud_buff_size = 1; // min step
@@ -154,16 +139,20 @@ static void gen_triangular(void) {
 	u32 x = 0x8000;
 	for(i = 0; i < ADC_DFIFO_SIZE/2; i+=2) {
 		dfifo[i] = x;
+		dfifo[i+1] = x;
 		x+=(65536/(ADC_DFIFO_SIZE/4));
 	}
 	for(; i < ADC_DFIFO_SIZE; i+=2) {
 		x-=(65536/(ADC_DFIFO_SIZE/4));
 		dfifo[i] = x;
+		dfifo[i+1] = x;
 	}
 #else
 	for(i = 0; i < ADC_DFIFO_SIZE; i+=4) {
 		dfifo[i] = 0x7fff;
+		dfifo[i+1] = 0x7fff;
 		dfifo[i+2] = 0x8000;
+		dfifo[i+4] = 0x8000;
 	}
 #endif
 	sdm_set_buf(dfifo, sizeof(dfifo));
@@ -193,7 +182,11 @@ unsigned int dac_cmd(dev_dac_cfg_t *p) {
 	unsigned int ret = p->mode;
 	switch(p->mode) {
 	case 1: // вывод в DAC (10 ms start! -> первая запись устанавливает внуренний уровень, последующие выводятся на выход GPIO )
-		set_dac_out(p->value[0]);
+#if (MCU_CORE_TYPE == MCU_CORE_8266)
+		set_dac_out(p->value[0], p->value[0]);
+#else
+		set_dac_out(p->value[0], p->value[1]);
+#endif
 #if (USE_BLE)
 		sleep_mode |= 4;
 #endif
@@ -216,7 +209,7 @@ unsigned int dac_cmd(dev_dac_cfg_t *p) {
 		sdm_init(p->slk_mhz, p->step, p->volume);
 		break;
 	case 4: // test! adc->dac
-		ADC_Stop();
+//		ADC_Stop();
 		sdm_set_buf(dfifo, sizeof(dfifo));
 #if (USE_BLE)
 		sleep_mode |= 4;

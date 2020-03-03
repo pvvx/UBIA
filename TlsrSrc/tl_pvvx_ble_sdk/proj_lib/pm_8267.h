@@ -46,6 +46,20 @@ extern _attribute_aligned_(4) pm_tim_recover_t			pm_timRecover;
 
 typedef void (*pm_optimize_handler_t)(void);
 
+#if(__TL_LIB_8269__ || (MCU_CORE_TYPE == MCU_CORE_8269)	)
+static inline void usb_dp_pullup_en (int en)
+{
+	unsigned char dat = ReadAnalogReg(0x00);
+	if (en) {
+		dat &= ~(BIT(4));
+	}
+	else {
+		dat |= BIT(4);
+	}
+
+	WriteAnalogReg (0x00, dat);
+}
+#else
 static inline void usb_dp_pullup_en (int en)
 {
 	unsigned char dat = ReadAnalogReg(0x08);
@@ -58,6 +72,7 @@ static inline void usb_dp_pullup_en (int en)
 
 	WriteAnalogReg (0x08, dat);
 }
+#endif
 
 #define SUSPEND_MODE	0
 #define DEEPSLEEP_MODE	1

@@ -69,8 +69,8 @@ mask_not 0x3f       0xcf	  0xf3       0xfc
  
 //if GPIO_DP,please check usb_dp_pullup_en() valid or not first.
 void gpio_setup_up_down_resistor(u32 gpio, u32 up_down) {
-	u8 r_val;
-
+	u8 r_val = up_down;
+/*
 	if(up_down == PM_PIN_UP_DOWN_FLOAT) {
 		r_val = 0;
 	}
@@ -83,7 +83,7 @@ void gpio_setup_up_down_resistor(u32 gpio, u32 up_down) {
 	else {
 		r_val = PM_PIN_PULLDOWN_100K;
 	}
-
+*/
     u8 pin = gpio & 0xff;
     u8 base_ana_reg = 0x0b + ((gpio >> 8) << 1);
     u8 mask_not = 0xfc;   //default for  PX2  PX6
@@ -121,9 +121,9 @@ void gpio_setup_up_down_resistor(u32 gpio, u32 up_down) {
         }
     }
 
-    if(GPIO_DP == gpio){
-        //usb_dp_pullup_en (0);
-    }
+//    if(GPIO_DP == gpio){
+//		usb_dp_pullup_en (0);
+//    }
 
 	analog_write(base_ana_reg, (analog_read(base_ana_reg) & mask_not) | (r_val << shift_num));
 }

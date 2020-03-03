@@ -498,7 +498,7 @@ void 	att_req_write_cmd (u8 *dat, u16 attHandle, u8 *buf, int len);
 
 
 
-ble_sts_t 	bls_att_setDeviceName(u8* pName,u8 len);  //only module/mesh/hci use
+ble_sts_t 	bls_att_setDeviceName(u8* pName,u8 len);  // only module/mesh/hci use
 
 
 int 		att_register_idle_func (void *p);

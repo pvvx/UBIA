@@ -37,15 +37,7 @@
 _attribute_ram_code_ void irq_handler(void)
 {
 #if (USE_I2C_DEV)
-	if((reg_irq_mask1 & FLD_IRQ_TMR1_EN) != 0 && (reg_irq_src & FLD_IRQ_TMR1_EN) != 0) {
-		reg_tmr_sta = FLD_TMR_STA_TMR1; // clear irq status
-		reg_irq_src =  FLD_IRQ_TMR1_EN;
-#if defined(LED_POWER)
-		LED_POWER_TOGLE();
-#endif
-		if(timer_flg)
-			GetNewRegData();
-	}
+	TimerIrq();
 #endif
 #if (USE_USB_CDC && USE_BLE)
 	if(usb_actived)

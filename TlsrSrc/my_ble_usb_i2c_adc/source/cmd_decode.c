@@ -45,6 +45,7 @@ static inline void test_function(void) {};
 //--------- Test! >
 
 #if (USE_USB_CDC && USE_BLE)
+volatile unsigned char usb_actived; // flag =1 -> usb, =0 -> ble
 int tst_usb_actived(void) {
 	usb_actived = gpio_read(KEY_BLE_USB) != 0;
 	return usb_actived;
@@ -94,7 +95,6 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 #if (USE_INT_UART)
 			case CMD_DEV_UAR: // Send UART
 				//	if(!(reg_uart_status1 & FLD_UART_TX_DONE))
-
 				txlen = pbufi->head.size;
 				if (pbufi->head.size) {
 					if(!uart_enabled) {
@@ -265,11 +265,11 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 			//-------
 #if (USE_BLE)
 			case CMD_DEV_CPU: // Connect parameters Update
+				memcpy(&pbufo->data.con, &ble_con_ini, sizeof(ble_con_ini));
 				txlen = pbufi->head.size;
 				if (txlen) {
 					if(txlen > sizeof(ble_con_ini))
 						txlen = sizeof(ble_con_ini);
-					memcpy(&pbufo->data.con, &ble_con_ini, sizeof(ble_con_ini));
 					memcpy(&pbufo->data.con, &pbufi->data, txlen);
 					if(pbufi->data.con.intervalMax & 0x8000)
 						pbufo->data.con.intervalMax &= 0x7fff;

@@ -427,9 +427,6 @@ static inline void gpio_init(void){
 							(PULL_WAKEUP_SRC_PF1<<6));
 }
 
-
-
-
 void gpio_set_wakeup(u32 pin, u32 level, int en);
 
 void gpio_setup_up_down_resistor(u32 gpio, u32 up_down);

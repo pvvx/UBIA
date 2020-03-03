@@ -42,17 +42,19 @@
 
 //extern void *pvPortMalloc( size_t xWantedSize );
 //extern void vPortFree( void *pv );
-#define malloc(a)	buf_epp // pvPortMalloc
+#define malloc(a) buf_epp // pvPortMalloc
 #define free(a)	// vPortFree
 
 #define _flash_mutex_lock()
 #define _flash_mutex_unlock()
-#define _flash_read_dword(a) (*(volatile u32*)(FLASH_BASE_ADDR + (a)))
-#define _flash_read(a,b,c) memcpy((void *)c, (void *)(FLASH_BASE_ADDR + (unsigned int)a), b) // _flash_read(rdaddr, len, pbuf);
-#define _flash_memcmp(a,b,c) memcmp((void *)(FLASH_BASE_ADDR + (unsigned int)a), c, b) // _flash_memcmp(xfaddr + fobj_head_size, size, ptr) == 0)
-#define _flash_erase_sector(a) flash_erase_sector(a)
-#define _flash_write_dword(a,d) { unsigned int _dw = d; flash_write_page(a, 4, (unsigned char *)&_dw); }
-#define _flash_write(a,b,c) flash_write_page(a,b,(unsigned char *)c) //_flash_write(wraddr, len, pbuf);
+#define _flash_read(a,b,c) flash_read_page(FLASH_BASE_ADDR + a, b, (u8 *)c)
+#define _flash_erase_sector(a) flash_erase_sector(FLASH_BASE_ADDR + a)
+#define _flash_write_dword(a,d) { unsigned int _dw = d; flash_write_page(FLASH_BASE_ADDR + a, 4, (unsigned char *)&_dw); }
+#define _flash_write(a,b,c) flash_write_page(FLASH_BASE_ADDR + a,b,(unsigned char *)c) //_flash_write(wraddr, len, pbuf);
+// @TODO Clear Flash Cache?
+//#define _flash_read(a,b,c) memcpy((void *)c, (void *)(FLASH_BASE_ADDR + (unsigned int)a), b)
+//#define _flash_read_dword(a) (*(volatile u32*)(FLASH_BASE_ADDR + (a)))
+//#define _flash_memcmp(a,b,c) memcmp((void *)(FLASH_BASE_ADDR + (unsigned int)a), c, b) // _flash_memcmp(xfaddr + fobj_head_size, size, ptr) == 0)
 
 #ifndef LOCAL
 #define LOCAL static
@@ -74,19 +76,31 @@
 
 typedef union __attribute__((packed)) // заголовок объекта сохранения feep
 {
-	struct {
+	struct __attribute__((packed)) {
 	unsigned short size;
 	unsigned short id;
-	} __attribute__((packed)) n;
+	} n;
 	unsigned int x;
 } fobj_head;
 
 #define fobj_head_size 4
 #define fobj_x_free 0xffffffff
-#define MAX_FOBJ_SIZE 512 // максимальный размер сохраняемых объeктов
+#define MAX_FOBJ_SIZE 64 // максимальный размер сохраняемых объeктов
 #define FMEM_ERROR_MAX 5
 
 unsigned char buf_epp[MAX_FOBJ_SIZE+fobj_head_size];
+
+LOCAL inline unsigned int _flash_read_dword(unsigned int addr) {
+	unsigned int ret;
+	_flash_read(FLASH_BASE_ADDR + addr, 4, &ret);
+	return ret;
+}
+
+LOCAL inline unsigned int _flash_memcmp(unsigned int addr, unsigned int len, unsigned char * buf) {
+	_flash_read(FLASH_BASE_ADDR + addr, len, &buf_epp);
+	return memcmp(buf_epp, buf, len);
+}
+
 //-----------------------------------------------------------------------------
 // FunctionName : get_addr_bscfg
 // поиск текушего сегмента
@@ -258,19 +272,6 @@ LOCAL signed short _flash_write_cfg(void *ptr, unsigned short id, unsigned short
 #endif
 					return size; // уже записано то-же самое
 			}
-#if CONFIG_DEBUG_LOG > 100
-			else {
-				int i;
-				uint8_t * p = (uint8_t *)(SPI_FLASH_BASE + xfaddr + fobj_head_size);
-				uint8_t * r = (uint8_t *) ptr;
-				for(i=0; i < size; i+=8) {
-					DBG_8195A("buf[%d]\t%02X %02X %02X %02X  %02X %02X %02X %02X\n",
-								i, r[i], r[i+1], r[i+2], r[i+3], r[i+4], r[i+5], r[i+6], r[i+7]);
-					DBG_8195A("obj[%d]\t%02X %02X %02X %02X  %02X %02X %02X %02X\n",
-								i, p[i], p[i+1], p[i+2], p[i+3], p[i+4], p[i+5], p[i+6], p[i+7]);
-				}
-			}
-#endif
 		}
 	}
 	DBG_FEEP_INFO("write obj id: %04x [%d]\n", id, size);
@@ -359,7 +360,6 @@ signed short flash_read_cfg(void *ptr, unsigned short id, unsigned short maxsize
 			if(faddr >= FMEM_ERROR_MAX) {
 				if(maxsize != 0 && ptr != NULL)
 					_flash_read(faddr + fobj_head_size, mMIN(fobj.n.size, maxsize), ptr);
-
 #if CONFIG_DEBUG_LOG > 3
 				DBG_FEEP_INFO("read ok, faddr: %p, size: %d\n", faddr,  fobj.n.size);
 #endif

@@ -1,27 +1,31 @@
 /********************************************************************************************************
- * @file     gpio_default_8267.h
+ * @file     gpio_default_8269.h 
  *
  * @brief    for TLSR chips
  *
- * @author	 BLE Group
- * @date     May. 12, 2018
+ * @author	 telink
  *
  * @par      Copyright (c) Telink Semiconductor (Shanghai) Co., Ltd.
  *           All rights reserved.
- *
- *			 The information contained herein is confidential and proprietary property of Telink
- * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms
- *			 of Commercial License Agreement between Telink Semiconductor (Shanghai)
- *			 Co., Ltd. and the licensee in separate contract or the terms described here-in.
+ *           
+ *			 The information contained herein is confidential and proprietary property of Telink 
+ * 		     Semiconductor (Shanghai) Co., Ltd. and is available under the terms 
+ *			 of Commercial License Agreement between Telink Semiconductor (Shanghai) 
+ *			 Co., Ltd. and the licensee in separate contract or the terms described here-in. 
  *           This heading MUST NOT be removed from this file.
  *
- * 			 Licensees are granted free, non-transferable use of the information in this
- *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided.
- *
+ * 			 Licensees are granted free, non-transferable use of the information in this 
+ *			 file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
+ *           
  *******************************************************************************************************/
+#ifndef GPIO_DEF8269_H_
+#define GPIO_DEF8269_H_
 
 #pragma once
 
+#ifndef _USER_CONFIG_DEFINED_
+//#error	user_config.h must be include before this
+#endif
 
 #define GPIO_PULL_UP_0		0
 #define GPIO_PULL_UP_1M		1
@@ -30,28 +34,28 @@
 
 
 #ifndef PA0_INPUT_ENABLE
-#define PA0_INPUT_ENABLE	0
+#define PA0_INPUT_ENABLE	1
 #endif
 #ifndef PA1_INPUT_ENABLE
-#define PA1_INPUT_ENABLE	0
+#define PA1_INPUT_ENABLE	1
 #endif
 #ifndef PA2_INPUT_ENABLE
-#define PA2_INPUT_ENABLE	0
+#define PA2_INPUT_ENABLE	1
 #endif
 #ifndef PA3_INPUT_ENABLE
-#define PA3_INPUT_ENABLE	0
+#define PA3_INPUT_ENABLE	1
 #endif
 #ifndef PA4_INPUT_ENABLE
-#define PA4_INPUT_ENABLE	0
+#define PA4_INPUT_ENABLE	1
 #endif
 #ifndef PA5_INPUT_ENABLE
-#define PA5_INPUT_ENABLE	0
+#define PA5_INPUT_ENABLE	1
 #endif
 #ifndef PA6_INPUT_ENABLE
-#define PA6_INPUT_ENABLE	0
+#define PA6_INPUT_ENABLE	1
 #endif
 #ifndef PA7_INPUT_ENABLE
-#define PA7_INPUT_ENABLE	0
+#define PA7_INPUT_ENABLE	1
 #endif
 #ifndef PA0_OUTPUT_ENABLE
 #define PA0_OUTPUT_ENABLE	0
@@ -126,7 +130,7 @@
 #define PA7_DATA_OUT	0
 #endif
 #ifndef PA0_FUNC
-#define PA0_FUNC	AS_GPIO
+#define PA0_FUNC	AS_SWIRE
 #endif
 #ifndef PA1_FUNC
 #define PA1_FUNC	AS_GPIO
@@ -147,7 +151,7 @@
 #define PA6_FUNC	AS_GPIO
 #endif
 #ifndef PA7_FUNC
-#define PA7_FUNC	AS_GPIO
+#define PA7_FUNC	AS_SWIRE
 #endif
 #ifndef PULL_WAKEUP_SRC_PA0
 #define PULL_WAKEUP_SRC_PA0	0
@@ -176,28 +180,28 @@
 
 //////////////////////////////////////////////////
 #ifndef PB0_INPUT_ENABLE
-#define PB0_INPUT_ENABLE	1    //SWS
+#define PB0_INPUT_ENABLE	1
 #endif
 #ifndef PB1_INPUT_ENABLE
-#define PB1_INPUT_ENABLE	0
+#define PB1_INPUT_ENABLE	1
 #endif
 #ifndef PB2_INPUT_ENABLE
-#define PB2_INPUT_ENABLE	0
+#define PB2_INPUT_ENABLE	1
 #endif
 #ifndef PB3_INPUT_ENABLE
-#define PB3_INPUT_ENABLE	0
+#define PB3_INPUT_ENABLE	1
 #endif
 #ifndef PB4_INPUT_ENABLE
-#define PB4_INPUT_ENABLE	0
+#define PB4_INPUT_ENABLE	1
 #endif
 #ifndef PB5_INPUT_ENABLE
-#define PB5_INPUT_ENABLE	0
+#define PB5_INPUT_ENABLE	1
 #endif
 #ifndef PB6_INPUT_ENABLE
-#define PB6_INPUT_ENABLE	0
+#define PB6_INPUT_ENABLE	1
 #endif
 #ifndef PB7_INPUT_ENABLE
-#define PB7_INPUT_ENABLE	0
+#define PB7_INPUT_ENABLE	1
 #endif
 #ifndef PB0_OUTPUT_ENABLE
 #define PB0_OUTPUT_ENABLE	0
@@ -296,7 +300,7 @@
 #define PB7_FUNC	AS_GPIO
 #endif
 #ifndef PULL_WAKEUP_SRC_PB0
-#define PULL_WAKEUP_SRC_PB0		PM_PIN_PULLUP_1M  //sws pullup
+#define PULL_WAKEUP_SRC_PB0	0 // PM_PIN_PULLUP_1M  sws pullup!
 #endif
 #ifndef PULL_WAKEUP_SRC_PB1
 #define PULL_WAKEUP_SRC_PB1	0
@@ -322,28 +326,28 @@
 
 //////////////////////////////////////////////////
 #ifndef PC0_INPUT_ENABLE
-#define PC0_INPUT_ENABLE	0
+#define PC0_INPUT_ENABLE	1
 #endif
 #ifndef PC1_INPUT_ENABLE
-#define PC1_INPUT_ENABLE	0
+#define PC1_INPUT_ENABLE	1
 #endif
 #ifndef PC2_INPUT_ENABLE
-#define PC2_INPUT_ENABLE	0
+#define PC2_INPUT_ENABLE	1
 #endif
 #ifndef PC3_INPUT_ENABLE
-#define PC3_INPUT_ENABLE	0
+#define PC3_INPUT_ENABLE	1
 #endif
 #ifndef PC4_INPUT_ENABLE
-#define PC4_INPUT_ENABLE	0
+#define PC4_INPUT_ENABLE	1
 #endif
 #ifndef PC5_INPUT_ENABLE
-#define PC5_INPUT_ENABLE	0
+#define PC5_INPUT_ENABLE	1
 #endif
 #ifndef PC6_INPUT_ENABLE
-#define PC6_INPUT_ENABLE	0
+#define PC6_INPUT_ENABLE	1
 #endif
 #ifndef PC7_INPUT_ENABLE
-#define PC7_INPUT_ENABLE	0
+#define PC7_INPUT_ENABLE	1
 #endif
 #ifndef PC0_OUTPUT_ENABLE
 #define PC0_OUTPUT_ENABLE	0
@@ -468,28 +472,28 @@
 
 //////////////////////////////////////////////////
 #ifndef PD0_INPUT_ENABLE
-#define PD0_INPUT_ENABLE	0
+#define PD0_INPUT_ENABLE	1
 #endif
 #ifndef PD1_INPUT_ENABLE
-#define PD1_INPUT_ENABLE	0
+#define PD1_INPUT_ENABLE	1
 #endif
 #ifndef PD2_INPUT_ENABLE
-#define PD2_INPUT_ENABLE	0
+#define PD2_INPUT_ENABLE	1
 #endif
 #ifndef PD3_INPUT_ENABLE
-#define PD3_INPUT_ENABLE	0
+#define PD3_INPUT_ENABLE	1
 #endif
 #ifndef PD4_INPUT_ENABLE
-#define PD4_INPUT_ENABLE	0
+#define PD4_INPUT_ENABLE	1
 #endif
 #ifndef PD5_INPUT_ENABLE
-#define PD5_INPUT_ENABLE	0
+#define PD5_INPUT_ENABLE	1
 #endif
 #ifndef PD6_INPUT_ENABLE
-#define PD6_INPUT_ENABLE	0
+#define PD6_INPUT_ENABLE	1
 #endif
 #ifndef PD7_INPUT_ENABLE
-#define PD7_INPUT_ENABLE	0
+#define PD7_INPUT_ENABLE	1
 #endif
 #ifndef PD0_OUTPUT_ENABLE
 #define PD0_OUTPUT_ENABLE	0
@@ -614,28 +618,28 @@
 
 //////////////////////////////////////////////////
 #ifndef PE0_INPUT_ENABLE
-#define PE0_INPUT_ENABLE	0
+#define PE0_INPUT_ENABLE	1
 #endif
 #ifndef PE1_INPUT_ENABLE
-#define PE1_INPUT_ENABLE	0
+#define PE1_INPUT_ENABLE	1
 #endif
 #ifndef PE2_INPUT_ENABLE
-#define PE2_INPUT_ENABLE	0   //USB =1
+#define PE2_INPUT_ENABLE	1
 #endif
 #ifndef PE3_INPUT_ENABLE
-#define PE3_INPUT_ENABLE	0	//USB =1
+#define PE3_INPUT_ENABLE	1
 #endif
 #ifndef PE4_INPUT_ENABLE
-#define PE4_INPUT_ENABLE	1   //MSPI
+#define PE4_INPUT_ENABLE	1
 #endif
 #ifndef PE5_INPUT_ENABLE
-#define PE5_INPUT_ENABLE	1	//MSPI
+#define PE5_INPUT_ENABLE	1
 #endif
 #ifndef PE6_INPUT_ENABLE
-#define PE6_INPUT_ENABLE	1	//MSPI
+#define PE6_INPUT_ENABLE	1
 #endif
 #ifndef PE7_INPUT_ENABLE
-#define PE7_INPUT_ENABLE	1	//MSPI
+#define PE7_INPUT_ENABLE	1
 #endif
 #ifndef PE0_OUTPUT_ENABLE
 #define PE0_OUTPUT_ENABLE	0
@@ -716,10 +720,10 @@
 #define PE1_FUNC	AS_GPIO
 #endif
 #ifndef PE2_FUNC
-#define PE2_FUNC	AS_GPIO
+#define PE2_FUNC	AS_USB
 #endif
 #ifndef PE3_FUNC
-#define PE3_FUNC	AS_GPIO
+#define PE3_FUNC	AS_USB
 #endif
 #ifndef PE4_FUNC
 #define PE4_FUNC	AS_MSPI
@@ -761,10 +765,10 @@
 
 //////////////////////////////////////////////////
 #ifndef PF0_INPUT_ENABLE
-#define PF0_INPUT_ENABLE	0
+#define PF0_INPUT_ENABLE	1
 #endif
 #ifndef PF1_INPUT_ENABLE
-#define PF1_INPUT_ENABLE	0
+#define PF1_INPUT_ENABLE	1
 #endif
 #ifndef PF0_OUTPUT_ENABLE
 #define PF0_OUTPUT_ENABLE	0
@@ -801,5 +805,8 @@
 #define	PM_PIN_PULLUP_1M		1
 #define	PM_PIN_PULLUP_10K		2
 #define	PM_PIN_PULLDOWN_100K	3
-#define	PM_PIN_UP_DOWN_FLOAT	0
+#define	PM_PIN_UP_DOWN_FLOAT	0xff
+
+#endif // GPIO_DEF8269_H_
+
 

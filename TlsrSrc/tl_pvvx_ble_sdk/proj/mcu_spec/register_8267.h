@@ -228,7 +228,12 @@ enum{
 	FLD_ADC_REF_L = 			BIT_RNG(2,3),
 	FLD_ADC_REF_R = 			BIT_RNG(4,5),
 };
-
+// ADC reference voltage
+enum{
+	FLD_ADC_REF_1V428 = 0,
+	FLD_ADC_REF_AVDD,
+	FLD_ADC_REF_1V224,
+};
 /////////// adc select [4:0] channel; [6:5] mode; [7] signed
 #define reg_adc_chn_m_sel		REG_ADDR8(0x2c)
 #define reg_adc_chn_l_sel		REG_ADDR8(0x2d)
@@ -238,8 +243,45 @@ enum{
 	FLD_ADC_DATA_FORMAT  =      BIT(7),
 };
 #define reg_adc_chn_r_sel		REG_ADDR8(0x2e)
-
+#if(__TL_LIB_8269__ || MCU_CORE_TYPE == MCU_CORE_8269 )
 enum{
+	FLD_ADC_CHN_NONE			= 0x00,
+	FLD_ADC_CHN_C0				= 0x01,
+	FLD_ADC_CHN_C1				= 0x02,
+	FLD_ADC_CHN_C6				= 0x03,
+	FLD_ADC_CHN_C7				= 0x04,
+	FLD_ADC_CHN_B0				= 0x05,
+	FLD_ADC_CHN_B1				= 0x06,
+	FLD_ADC_CHN_B2				= 0x07,
+	FLD_ADC_CHN_B3				= 0x08,
+	FLD_ADC_CHN_B4				= 0x09,
+	FLD_ADC_CHN_B5				= 0x0a,
+	FLD_ADC_CHN_B6				= 0x0b,
+	FLD_ADC_CHN_B7				= 0x0c,
+
+	FLD_ADC_CHN_PGA_R			= 0x0d, // (PGA minus output)
+	FLD_ADC_CHN_PGA_L			= 0x0e, // (PGA positive output)
+
+	FLD_ADC_CHN_TEMP_NEG		= 0x0f, // (temperature	sensor negative)
+	FLD_ADC_CHN_TEMP_POS		= 0x10, // (temperature	sensor positive)
+	FLD_ADC_CHN_AVSS			= 0x11,
+	FLD_ADC_CHN_1R3_SEL			= 0x12, // 1/3 voltage division detection (selectable via analog register)
+	// if shl = FLD_ADC_CHN_1R3_SEL
+	// afe3V_reg02 [5:4]
+	// 01: 1/3 Vddh (i.e. AVDD3)
+	// 10: 1/3 ANA_B<7>
+	// analog_write(0x02, (analog_read(0x02) & 0xcf) | (BIT(4) or BIT(5)));
+	FLD_ADC_CHN_GND				= 0x12,
+
+	FLD_ADC_SINGLE_IN			= 0x00,
+	FLD_ADC_B1_REF				= 0x20, // as inverting input
+	FLD_ADC_B3_REF				= 0x40, // as inverting input
+	FLD_ADC_PGA_L_REF			= 0x60, // (PGA positive output) as inverting input
+	FLD_ADC_DATA_SIGNED			= 0x80,
+};
+#else
+enum{
+	FLD_ADC_CHN_NONE			= 0x00,
 	FLD_ADC_CHN_D0				= 0x01,
 	FLD_ADC_CHN_D1				= 0x02,
 	FLD_ADC_CHN_D2				= 0x03,
@@ -277,8 +319,8 @@ enum{
 	FLD_ADC_PGA_L_C1			= 0x220e,
 
 	FLD_ADC_PGA_OFF				= 0x0000,
-
 };
+#endif
 /*
 [2:0]: SAR ADC resolution selection for L
 	000: 7
@@ -293,6 +335,16 @@ enum{
 enum {
 	FLD_ADC_RESOLUTION_SEL   =  BIT_RNG(0,2),
 };
+enum{
+	FLD_ADC_RES_7BIT				= 0x00,
+	FLD_ADC_RES_9BIT				= 0x01,
+	FLD_ADC_RES_10BIT				= 0x02,
+	FLD_ADC_RES_11BIT				= 0x03,
+	FLD_ADC_RES_12BIT				= 0x04,
+	FLD_ADC_RES_13BIT				= 0x05,
+	FLD_ADC_RES_14BIT				= 0x06,
+	FLD_ADC_RES_14BIT_				= 0x07
+};
 /*
 [2:0]: Select number of clock cycles for ADC Misc sampling time
 	000: 3 cycles
@@ -306,6 +358,16 @@ enum {
 [5:3]: SAR ADC resolution selection for Misc
 	Refer to 0x2f[2:0] */
 #define reg_adc_res_m			REG_ADDR8(0x3c)
+enum{
+	FLD_ADC_SMP_CYCLE_3   = 0,		//!<Adc Sampling Cycle:3
+	FLD_ADC_SMP_CYCLE_6   = 1,		//!<Adc Sampling Cycle:6
+	FLD_ADC_SMP_CYCLE_9   = 2,		//!<Adc Sampling Cycle:9
+	FLD_ADC_SMP_CYCLE_12  = 3,		//!<Adc Sampling Cycle:12
+	FLD_ADC_SMP_CYCLE_18  = 4,		//!<Adc Sampling Cycle:18
+	FLD_ADC_SMP_CYCLE_24  = 5,		//!<Adc Sampling Cycle:24
+	FLD_ADC_SMP_CYCLE_48  = 6,		//!<Adc Sampling Cycle:48
+	FLD_ADC_SMP_CYCLE_144 = 7,		//!<Adc Sampling Cycle:144
+};
 /*
 [2:0]: Select number of clock cycles for ADC L sampling time
 	Refer to 0x3c[2:0] */
@@ -460,13 +522,20 @@ enum{
 	FLD_I2S_CLK_EN =			BIT(7),
 };
 
+/* I2S clock = 48M*reg_i2s_step[6:0]/reg_i2s_mod[7:0]
+ * Mod should be larger than or equal to 2*step.*/
 #define reg_i2s_mod				REG_ADDR8(0x68)
-
+enum{
+	FLD_I2S_MOD_PLL =			192, // FHS is 192Mhz
+	FLD_I2S_MOD_48M =			48, // FHS is 192Mhz
+	FLD_I2S_MOD_OSC =			32, // FHS is RC_32Mhz
+	FLD_I2S_MOD_PAD_Q16 =		16, // FHS is 16Mhz crystal oscillator?
+	FLD_I2S_MOD_PAD_Q12 =		12, // FHS is 12Mhz crystal oscillator?
+};
 static inline void SET_SDM_CLOCK_MHZ(int f_mhz)	{
 	reg_i2s_step = FLD_I2S_CLK_EN | f_mhz;
 	reg_i2s_mod = 0xc0;
 }
-
 /****************************************************
 	 ADC: 0x69
  *****************************************************/
@@ -493,7 +562,6 @@ enum{
 };
 #define reg_dmic_mod			REG_ADDR8(0x6d)
 
-
 #define reg_wakeup_en			REG_ADDR8(0x6e)
 enum{
 	FLD_WAKEUP_SRC_I2C = 		BIT(0),
@@ -515,6 +583,12 @@ enum{
 #define reg_fhs_sel				REG_ADDR8(0x70)
 enum{
 	FLD_FHS_SELECT = 			BIT_RNG(0,1),
+};
+enum{
+	FHS_SEL_PLL = 0,	// 192M clock from pll
+	FHS_SEL_48M = 1,	// 48M pll
+	FHS_SEL_OSC = 2,	// 32M clock from osc
+	FHS_SEL_PAD = 3		// 12M/16M clock from pad (quartz)
 };
 enum{
 	FHS_SEL_192M_PLL = 0,
@@ -637,7 +711,10 @@ enum{
 	FLD_UART_TIMEOUT_BW = 		BIT_RNG(0,7),		//  timeout bit width
 	FLD_UART_TIMEOUT_MUL = 		BIT_RNG(8,9),
 };
-
+#define  FLD_UART_BW_MUL1  0             // timeout is bit_width*1
+#define  FLD_UART_BW_MUL2  BIT(8)        // timeout is bit_width*1
+#define  FLD_UART_BW_MUL3  BIT(9)        // timeout is bit_width*3
+#define  FLD_UART_BW_MUL4  BIT_RNG(8,9)  // timeout is bit_width*4
 
 #define reg_uart_status0       REG_ADDR8(0x9d)
 enum{

@@ -16,7 +16,7 @@
 		<input type="radio" name='rm1' id="FixNone"/>
 		<label for="FixNone">Float</label>
 		<input type="button" id="butSave" value="Save data.csv"><br>
-		Window: <span id='wdsize'>?</span> sec, Sample Rate: <span id='smprate'>?</span> smps
+		Window: <span id='wdsize'>?</span> sec, Sample Rate: <span id='smprate'>?</span>
 	<div id='labdiv' style=></div>
 	</div>
   </body>
@@ -74,7 +74,7 @@ function wsSmpRate() {
 	var csps = 0;
 	for (var i = 0; i < len; i++) csps += smpsa[i];
 	csps = csps/len;
-	$('smprate').innerHTML = csps.toFixed(1);
+	$('smprate').innerHTML = csps.toFixed(1) +' sps (' + Math.round(csps*4)+' bytes per sec)';
 }}
 $("butOnOff").onclick =  function() {
 	if(rend) {rend = 0; $("butOnOff").value = "Run";}

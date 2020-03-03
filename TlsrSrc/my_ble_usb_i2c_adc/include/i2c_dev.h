@@ -44,6 +44,7 @@ void Timer_Init(uint32_t period_us);
 /* I2c device GetNewRegData
   Called from Timer Irq (!) */
 void GetNewRegData(void);
+void TimerIrq(void);
 /* I2C Device go Sleep */
 void I2CDevSleep();
 /* I2C Device WakeUp */

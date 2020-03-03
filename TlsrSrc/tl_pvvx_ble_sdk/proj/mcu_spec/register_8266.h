@@ -251,9 +251,11 @@ enum{
 enum{
 	FLD_ADC_CHN_SEL = 			BIT_RNG(0,4),
 	FLD_ADC_DIFF_CHN_SEL = 		BIT_RNG(5,7),	// datasheet  12.1
+	FLD_ADC_DATA_FORMAT  =      BIT(7),
 };
 
 enum{
+	FLD_ADC_CHN_NONE			= 0x00,
 	FLD_ADC_CHN_D0				= 0x01,
 	FLD_ADC_CHN_D1				= 0x02,
 	FLD_ADC_CHN_D2				= 0x03,
@@ -294,6 +296,11 @@ enum{
 };
 
 #define reg_adc_ref				REG_ADDR8(0x2b)
+// ADC reference voltage
+enum{
+	FLD_ADC_REF_1V3 = 0,	//!< ADC Reference:1.3v
+	FLD_ADC_REF_AVDD, 		//!< ADC Reference:AVDD
+};
 /*
 [2:0]: SAR ADC resolution selection for L
 */
@@ -315,6 +322,26 @@ enum{
 	011: 12 cycles
  */
 #define reg_adc_res_m			REG_ADDR8(0x3c)
+enum{
+	FLD_ADC_RES_7BIT				= 0x00,
+	FLD_ADC_RES_9BIT				= 0x01,
+	FLD_ADC_RES_10BIT				= 0x02,
+	FLD_ADC_RES_11BIT				= 0x03,
+	FLD_ADC_RES_12BIT				= 0x04,
+	FLD_ADC_RES_13BIT				= 0x05,
+	FLD_ADC_RES_14BIT				= 0x06,
+	FLD_ADC_RES_14BIT_				= 0x07
+};
+enum{
+	FLD_ADC_SMP_CYCLE_3   = 0,		//!<Adc Sampling Cycle:3
+	FLD_ADC_SMP_CYCLE_6   = 1,		//!<Adc Sampling Cycle:6
+	FLD_ADC_SMP_CYCLE_9   = 2,		//!<Adc Sampling Cycle:9
+	FLD_ADC_SMP_CYCLE_12  = 3,		//!<Adc Sampling Cycle:12
+	FLD_ADC_SMP_CYCLE_18  = 4,		//!<Adc Sampling Cycle:18
+	FLD_ADC_SMP_CYCLE_24  = 5,		//!<Adc Sampling Cycle:24
+	FLD_ADC_SMP_CYCLE_48  = 6,		//!<Adc Sampling Cycle:48
+	FLD_ADC_SMP_CYCLE_144 = 7,		//!<Adc Sampling Cycle:144
+};
 /*
  [2:0]: Select number of clock cycles for ADC L sampling time
  */
@@ -460,7 +487,7 @@ enum{
 	FLD_CLK2_I2S =				BIT_RNG(3,4),
 	FLD_CLK2_C32K =				BIT_RNG(5,7),
 };
-/* System clock select
+/* reg_clk_sel System clock select
 [4:0]: system clock divider: fhs/(CLKSEL[4:0]).
 Fhs refer to {0x70, 0x66[7]} FHS_sel
 [6:5]
@@ -627,12 +654,32 @@ enum{
 };
 
 /////////////  Uart  //////////////////////////////////
+/* uart_sclk = sclk/(uart_clk_div[14:0]+1)
+uart_clk_div[15] :
+ 1: enable clock divider,
+ 0: disable. */
 #define reg_uart_clk_div		REG_ADDR16(0x94)
 enum{
 	FLD_UART_CLK_DIV = 			BIT_RNG(0,14),
 	FLD_UART_CLK_DIV_EN = 		BIT(15)
 };
-
+/* reg_uart_ctrl0
+[3:0] bwpc, bit width, should be larger than 2
+  Baudrate = uart_sclk/(bwpc+1)
+[4] rx dma enable
+[5] tx dma enable
+[6] rx interrupt enable
+[7] tx interrupt enable
+[8] cts select,
+ 0: cts_i, 1: cts _i inverter
+[9] cts enable, 1: enable, 0, disable
+[10] Parity, 1: enable, 0 :disable
+[11] even Parity or odd
+[13:12] stop bit
+  00: 1 bit, 01, 1.5bit 1x: 2bits
+[14] ttl
+[15] uart tx, rx loopback
+ */
 #define reg_uart_ctrl0			REG_ADDR16(0x96)
 enum{
 	FLD_UART_BWPC = 			BIT_RNG(0,3),
@@ -648,6 +695,15 @@ enum{
     FLD_UART_TTL =              BIT(14),
     FLD_UART_LOOPBACK =         BIT(15),
 };
+/*
+[3:0] rts trig level
+[4] rts Parity
+[5] rts manual value
+[6] rts manual enable
+[7] rts enable
+[11:8] rx_irq_trig level
+[15:12] tx_irq_trig level
+ */
 #define reg_uart_ctrl2			REG_ADDR16(0x98)
 enum {
     FLD_UART_CTRL2_RTS_TRIG_LVL = BIT_RNG(0,3),
@@ -658,7 +714,20 @@ enum {
 	FLD_UART_CTRL3_RX_IRQ_TRIG_LEVEL = BIT_RNG(8,11),
 	FLD_UART_CTRL3_TX_IRQ_TRIG_LEVEL = BIT_RNG(12,15),
 };
-
+/*
+FLD_UART_TIMEOUT_BW:
+ The setting is transfer one bytes need cycles base on uart_clk.
+ For example, if transfer one bytes
+ (1 start bit + 8 bits data + 1 parity bit + 2 stop bits) total 12 bits,
+ this register setting should be (bwpc + 1) * 12.
+FLD_UART_TIMEOUT_MUL:
+2’b00:rx timeout time is r_rxtimeout[7:0]
+2’b01:rx timeout time is r_rxtimeout[7:0]*2
+2’b10:rx timeout time is r_rxtimeout[7:0]*3
+3’b11: rx timeout time is r_rxtimeout[7:0]*4
+R_rxtimeout is for rx dma to decide the end of each transaction.
+Supposed the interval between each byte in one transaction is very short.
+ */
 #define reg_uart_rx_timeout		REG_ADDR16(0x9a)
 enum{
 	FLD_UART_TIMEOUT_BW = 		BIT_RNG(0,7),		//  timeout bit width
@@ -668,6 +737,16 @@ enum{
 #define  FLD_UART_BW_MUL2  BIT(8)        // timeout is bit_width*1
 #define  FLD_UART_BW_MUL3  BIT(9)        // timeout is bit_width*3
 #define  FLD_UART_BW_MUL4  BIT_RNG(8,9)  // timeout is bit_width*4
+/*
+[3:0] r_buf_cnt
+[7:4] t_buf_cnt */
+#define reg_uart_buf_cnt   REG_ADDR8(0x9c)
+/*
+[2:0] rbcnt
+[3] irq
+[6:4] wbcnt
+[6] write 1 clear rx
+[7] rx_err, write 1 clear tx */
 #define reg_uart_status0   REG_ADDR8(0x9d)
 enum{
 	FLD_UART_IRQ_FLAG  =  BIT(3),
@@ -700,7 +779,7 @@ enum{
 #define reg_ana_data			REG_ADDR8(0xb9)
 #define reg_ana_ctrl			REG_ADDR8(0xba)
 
-// �ĵ�����ȷ����ʹ�����¶���
+//
 enum{
 	FLD_ANA_BUSY  = 			BIT(0),
 	FLD_ANA_RSV	=				BIT(4),

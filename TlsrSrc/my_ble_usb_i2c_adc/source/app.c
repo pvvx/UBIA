@@ -40,16 +40,20 @@
 
 
 void ExtDevPowerOff() {
-	gpio_setup_up_down_resistor(EXT_POWER_OFF, PM_PIN_PULLUP_10K);
-	gpio_setup_up_down_resistor(EXT_POWER_4MA, PM_PIN_PULLDOWN_100K);
+#ifdef EXT_POWER_OFF
+	gpio_set_pull_resistor(EXT_POWER_OFF, PM_PIN_PULLUP_10K);
+#endif
+	gpio_set_pull_resistor(EXT_POWER_4MA, PM_PIN_PULLDOWN_100K);
 	gpio_set_data_strength(EXT_POWER_4MA, 0);
 	gpio_set_output_en(EXT_POWER_4MA, 0);
 	gpio_write(EXT_POWER_4MA, 0);
 }
 
 void ExtDevPowerOn() {
-	gpio_setup_up_down_resistor(EXT_POWER_OFF, PM_PIN_PULLDOWN_100K);
-	gpio_setup_up_down_resistor(EXT_POWER_4MA, PM_PIN_PULLUP_10K);
+#ifdef EXT_POWER_OFF
+	gpio_set_pull_resistor(EXT_POWER_OFF, PM_PIN_PULLDOWN_100K);
+#endif
+	gpio_set_pull_resistor(EXT_POWER_4MA, PM_PIN_PULLUP_10K);
 	gpio_write(EXT_POWER_4MA, 1);
 //	gpio_set_data_strength(EXT_POWER_4MA, 0);
 	gpio_set_output_en(EXT_POWER_4MA, 1);
@@ -113,7 +117,7 @@ void eep_init(void)
 
 void user_init()
 {
-//	led_init();
+//	gpio_set_pull_resistor(KEY_BLE_USB, PM_PIN_PULLDOWN_100K);
 #if 0
 	REG_ADDR8(0x74) = 0x53;
 #if	(CHIP_TYPE == CHIP_TYPE_8269)
@@ -123,7 +127,6 @@ void user_init()
 #endif
 	REG_ADDR8(0x74) = 0x00;
 #endif
-	KEY_BLE_USB_LOW;
 	eep_init();
 /////////////////////////////////////////////////////////////
 #if	(USE_BLE && USE_USB_CDC)

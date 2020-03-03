@@ -27,7 +27,11 @@
 #include "../common/utility.h"
 #include "../mcu/compiler.h"
 #include "../mcu/register.h"
+#if(__TL_LIB_8269__ || MCU_CORE_TYPE == MCU_CORE_8269)
+#include "gpio_default_8269.h"
+#else
 #include "gpio_default_8267.h"
+#endif
 
 enum{
 	    GPIO_PA0 = 0x000 | BIT(0),	GPIO_PWM0A0=GPIO_PA0,	GPIO_DMIC_DI=GPIO_PA0,

@@ -27,10 +27,11 @@ var $ = function(id) {
 // Вывод в терминал
 function log(data) {console.log(data);}
 //-------------------------
-var smprate = 20;
-const RXTX_SIZE = 232; // max 232 !
+var smprate = 24;
+const RXTX_SIZE = 232; // max 232
+const CONNECT_INTERVAL = 7.5;
 const UART_BAUD = 2000000;
-const CONNECT_INTERVAL = 11.25;
+
 //-------------------------
 var devcnn = 0;
 var stg = 0;

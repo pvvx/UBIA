@@ -388,7 +388,7 @@ void ble_init(void) {
 //	gpio_set_wakeup		(GPIO_WAKEUP_MODULE, 1, 1);  // core(gpio) high wakeup suspend
 //	cpu_set_gpio_wakeup (GPIO_WAKEUP_MODULE, 1, 1);  // pad high wakeup deepsleep
 
-//	GPIO_WAKEUP_MODULE_LOW; // gpio_setup_up_down_resistor(GPIO_PC5, PM_PIN_PULLDOWN_100K);
+//	GPIO_WAKEUP_MODULE_LOW; // gpio_set_pull_resistor(GPIO_PC5, PM_PIN_PULLDOWN_100K);
 //	bls_pm_registerFuncBeforeSuspend(&app_suspend_enter);
 #endif
 #if (BATT_CHECK_ENABLE)  // battery check must do before OTA relative operation
@@ -787,11 +787,11 @@ void main_ble_loop() {
 	if((sleep_mode&1)==0) {
 		if(!device_in_connection_state) {
 			if(!gpio_read(KEY_K1)) {
-				gpio_setup_up_down_resistor(KEY_K1, PM_PIN_PULLDOWN_100K);
+				gpio_set_pull_resistor(KEY_K1, PM_PIN_PULLDOWN_100K);
 				cpu_sleep_wakeup(DEEPSLEEP_MODE, PM_WAKEUP_TIMER, clock_time() + 30000 * CLOCK_SYS_CLOCK_1MS);
 			}
 			else if(!gpio_read(KEY_K2)) {
-				gpio_setup_up_down_resistor(KEY_K2, PM_PIN_PULLDOWN_100K);
+				gpio_set_pull_resistor(KEY_K2, PM_PIN_PULLDOWN_100K);
 				gpio_set_wakeup		(KEY_K2, 1, 1);  // core(gpio) high wakeup suspend
 				cpu_set_gpio_wakeup (KEY_K2, 1, 1);  // pad high wakeup deepsleep
 				cpu_sleep_wakeup(DEEPSLEEP_MODE, PM_WAKEUP_PAD, 0);

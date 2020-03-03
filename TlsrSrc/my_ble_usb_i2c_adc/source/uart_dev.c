@@ -21,8 +21,8 @@ const dev_uart_cfg_t def_cfg_uart = {
 
 unsigned char uart_enabled = 0;
 
-__attribute__((aligned(4))) unsigned char uart_rx_buff[UART_RX_BUFF_SIZE] = {0x00,0x00,0x00,0x00,}; // the first four byte is length to receive data.
-__attribute__((aligned(4))) unsigned char uart_tx_buff[UART_TX_BUFF_SIZE]  = {0x00,0x00,0x00,0x00,}; // the first four byte is length to send data.
+__attribute__((aligned(4))) unsigned char uart_rx_buff[UART_TX_RX_DMA_BUFFER_SIZE] = {0x00,0x00,0x00,0x00,}; // the first four byte is length to receive data.
+__attribute__((aligned(4))) unsigned char uart_tx_buff[UART_TX_RX_DMA_BUFFER_SIZE]  = {0x00,0x00,0x00,0x00,}; // the first four byte is length to send data.
 
 void uart_init(dev_uart_cfg_t * p) {
 // uart_sclk = sclk/(uart_clk_div[14:0]+1)
@@ -77,7 +77,7 @@ void uart_init(dev_uart_cfg_t * p) {
 		BM_SET(reg_gpio_config_func(GPIO_PC2), (GPIO_PC2 | GPIO_PC3) & 0xFF);
 		BM_SET(reg_gpio_ie(GPIO_PC2), (GPIO_PC2 | GPIO_PC3) & 0xFF);  //enable input
 
-#elif CHIP_TYPE == CHIP_TYPE_8266
+#elif (CHIP_TYPE == CHIP_TYPE_8266)
 		// UART_GPIO_CFG_PC6_PC7():	gpio_set_func(GPIO_PC6, AS_UART); gpio_set_func(GPIO_PC7, AS_UART);
 		analog_write(0x10, (analog_read(0x10) & 0xf0) | PM_PIN_UP_DOWN_FLOAT | (PM_PIN_PULLUP_1M<<2));
 		BM_CLR(reg_gpio_gpio_func(GPIO_PC6), (GPIO_PC7 | GPIO_PC6) & 0xFF); // disable PC6/PC7 as gpio
@@ -103,10 +103,10 @@ void uart_init(dev_uart_cfg_t * p) {
 	// uart_RecBuffInit(uart_rec_buff, UART_RX_BUFF_SIZE);  //set uart rev buffer and buffer size
 	reg_dma0_addr = (unsigned short)((u32)(&uart_rx_buff));//set receive buffer address
 	BM_CLR(reg_dma0_ctrl, FLD_DMA_BUF_SIZE);
-	reg_dma0_ctrl |= MASK_VAL(FLD_DMA_BUF_SIZE, UART_RX_BUFF_SIZE>>4);  //set receive buffer size
+	reg_dma0_ctrl |= MASK_VAL(FLD_DMA_BUF_SIZE, UART_TX_RX_DMA_BUFFER_SIZE>>4);  //set receive buffer size
 	// uart_txBuffInit(UART_TX_BUFF_SIZE);
 	BM_CLR(reg_dma1_ctrl, FLD_DMA_BUF_SIZE);
-	reg_dma1_ctrl |= MASK_VAL(FLD_DMA_BUF_SIZE, UART_TX_BUFF_SIZE>>4); //set receive buffer size
+	reg_dma1_ctrl |= MASK_VAL(FLD_DMA_BUF_SIZE, UART_TX_RX_DMA_BUFFER_SIZE>>4); //set receive buffer size
 
 	// enable UART clk
 	reg_clk_en1 |= FLD_CLK_UART_EN;
@@ -131,7 +131,7 @@ void uart_deinit(void) {
 	analog_write(0x10, (analog_read(0x10) & 0xf0) | PM_PIN_UP_DOWN_FLOAT | (PM_PIN_PULLUP_1M<<2));
 	BM_SET(reg_gpio_gpio_func(GPIO_PC6), (GPIO_PC7 | GPIO_PC6) & 0xFF);
 	BM_SET(reg_gpio_config_func(GPIO_PC6), (GPIO_PC7 | GPIO_PC6) & 0xFF);
-#elif CHIP_TYPE == CHIP_TYPE_8266
+#elif (CHIP_TYPE == CHIP_TYPE_8266)
 	analog_write(0x10, (analog_read(0x10) & 0xf0) | PM_PIN_PULLUP_1M | (PM_PIN_PULLUP_1M<<2));
 	BM_SET(reg_gpio_gpio_func(GPIO_PC6), (GPIO_PC7 | GPIO_PC6) & 0xFF);
 	BM_SET(reg_gpio_config_func(GPIO_PC6), (GPIO_PC7 | GPIO_PC6) & 0xFF);

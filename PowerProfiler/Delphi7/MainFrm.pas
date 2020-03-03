@@ -25,13 +25,43 @@ const
     MAX_BLK_DEV2 = 100;
     MAX_BLK_CNT = 116*2;
     COM_BUF_CNT = (MAX_BLK_CNT*2)+2;
+    // DEV command id:
+    CMD_DEV_VER = $00; // Get Ver
+    // I2C/SBUS cfg
+    CMD_DEV_CFG = $01; // Get/Set CFG/ini I2C & Start measure
+    // Save cfg
+    CMD_DEV_SCF = $02; // Store CFG/ini in Flash
+    // Status
+    CMD_DEV_STA = $03; // Status
+    // BLE cfg
+    CMD_DEV_CPU = $04; // Connect parameters Update (BLE)
+    CMD_DEV_BLE = $05; // BLE parameters Update (BLE)
+    // 0x06
+    // I2C/SMBUS out regs
+    CMD_DEV_I2C = $07; // blk out regs i2c data
+    // ADC cfg
+    CMD_DEV_CAD = $08; // Get/Set CFG/ini ADC & Start measure
+    // DAC cfg
+    CMD_DEV_DAC = $09; // DAC cfg
+    // ADC out samples
+    CMD_DEV_ADC = $0A; // blk out regs ADC data
+    // TST device
+    CMD_DEV_TST = $0B; // blk out X data, cfg TST device
+    // I2C rd/wr
+    CMD_DEV_UTR = $0C; // I2C read/write
+    // Debug
+    CMD_DEV_DBG = $0D; // Debug
+    // Power, Sleep
+    CMD_DEV_PWR = $0E; // Power On/Off, Sleep
+    // Runtime Error
+    CMD_DEV_ERR = $0F; // Runtime Error
+    // I2C/SMBUS rd/wr regs
+    CMD_DEV_GRG = $10; // Get reg I2C
+    CMD_DEV_SRG = $11; // Set reg I2C
+    // UART
+    CMD_DEV_UAC = $12; // Set UART
+    CMD_DEV_UAR = $13; // Send/Receive UART
 
-    CMD_GET_VER = $00; // Get Ver
-    CMD_SET_INI = $01; // Get/Set CFG/ini & Start measure
-    CMD_WRF_INI = $02; // Store CFG/ini in Flash
-    CMD_GET_STA = $03; // Get status
-    CMD_GET_REG = $10; // Get reg
-    CMD_SET_REG = $11; // Set reg
     RES_OUT_REGS = $07; // Send blk regs
 
     CHART_I_MASK  = 2;
@@ -1065,7 +1095,7 @@ begin
    else begin
      ChartEnables := Form219Config.DevIniCfg(mode);
    end;
-   buftx[1] := CMD_SET_INI;
+   buftx[1] := CMD_DEV_CFG;
    move(blk_cfg, buftx[2], SizeOf(blk_cfg));
    if SendBlk(SizeOf(blk_cfg)) then begin
      if ReadBlk(buftx[1]) and (lenrx >= SizeOf(blk_cfg)) then begin
@@ -1084,7 +1114,7 @@ function TfrmMain.GetDevIniCfg : boolean;
 begin
      result := False;
      Timer1.Enabled := False;
-     buftx[1]:=CMD_SET_INI; // Set/Get CFG/ini & Start measure
+     buftx[1]:=CMD_DEV_SCF; // Set/Get CFG/ini & Start measure
      if SendBlk(0) then begin
        if ReadBlk(buftx[1]) and (lenrx = SizeOf(blk_cfg)) then begin
          move(bufrx, blk_cfg, SizeOf(blk_cfg));
@@ -1173,7 +1203,7 @@ begin
     if FormConfigOk = mrOk then begin
       Timer1.Enabled := False;
 
-      buftx[1]:=CMD_SET_REG; // Set Reg
+      buftx[1]:=CMD_DEV_SRG; // Set Reg
 
       buftx[2]:=INA2XX_I2C_ADDR;
       buftx[3]:=0;
@@ -1205,9 +1235,10 @@ begin
     if FormConfigOk = mrOk then begin
       Timer1.Enabled := False;
       if SetDevIniCfg(0) then begin
-        buftx[1]:=CMD_WRF_INI; // Store CFG/ini in Flash
-        if SendBlk(0) then begin
-          if ReadBlk(buftx[1]) and (lenrx = 0) then begin
+        buftx[1]:=CMD_DEV_SCF; // Store CFG/ini in Flash
+        buftx[2]:=$01;
+        if SendBlk(1) then begin
+          if ReadBlk(buftx[1]) and (lenrx >= 0) then begin
             StatusBar.Panels[2].Text:='Конфигурация записана во Flash в устройстве на '+ sComNane+'.';
           end;
         end;
@@ -1224,12 +1255,12 @@ begin
   for i:=0 to 5 do begin
     purge_com := 1;
 
-    buftx[1]:=CMD_SET_INI; // Set/Get CFG/ini & Start measure
+    buftx[1]:=CMD_DEV_CFG; // Set/Get CFG/ini & Start measure
     buftx[2]:=0; // read regs = 0
 
     if SendBlk(1) then begin
       if ReadBlk(buftx[1]) and
-      (lenrx = SizeOf(blk_cfg)) then begin
+      (lenrx >= SizeOf(blk_cfg)) then begin
         move(bufrx, blk_cfg, SizeOf(blk_cfg));
         sleep(10);
         purge_com := 1;
@@ -1248,7 +1279,7 @@ begin
   no_i2c_dev := False;
   for i:=0 to 5 do begin
     purge_com := 1;
-    buftx[1]:= CMD_GET_VER; // Get Version
+    buftx[1]:= CMD_DEV_VER; // Get Version
     if SendBlk(0) then begin
       if ReadBlk(buftx[1]) and (lenrx = 4) then begin
         dev_type := bufrx[1];
@@ -1282,7 +1313,7 @@ function TfrmMain.ResetIna2xx : boolean;
 begin
    Timer1.Enabled := False;
    result := true;
-   buftx[1]:=CMD_SET_REG; // Cmd: Set word
+   buftx[1]:=CMD_DEV_SRG; // Cmd: Set word
 
    buftx[2]:=INA2XX_I2C_ADDR;
    buftx[3] := 0;
@@ -1315,7 +1346,7 @@ begin
    else
      i := regnum and 7;
    result := true;
-   buftx[1]:=CMD_GET_REG; // Cmd: Get word
+   buftx[1]:=CMD_DEV_GRG; // Cmd: Get word
 //   buftx[3]:=2;
    buftx[2]:=INA2XX_I2C_ADDR;
    buftx[3]:= regnum;
@@ -1339,7 +1370,7 @@ begin
    ft := Timer1.Enabled;
    Timer1.Enabled := False;
    result := true;
-   buftx[1]:=CMD_GET_STA; // Cmd: Get Status
+   buftx[1]:=CMD_DEV_STA; // Cmd: Get Status
    if SendBlk(0) then begin
      if ReadBlk(buftx[1]) and (lenrx = 8) then begin
         dev_all_send_count :=  bufrx[0] or (bufrx[1] shl 8) or (bufrx[2] shl 16) or (bufrx[3] shl 24);
@@ -1367,7 +1398,7 @@ begin
    fs := SamplesEna;
    Timer1.Enabled := False;
    result := true;
-   buftx[1]:=CMD_GET_REG; // Cmd: Get word
+   buftx[1]:=CMD_DEV_GRG; // Cmd: Get word
 
    buftx[2]:=INA2XX_I2C_ADDR;
    for i:=0 to 7 do begin

@@ -352,11 +352,10 @@ _attribute_ram_code_ unsigned int USBCDC_BulkDataSend(void)
     cdc_vs.lenToSend -= len;
 
     reg_usb_ep_ptr(CDC_TX_EPNUM) = 0;
-
     if (cdc_vs.txBuf)
-    /* Write data to USB fifo */
-    for (i = 0; i < len; i++) {
-    	reg_usb_ep_dat(CDC_TX_EPNUM) = cdc_vs.txBuf[cdc_vs.lastSendIndex++];
+    	/* Write data to USB fifo */
+    	for (i = 0; i < len; i++) {
+    		reg_usb_ep_dat(CDC_TX_EPNUM) = cdc_vs.txBuf[cdc_vs.lastSendIndex++];
     }
 
     /* Write ACK */
@@ -371,6 +370,10 @@ _attribute_ram_code_ unsigned int USBCDC_BulkDataSend(void)
 #else
     unsigned int t = clock_time();
     while(USBHW_IsEpBusy(CDC_TX_EPNUM)) {
+#if (USE_I2C_DEV)
+    	extern void TimerIrq(void);
+        TimerIrq();
+#endif
         if (clock_time() - t > USB_TX_ACK_BLK_TIMEOUT * CLOCK_SYS_CLOCK_1US) {
             REG_USB_EP_CTRL(CDC_TX_EPNUM) &= 0xfe; // clear bit(0)
             // TODO Error? -> callback ?
@@ -383,19 +386,6 @@ _attribute_ram_code_ unsigned int USBCDC_BulkDataSend(void)
 #endif
             break;
         }
-#if USE_I2C_INA
-    	if((reg_irq_mask1 & FLD_IRQ_TMR1_EN) != 0 && (reg_irq_src & FLD_IRQ_TMR1_EN) != 0) {
-    		reg_tmr_sta = FLD_TMR_STA_TMR1; // clear irq status
-    		reg_irq_src =  FLD_IRQ_TMR1_EN;
-#if defined(LED_POWER)
-    		LED_POWER_TOGLE();
-#endif
-    extern volatile u8 timer_flg;
-    extern void GetNewRegData(void);
-    		if(timer_flg)
-    			GetNewRegData();
-    	}
-#endif
     }
 #endif
     /* TX transaction finish */
@@ -415,7 +405,7 @@ _attribute_ram_code_ unsigned int USBCDC_BulkDataSend(void)
   		cdc_vs.txBuf = NULL;
     }
     else {
-    	// взвести task tx-timeout 5 ms для контроля передачи
+  	// взвести task tx-timeout 5 ms для контроля передачи
  //   	ev_task_set(EV_USB_SEND_TIMEOUT, USBCDC_SendTimeoutCb, NULL, 5000);
     }
     return len;

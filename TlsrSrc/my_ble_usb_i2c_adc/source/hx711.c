@@ -25,8 +25,8 @@ void hx711_go_sleep(void) {
 	hx711_mode = 0;
 	hx711_wr = 0;
 	hx711_rd = 0;
-	gpio_setup_up_down_resistor(HX711_SCK, PM_PIN_PULLUP_1M);
-	gpio_setup_up_down_resistor(HX711_DOUT, PM_PIN_PULLUP_1M);
+	gpio_set_pull_resistor(HX711_SCK, PM_PIN_PULLUP_1M);
+	gpio_set_pull_resistor(HX711_DOUT, PM_PIN_PULLUP_1M);
 #if (USE_BLE)
 	gpio_set_wakeup(HX711_DOUT, 0, 0); // отключить пробуждение от hx711
 #endif
@@ -35,7 +35,7 @@ void hx711_go_sleep(void) {
 //void hx711_wakeup(void) {
 //	bls_app_registerEventCallback(BLT_EV_FLAG_GPIO_EARLY_WAKEUP, &ble_ev_gpio_wakeup);
 //	hx711_wr = 0;
-//	gpio_setup_up_down_resistor(HX711_SCK, PM_PIN_PULLDOWN_100K);
+//	gpio_set_pull_resistor(HX711_SCK, PM_PIN_PULLDOWN_100K);
 //	if(!sleep_mode) gpio_set_wakeup(HX711_DOUT, 0, 1);  // core(gpio) low wakeup suspend
 //}
 

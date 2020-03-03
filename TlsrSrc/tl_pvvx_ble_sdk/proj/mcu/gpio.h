@@ -55,11 +55,26 @@ enum{
 #if(__TL_LIB_8266__ || MCU_CORE_TYPE == MCU_CORE_8266)
 #include "../mcu_spec/gpio_default_8266.h"
 #include "../mcu_spec/gpio_8266.h"
+#elif(__TL_LIB_8269__ || MCU_CORE_TYPE == MCU_CORE_8269)
+#include "../mcu_spec/gpio_default_8269.h"
+#include "../mcu_spec/gpio_8267.h"
 #elif(__TL_LIB_8267__ || MCU_CORE_TYPE == MCU_CORE_8267 || \
-	  __TL_LIB_8261__ || MCU_CORE_TYPE == MCU_CORE_8261 || \
-	  __TL_LIB_8269__ || MCU_CORE_TYPE == MCU_CORE_8269 )
+	  __TL_LIB_8261__ || MCU_CORE_TYPE == MCU_CORE_8261)
 #include "../mcu_spec/gpio_default_8267.h"
 #include "../mcu_spec/gpio_8267.h"
 #else
 #endif
 
+#define rega_gpio_pull(pin) (0x0b+((gpio>>8)<<1)-((pin&0x03)?1:0)+((pin&0xc0)?1:0))
+
+#define shl_gpio_pull(pin) (((pin & 0x11)?4:0)+((pin & 0x22)?6:0)+((pin & 0x88)?2:0))
+
+#if 1
+#define gpio_set_pull_resistor gpio_setup_up_down_resistor
+#else
+inline void gpio_set_pull_resistor(u32 gpio, u32 up_down) {
+	analog_write(rega_gpio_pull(gpio),
+		(analog_read(rega_gpio_pull(gpio))
+			& (~(0x03<<shl_gpio_pull(gpio)))) | up_down << shl_gpio_pull(gpio));
+}
+#endif

@@ -27,7 +27,7 @@ extern "C" {
 // -----
 
 #define INT_DEV_ID	0x1021  // DevID = 0x1021
-#define INT_DEV_VER 0x0007  // Ver 1.2.3.4 = 0x1234
+#define INT_DEV_VER 0x0008  // Ver 1.2.3.4 = 0x1234
 
 ////////// BLE product  Information  ////////////
 #define DEV_NAME		"tBLETST"
@@ -147,7 +147,7 @@ typedef struct
 #define DEF_CONN_PARMS 20, 100, 0, 200 // 8*1.25 = 10 ms (=5 -> 7.5 ms cамый низкий разрешенный спецификацией !)
 #define DEF_ADV_INTERVAL ADV_INTERVAL_400MS*2, ADV_INTERVAL_400MS*2+16
 #endif
-#define MY_APP_ADV_CHANNEL				BLT_ENABLE_ADV_ALL
+#define MY_APP_ADV_CHANNEL		BLT_ENABLE_ADV_ALL
 
 extern gap_periConnectParams_t my_periConnParameters;
 
@@ -192,188 +192,183 @@ extern gap_periConnectParams_t my_periConnParameters;
 #endif
 
 //////////////////////////// MODULE PM GPIO	/////////////////////////////////
-#if	(BOARD == BOARD_JDY_10)
+#if	(BOARD == BOARD_JDY_10)||(BOARD == BOARD_E104_BT05)
 // Project use
+//======================
+//SWS			GPIO_PA0
 //KEY_BLE/USB	GPIO_PA1 PWM3
 //KEY_K2		GPIO_PA5 <STAT>
 //KEY_K1		GPIO_PB0 PWM5
+//UDM			GPIO_PB5 USB_DM
+//UDP			GPIO_PB6 USB_DP
 //EXT_POWER_OFF GPIO_PC0 PWM0 PGA_R
 //ADCp			GPIO_PC1 ADC-+PGA_L
 //ADC7			GPIO_PC2 ADC-CH7 PGA_R
 //ADC9			GPIO_PC4 ADC-CH9
+//RX 			GPIO_PC7 ADC-CH10
+//TX 			GPIO_PC6 ADC-CH11
 //EXT_POWER_4MA GPIO_PD4 <ADV_LED> ADC-CH5
 //ADC6d			GPIO_PD5 <PWRC> ADC-CH6-DIFF
 //DAC 			GPIO_PE5 SDMN
+//(not used)	GPIO_PE6 RTS, SPI_CS
 //SDA 			GPIO_PE7 SPI_DI
+//(not used)	GPIO_PF0 CTS, SPI_DO
 //SCL			GPIO_PF1 SPI_CK
-//-------------------
-//<RX> - PC7, ADC-CH10
-//<TX> - PC6, ADC-CH11
-//-------------------
-// PE6 RTS, SPI_CS
-#define	PULL_WAKEUP_SRC_PE6				PM_PIN_PULLUP_1M
-// PF0 CTS, SPI_DO
-#define	PULL_WAKEUP_SRC_PF0				PM_PIN_PULLUP_1M
-//-------------------
-#define	KEY_K1	 						GPIO_PB0 // K1 /DeepSleep 30 sec
-#define PB0_FUNC						AS_GPIO
-#define PB0_OUTPUT_ENABLE				0
-#define PB0_INPUT_ENABLE				1
-#define	PULL_WAKEUP_SRC_PB0				PM_PIN_PULLUP_1M
+//======================
+//-------------------------- Not used
+#define	PULL_WAKEUP_SRC_PE6			PM_PIN_PULLUP_1M
+#define	PULL_WAKEUP_SRC_PF0			PM_PIN_PULLUP_1M
+//-------------------------- Keys
+#define	KEY_K1	 					GPIO_PB0 // K1 /DeepSleep 30 sec
+#define PB0_FUNC					AS_GPIO
+#define PB0_INPUT_ENABLE			1
+#define PB0_OUTPUT_ENABLE			0
+#define	PULL_WAKEUP_SRC_PB0			PM_PIN_PULLUP_1M
 
-#define	KEY_K2	 						GPIO_PA5 // K2 WaikUp/DeepSleep
-#define PA5_OUTPUT_ENABLE				0
-#define PA5_INPUT_ENABLE				1
-#define	PULL_WAKEUP_SRC_PA5				PM_PIN_PULLUP_1M
+#define	KEY_K2	 					GPIO_PA5 // K2 WaikUp/DeepSleep
+#define PA5_FUNC					AS_GPIO
+#define PA5_INPUT_ENABLE			1
+#define PA5_OUTPUT_ENABLE			0
+#define	PULL_WAKEUP_SRC_PA5			PM_PIN_PULLUP_1M
+//-------------------------- Key USB/BLE
+#define KEY_BLE_USB					GPIO_PA1   // mcu wakeup module (Key PWRC) GPIO_WAKEUP_MODULE
+#define	PA1_FUNC					AS_GPIO
+#define PA1_INPUT_ENABLE			1
+#define	PA1_OUTPUT_ENABLE			0
+#define	PA1_DATA_OUT				0
+#define	PULL_WAKEUP_SRC_PA1			PM_PIN_PULLDOWN_100K
+//-------------------------- OutKey Power
+#define EXT_POWER_OFF				GPIO_PC0	// =1 Pow.Off
+#define PC0_FUNC					AS_GPIO
+#define	PC0_OUTPUT_ENABLE			0
+#define	PULL_WAKEUP_SRC_PC0			PM_PIN_PULLDOWN_100K
+//-------------------------- Out Power 4 mA
+#define EXT_POWER_4MA				GPIO_PD4	// =1 Pow.On
+#define PD4_FUNC					AS_GPIO
+#define PD4_DATA_STRENGTH			0	// Start 0.7 mA
+#define	PULL_WAKEUP_SRC_PD4			PM_PIN_PULLDOWN_100K
+//-------------------------- ADC
+//#define	PC0_FUNC				AS_GPIO // ?
+#define	PC1_FUNC					AS_GPIO	// ADC3, -diff ADC PC1/PC2
+#define	PC2_FUNC					AS_GPIO // ADC2, +diff ADC PC2/PC1
+#define	PC3_FUNC					AS_GPIO // --- none ---
+#define	PC4_FUNC					AS_GPIO // ADC1
+//#define	PC6_FUNC				AS_GPIO // ADCx TX
+//#define	PC7_FUNC				AS_GPIO // ADCx RX
+#define	PD5_FUNC					AS_GPIO // ADC0, -diff
+//-------------------------- DAC
+#define	PE5_FUNC					AS_GPIO // SDMN
+//-------------------------- UART
+#define UART_TX						GPIO_PC2	//TX
+#define UART_TX						GPIO_PC2	//TX
+#define PC6_FUNC					AS_GPIO
+#define PC6_INPUT_ENABLE			1
+#define	PC6_OUTPUT_ENABLE			0
+#define	PULL_WAKEUP_SRC_PC6			PM_PIN_PULLUP_1M
 
-//-------------------------- Ext Power
-#define EXT_POWER_OFF					GPIO_PC0	// =1 Pow.Off
-#define PC0_FUNC						AS_GPIO
-#define	PULL_WAKEUP_SRC_PC0				PM_PIN_PULLDOWN_100K
-
-#define EXT_POWER_4MA					GPIO_PD4	// =1 Pow.On
-#define PD4_FUNC						AS_GPIO
-#define	PULL_WAKEUP_SRC_PD4				PM_PIN_PULLUP_10K
-
-//------------------- ADC
-//#define	PC0_FUNC							AS_GPIO // ?
-#define	PC1_FUNC							AS_GPIO	// ADC3, -diff ADC PC1/PC2
-#define	PC2_FUNC							AS_GPIO // ADC2, +diff ADC PC2/PC1
-#define	PC3_FUNC							AS_GPIO // --- none ---
-#define	PC4_FUNC							AS_GPIO // ADC1
-#define	PC6_FUNC							AS_GPIO // ADCx TX
-#define	PC7_FUNC							AS_GPIO // ADCx RX
-#define	PD5_FUNC							AS_GPIO // ADC0, -diff
-//------------------- DAC
-#define	PE5_FUNC							AS_GPIO // SDMN
-//------------------- USB/BLE
-#define KEY_BLE_USB							GPIO_PA1   // mcu wakeup module (Key PWRC) GPIO_WAKEUP_MODULE
-#define	PA1_FUNC							AS_GPIO
-#define PA1_INPUT_ENABLE					1
-#define	PA1_OUTPUT_ENABLE					0
-#define	PA1_DATA_OUT						0
-#define KEY_BLE_USB_HIGH				gpio_setup_up_down_resistor(KEY_BLE_USB, PM_PIN_PULLUP_10K);
-#define KEY_BLE_USB_LOW					gpio_setup_up_down_resistor(KEY_BLE_USB, PM_PIN_PULLDOWN_100K);
-//-------------------
+#define UART_RX						GPIO_PC3	//RX
+#define PC7_FUNC					AS_GPIO
+#define PC7_INPUT_ENABLE			1
+#define	PC7_OUTPUT_ENABLE			0
+#define	PULL_WAKEUP_SRC_PC7			PM_PIN_PULLUP_1M
+//------------------- HX711
 #if (USE_HX711)
-#define HX711_SCK	GPIO_PC6	//TX
-#define HX711_DOUT  GPIO_PC7	//RX
-#define PC6_INPUT_ENABLE					1
-#define	PC6_OUTPUT_ENABLE					0
-#define PC7_INPUT_ENABLE					1
-#define	PC7_OUTPUT_ENABLE					0
+#define HX711_SCK					GPIO_PC6	//TX
+#define HX711_DOUT  				GPIO_PC7	//RX
 #endif // USE_HX711
 
-#elif	(BOARD == BOARD_E104_BT05)
+#elif	(BOARD == BOARD_E104_BT10)
 // Project use
-//KEY_BLE/USB	GPIO_PA1 PWM3
-//KEY_K2		GPIO_PA5 <STAT>
-//KEY_K1		GPIO_PB0 PWM5
-//EXT_POWER_OFF GPIO_PC0 PWM0 PGA_R
-//ADCp			GPIO_PC1 ADC-+PGA_L
-//ADC7			GPIO_PC2 ADC-CH7 PGA_R
-//ADC9			GPIO_PC4 ADC-CH9
-//EXT_POWER_4MA GPIO_PD4 <ADV_LED> ADC-CH5
-//ADC6d			GPIO_PD5 <PWRC> ADC-CH6-DIFF
-//DAC 			GPIO_PE5 SDMN
-//SDA 			GPIO_PE7 SPI_DI
-//SCL			GPIO_PF1 SPI_CK
-//-------------------
-//<RX> - PC7, ADC-CH10
-//<TX> - PC6, ADC-CH11
-//-------------------
-// PE6 RTS, SPI_CS
-#define	PULL_WAKEUP_SRC_PE6				PM_PIN_PULLUP_1M
-// PF0 CTS, SPI_DO
-#define	PULL_WAKEUP_SRC_PF0				PM_PIN_PULLUP_1M
-//-------------------
-#define	KEY_K1	 						GPIO_PB0 // K1 /DeepSleep 30 sec
-#define PB0_FUNC						AS_GPIO
-#define PB0_OUTPUT_ENABLE				0
-#define PB0_INPUT_ENABLE				1
-#define	PULL_WAKEUP_SRC_PB0				PM_PIN_PULLUP_1M
+//======================
+//KEY_BLE/USB	GPIO_PA1: DMIC_CLK
+//KEY_K2		GPIO_PD2: ADC-CH03
+//KEY_K1		GPIO_PD3: ADC-CH04
+//----------------------
+//ADC			GPIO_PC4: UAR_RTS/PWM4/ADC-CH0?-PGA
+//ADC			GPIO_PC5: UART_CTS/PWM5/ADC-CH0?-PGA
+//----------------------
+//EXT_POWER_OFF GPIO_PA0: DMIC_DI
+//EXT_POWER_4MA GPIO_PB1: PWM2_N
+//----------------------
+//DAC 			GPIO_PE0: PWM0/SDM_P(SDMDAC)
+//DAC 			GPIO_PE1: PWM1/SDM_N(SDMDAC)
+//----------------------
+//SDA 			GPIO_PA3: SPI_DI/I2C_SDA/PWM1
+//SCL			GPIO_PA4: SPI_CK/I2C_SCK/PWM1_N
+//----------------------
+//SCS 			GPIO_PB4: SPI_CN/PWM4
+//SDO 			GPIO_PB5: SPI_DO/PWM4_N
+//SDI 			GPIO_PB6: SPI_DI/I2C_SDA/PWM5
+//SCK			GPIO_PB7: SPI_CK/I2C_SCK/PWM5_N/R2R_ADC_BAT
+//----------------------
+//RX			GPIO_PC2: RX/PWM2/ADC-CH07
+//TX 			GPIO_PC3: TX/PWM3/ADC-CH08
+//----------------------
+//UDM			GPIO_PE2: USB_DM
+//UDP			GPIO_PE3: USB_DP
+//----------------------
+//SWM			GPIO_PA7: UART_RX/SWM
+//SWS			GPIO_PB0: PWM2/SWS
+//======================
+//-------------------------- Keys
+#define	KEY_K1	 					GPIO_PD2 // K1 /DeepSleep 30 sec
+#define PD2_FUNC					AS_GPIO
+#define PD2_INPUT_ENABLE			1
+#define PD2_OUTPUT_ENABLE			0
+#define	PULL_WAKEUP_SRC_PD2			PM_PIN_PULLUP_1M
 
-#define	KEY_K2	 						GPIO_PA5 // K2 WaikUp/DeepSleep
-#define PA5_OUTPUT_ENABLE				0
-#define PA5_INPUT_ENABLE				1
-#define	PULL_WAKEUP_SRC_PA5				PM_PIN_PULLUP_1M
+#define	KEY_K2	 					GPIO_PD3 // K2 WaikUp/DeepSleep
+#define PD3_FUNC					AS_GPIO
+#define PD3_INPUT_ENABLE			1
+#define PD3_OUTPUT_ENABLE			0
+#define	PULL_WAKEUP_SRC_PD3			PM_PIN_PULLUP_1M
+//-------------------------- Key USB/BLE
+#define KEY_BLE_USB					GPIO_PA1   // mcu wakeup module (Key PWRC) GPIO_WAKEUP_MODULE
+#define	PA1_FUNC					AS_GPIO
+#define PA1_INPUT_ENABLE			1
+#define	PA1_OUTPUT_ENABLE			0
+#define	PA1_DATA_OUT				0
+#define	PULL_WAKEUP_SRC_PA1			PM_PIN_PULLDOWN_100K
+//-------------------------- OutKey Power
+/*
+#define EXT_POWER_OFF				GPIO_PA0	// =1 Pow.Off
+#define PA0_FUNC					AS_GPIO
+#define	PA0_OUTPUT_ENABLE			0
+#define	PULL_WAKEUP_SRC_PA0			PM_PIN_PULLDOWN_100K
+*/
+//-------------------------- Out Power 4 mA
+#define EXT_POWER_4MA				GPIO_PA0	// =1 Pow.On
+#define PA0_FUNC					AS_GPIO
+#define PA0_DATA_STRENGTH			0	// Start 0.7 mA
+#define	PULL_WAKEUP_SRC_PA0			PM_PIN_PULLDOWN_100K
+//-------------------------- ADC
+#define	PB1_FUNC					AS_GPIO // ADC-CH06, diff CH20+x
+#define	PB4_FUNC					AS_GPIO // ADC-CH09
+#define	PB5_FUNC					AS_GPIO	// ADC-CH0A
+#define	PB6_FUNC					AS_GPIO // ADC-CH0B
+#define	PB7_FUNC					AS_GPIO // ADC-CH0C, CH13=VCC/3, CH14=PB7/3
+#define	PC4_FUNC					AS_GPIO // ADC-CH0D/PGA+, CH6D=diff C4-C5
+#define	PC5_FUNC					AS_GPIO // ADC-CH0E/PGA-
+//-------------------------- DAC
+#define	PE0_FUNC					AS_GPIO // SDMN
+#define	PE1_FUNC					AS_GPIO // SDMP
+//-------------------------- UART
+#define UART_TX						GPIO_PC2	//TX
+#define PC2_INPUT_ENABLE			1
+#define	PC2_OUTPUT_ENABLE			0
+#define	PULL_WAKEUP_SRC_PC2			PM_PIN_PULLUP_1M
 
-//-------------------------- Ext Power
-#define EXT_POWER_OFF					GPIO_PC0	// =1 Pow.Off
-#define PC0_FUNC						AS_GPIO
-#define	PULL_WAKEUP_SRC_PC0				PM_PIN_PULLDOWN_100K
-
-#define EXT_POWER_4MA					GPIO_PD4	// =1 Pow.On
-#define PD4_FUNC						AS_GPIO
-#define	PULL_WAKEUP_SRC_PD4				PM_PIN_PULLUP_10K
-
-//------------------- ADC
-//#define	PC0_FUNC							AS_GPIO // ?
-#define	PC1_FUNC							AS_GPIO	// ADC3, -diff ADC PC1/PC2
-#define	PC2_FUNC							AS_GPIO // ADC2, +diff ADC PC2/PC1
-#define	PC3_FUNC							AS_GPIO // --- none ---
-#define	PC4_FUNC							AS_GPIO // ADC1
-#define	PC6_FUNC							AS_GPIO // ADCx TX
-#define	PC7_FUNC							AS_GPIO // ADCx RX
-#define	PD5_FUNC							AS_GPIO // ADC0, -diff
-//------------------- DAC
-#define	PE5_FUNC							AS_GPIO // SDMN
-//------------------- USB/BLE
-#define KEY_BLE_USB							GPIO_PA1   // mcu wakeup module (Key PWRC) GPIO_WAKEUP_MODULE
-#define	PA1_FUNC							AS_GPIO
-#define PA1_INPUT_ENABLE					1
-#define	PA1_OUTPUT_ENABLE					0
-#define	PA1_DATA_OUT						0
-#define KEY_BLE_USB_HIGH				gpio_setup_up_down_resistor(KEY_BLE_USB, PM_PIN_PULLUP_10K);
-#define KEY_BLE_USB_LOW					gpio_setup_up_down_resistor(KEY_BLE_USB, PM_PIN_PULLDOWN_100K);
-//-------------------
+#define UART_RX						GPIO_PC3	//RX
+#define PC3_INPUT_ENABLE			1
+#define	PC3_OUTPUT_ENABLE			0
+#define	PULL_WAKEUP_SRC_PC3			PM_PIN_PULLUP_1M
+//------------------- HX711
 #if (USE_HX711)
-#define HX711_SCK	GPIO_PC6	//TX
-#define HX711_DOUT  GPIO_PC7	//RX
-#define PC6_INPUT_ENABLE					1
-#define	PC6_OUTPUT_ENABLE					0
-#define PC7_INPUT_ENABLE					1
-#define	PC7_OUTPUT_ENABLE					0
+#define HX711_SCK					GPIO_PC2	//TX
+#define HX711_DOUT					GPIO_PC3	//RX
 #endif // USE_HX711#elif	(BOARD == BOARD_E104_BT10)
 //-------------------
-// Project use
-//KEY_K1	GPIO_PD2
-//KEY_K2	GPIO_PC4
-//KEY_BLE/USB	GPIO_PC5
-//SDA 	GPIO_PA3
-//SCL	GPIO_PA4
-//-------------------
-//#define BLUE_LED	LED_B
-//#define GREEN_LED   LED_G
-//-------------------
-#define GPIO_WAKEUP_MODULE					GPIO_PC5   // mcu wakeup module (Key SW1)
-#define	PC5_FUNC							AS_GPIO
-#define PC5_INPUT_ENABLE					1
-#define	PC5_OUTPUT_ENABLE					0
-#define	PC5_DATA_OUT						0
-#define GPIO_WAKEUP_MODULE_HIGH				gpio_setup_up_down_resistor(GPIO_PC5, PM_PIN_PULLUP_10K);
-#define GPIO_WAKEUP_MODULE_LOW				gpio_setup_up_down_resistor(GPIO_PC5, PM_PIN_PULLDOWN_100K);
-/*
-#define GPIO_WAKEUP_MCU						GPIO_PC4	// module wakeup mcu (LED DEBUG?) // ������������ ���� ���� ������ ��� �������� -> TX UART
-#define	PC4_FUNC							AS_GPIO
-#define PC4_INPUT_ENABLE					1
-#define	PC4_OUTPUT_ENABLE					1
-#define	PC4_DATA_OUT						0
-#define GPIO_WAKEUP_MCU_HIGH				do{gpio_set_output_en(GPIO_PC4, 1); gpio_write(GPIO_PC4, 1);}while(0)
-#define GPIO_WAKEUP_MCU_LOW					do{gpio_set_output_en(GPIO_PC4, 1); gpio_write(GPIO_PC4, 0);}while(0)
-#define GPIO_WAKEUP_MCU_FLOAT				do{gpio_set_output_en(GPIO_PC4, 0); gpio_write(GPIO_PC4, 0);}while(0)
-*/
-//-------------------
 #endif
-
-/////////////////////// POWER OPTIMIZATION  AT SUSPEND ///////////////////////
-//notice that: all setting here aims at power optimization ,they depends on
-//the actual hardware design.You should analyze your hardware board and then
-//find out the io leakage
-
-//shut down the input enable of some gpios, to lower io leakage at suspend state
-//for example:  #define PA2_INPUT_ENABLE   0
-
 
 ////////////////////////// AUDIO CONFIG /////////////////////////////
 #if (BLE_AUDIO_ENABLE)
@@ -404,44 +399,6 @@ extern gap_periConnectParams_t my_periConnParameters;
 	#endif
 
 #endif
-
-#if	(CHIP_TYPE == CHIP_TYPE_8269)
-/////////////open SWS digital pullup to prevent MCU err, this is must ////////////
-#define PB0_DATA_OUT					1
-#if 0  //debug GPIO
-	#define	PD0_FUNC							AS_GPIO
-	#define PD0_INPUT_ENABLE					0
-	#define	PD0_OUTPUT_ENABLE					1
-	#define DBG_CHN0_LOW						gpio_write(GPIO_PD0, 0)
-	#define DBG_CHN0_HIGH						gpio_write(GPIO_PD0, 1)
-	#define DBG_CHN0_TOGGLE						BM_FLIP(reg_gpio_out(GPIO_PD0), GPIO_PD0 & 0xff);
-
-
-	#define	PD1_FUNC							AS_GPIO
-	#define PD1_INPUT_ENABLE					0
-	#define	PD1_OUTPUT_ENABLE					1
-	#define DBG_CHN1_LOW						gpio_write(GPIO_PD1, 0)
-	#define DBG_CHN1_HIGH						gpio_write(GPIO_PD1, 1)
-	#define DBG_CHN1_TOGGLE						BM_FLIP(reg_gpio_out(GPIO_PD1), GPIO_PD1 & 0xff);
-
-
-	#define	PC5_FUNC							AS_GPIO
-	#define PC5_INPUT_ENABLE					0
-	#define	PC5_OUTPUT_ENABLE					1
-	#define DBG_CHN2_LOW						gpio_write(GPIO_PC5, 0)
-	#define DBG_CHN2_HIGH						gpio_write(GPIO_PC5, 1)
-	#define DBG_CHN2_TOGGLE						BM_FLIP(reg_gpio_out(GPIO_PC5), GPIO_PC5 & 0xff);
-
-
-	#define	PC6_FUNC							AS_GPIO
-	#define PC6_INPUT_ENABLE					0
-	#define	PC6_OUTPUT_ENABLE					1
-	#define DBG_CHN3_LOW						gpio_write(GPIO_PC6, 0)
-	#define DBG_CHN3_HIGH						gpio_write(GPIO_PC6, 1)
-	#define DBG_CHN3_TOGGLE						BM_FLIP(reg_gpio_out(GPIO_PC6), GPIO_PC6 & 0xff);
-#endif
-#endif
-
 
 ///////////////////////////////////// ATT  HANDLER define ///////////////////////////////////////
 typedef enum

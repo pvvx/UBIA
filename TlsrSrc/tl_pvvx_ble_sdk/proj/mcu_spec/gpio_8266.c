@@ -80,8 +80,8 @@ mask_not 0x3f       0xcf	  0xf3       0xfc
  14		 PF1         PF0      PE7        PE6
  */
 void gpio_setup_up_down_resistor(u32 gpio, u32 up_down) {
-	u8 r_val;
-
+	u8 r_val = up_down;
+/*
 	 if(up_down == PM_PIN_UP_DOWN_FLOAT) {
 		 r_val = 0;
 	 }
@@ -95,6 +95,7 @@ void gpio_setup_up_down_resistor(u32 gpio, u32 up_down) {
 		 r_val = PM_PIN_PULLDOWN_100K;
 	 }
 
+*/
 
 	 u8 pin = gpio & 0xff;
 

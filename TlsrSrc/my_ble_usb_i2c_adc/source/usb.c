@@ -61,6 +61,87 @@ _attribute_ram_code_ void USBCDC_RxCb(unsigned char *data, unsigned int len){
 }
 /////////////////////////////////////////////////////////////////////
 void usb_init(void) {
+#if (USE_BLE)
+#if 1 // hw init TLSR8266/TLSR8269
+		reg_rst_clk0 = 0
+#if USE_SPI
+				| FLD_CLK_SPI_EN
+#endif
+#if USE_I2C
+//				| FLD_CLK_I2C_EN
+#endif
+#if USE_USB
+				| FLD_CLK_USB_EN
+				| FLD_CLK_USB_PHY_EN
+#endif
+				| FLD_CLK_MCU_EN
+				| FLD_CLK_MAC_EN
+#if USE_INT_ADC
+//				| FLD_CLK_ADC_EN
+#endif
+//				| FLD_CLK_ZB_EN
+				;
+		// reg_clk_en + reg_clk_sel + reg_i2s_step = 0x002C1097
+		REG_ADDR32(0x64) = 0x002C0000 // FLD_CLK_SEL_DIV(0x0c), FLD_CLK_SEL_SRC(0x02)
+				| FLD_CLK_GPIO_EN
+				| FLD_CLK_ALGM_EN
+#if USE_USB | USE_DMA
+				| FLD_CLK_DMA_EN
+#endif
+#if USE_UART
+				| FLD_CLK_UART_EN
+#endif
+#if USE_PWM
+				| FLD_CLK_PWM_EN
+#endif
+#if USE_AES
+				| FLD_CLK_AES_EN
+#endif
+//				| FLD_CLK_32K_TIMER_EN	// clk32k for system timer
+				| FLD_CLK_PLL_EN
+				| FLD_CLK_SWIRE_EN
+//				| FLD_CLK_32K_QDEC_EN	// 32k for qdec
+#if USE_AUD
+				| FLD_CLK_AUD_EN
+#endif
+#if USE_DFIFO
+				| FLD_CLK_DIFIO_EN
+#endif
+#if USE_KEYSCAN
+				| FLD_CLK_KEYSCAN_EN
+#endif
+				| FLD_CLK_MCIC_EN
+#if	USE_QDEC
+				| FLD_CLK_QDEC_EN
+#endif
+				;
+		REG_ADDR32(0x70) = 0 // = 0x04000400
+		/* reg_fhs_sel [0x70], After reset = 0x00 */
+			| (0) // bit1 FHS sel: 192M clock from pll | 32M clock from rc osc
+		/* reg_dcdc_clk [0x71], After reset [0x71] = 0x04 */
+			| ((1<<2)<<8)
+		/* reg_?? [0x72], After reset [0x72] = 0x00 */
+			| (0<<16) // watchdog reset status bit 0x72[0] = 1, manually clear - write '1'
+		/* reg_clk_mux_cel [0x73], After reset  = 0x14
+		* [0] clk32k select; 0: sel 32k osc 1: 32k pad
+		* [1] dmic clock select, 1: select 32k (refer to bit[0] to decide which 32k ; 0: dmic clk div
+		* [2] usb phy clock select, 1 : 192M divider 0: 48M pll
+		* [7:4] r_lpr_div, decide system clock speed in low power mode	 */
+			| ((1<<2)<<24);
+#if SET_PLL == QUARTZ_12MHZ
+		reg_pll_ctrl_a = FLD_PLL_A_CAL_DONE_EN | 0x80;
+		analog_write(0x099, 0xb1);
+		analog_write(0x082, 0x20);
+		analog_write(0x09e, 0xad);
+#else // SET_PLL == CLK_QUARTZ
+		reg_pll_ctrl_a = FLD_PLL_A_CAL_DONE_EN;
+		analog_write(0x099, 0x31);
+		analog_write(0x082, 0x34);
+		analog_write(0x09e, 0x82);
+#endif
+#endif // hw init
+
+#endif //  (USE_BLE)
 		/* Initialize usb cdc */
 		USB_Init();
 		USBCDC_RxBufSet(usb_buf_rx);
