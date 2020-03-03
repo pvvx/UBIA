@@ -7,7 +7,12 @@
   </head>
   <body>
 	<div style="height: auto; width: auto; text-align: center;">
-	<div id="div_v"	style="height:400px;"></div>
+	<div id="div_v2" style="height:140px;"></div>
+	</div>
+	<div style="height: auto; width: auto; text-align: center;">
+	<div id="div_v"	style="height:140px;"></div>
+	<div id='labdiv2' style=></div>
+	<div id='labdiv' style=></div>
 		<input type="button" id="butConnect" value="Connect">
 		<input type="button" id="butOnOff" value="Stop">
 		<input type="button" id="butClr" value="#">
@@ -17,7 +22,6 @@
 		<label for="FixNone">Float</label>
 		<input type="button" id="butSave" value="Save data.csv"><br>
 		Window: <span id='wdsize'>?</span> sec, Sample Rate: <span id='smprate'>?</span>
-	<div id='labdiv' style=></div>
 	</div>
   </body>
 <script type="text/javascript">
@@ -62,6 +66,8 @@ var rend = 1;
 var oldblkid = 0;
 var rdnextflg = false;
 var smpsa = [];
+var rollp = 1;
+var rollp2 = 1;
 function wsSmpRate() {
 	if(devcnn && rend) {
 	let idx = cur_idx, tt = new Date().getTime();
@@ -91,15 +97,20 @@ $("butConnect").onclick =  function() {
 }
 var title_id = 'INA2xx';
 // Буфер входящих данных
-var datau = [];
-var gu;
+var datau = new Array();
+var datau2 = new Array();
+var gu, gu2;
 $("butClr").onclick =  function() {
 	datau = new Array();
+	datau2 = new Array();
 	sttim = new Date().getTime();
 	cur_idx = 0;
 	old_idx = 0;
 	stg = 0;
+	rollp = gu.rollPeriod();
+	rollp2 = gu2.rollPeriod();
 	gu.destroy();
+	gu2.destroy();
 }
 function ShowGrf(value) {
 	if(!sttim) {
@@ -109,9 +120,13 @@ function ShowGrf(value) {
 	if(rend) {
 //		log('Raw['+value.byteLength+']: '+ value.getUint16(2,true)+ ', '+value.getUint16(4,true)+'..');
 		for (let i=2;i<value.byteLength;i+=4) {
-			datau.push([cur_idx/smprate, value.getUint16(i+2,true)*kBus+zBus, value.getInt16(i,true)*kShunt+zShunt]);
+			datau.push([cur_idx/smprate, value.getUint16(i+2,true)*kBus+zBus]);
+			datau2.push([cur_idx/smprate, value.getInt16(i,true)*kShunt+zShunt]);
 			cur_idx++;
-			if(cur_idx >= samples) datau.shift();
+			if(cur_idx >= samples) {
+				datau.shift();
+				datau2.shift();
+			}
 		}
 	}
 	else {
@@ -119,28 +134,47 @@ function ShowGrf(value) {
 		old_idx = cur_idx;
 	}
 	if(!stg) {
+		gu2 = new Dygraph(
+			$("div_v2"),
+		    datau2,
+			{
+				title: title_id,
+				showRangeSelector: false,
+				showRoller: true,
+				rollPeriod: rollp2,
+//				xlabel: 'T(sec)',
+				ylabel: 'I(mA)',
+				colors: [ 'red'],
+				axes: {
+					x: {valueFormatter: function(x){return this.getLabels()[0] + ': '+ x.toPrecision(5);}}},
+					labels: ['T', 'I(mA)'],
+					labelsDiv: $('labdiv2'),
+					legend: 'always',  // "follow"
+					digitsAfterDecimal: 3,					
+			});
 		gu = new Dygraph(
 			$("div_v"),
 		    datau,
 			{
-				title: title_id,
 				showRangeSelector: true,
 				showRoller: true,
+				rollPeriod: rollp,
 				xlabel: 'T(sec)',
 				ylabel: 'U(mV)',
-				y2label: 'I(mA)',
-				colors: ['green', 'red'],
-				series : { 'I(mA)': { axis: 'y2' } },
+				colors: ['green'],
 				axes: {
 					x: {valueFormatter: function(x){return this.getLabels()[0] + ': '+ x.toPrecision(5);}}},
-					labels: ['T', 'U(mV)', 'I(mA)'],
-					labelsDiv: $('labdiv'),
-					legend: 'always',  // "follow"
-					digitsAfterDecimal: 3,
+				labels: ['T', 'U(mV)'],
+				labelsDiv: $('labdiv'),
+				legend: 'always',  // "follow"
+				digitsAfterDecimal: 3,
+				drawCallback: function(g) {
+		    		var opts = {dateWindow: this.xAxisRange(), 'file': datau2};
+					gu2.updateOptions(opts); },
 			});
 		let t = 500/smprate;
 		if(t < 50) t = 50;
-		setInterval(function(){renderChart()}, t);
+		setInterval(function(){RendChart()}, t);
 		stg = 1;
 	}
 }
@@ -149,20 +183,33 @@ function avg(arr) {
 	for (var i = 0; i < arrLen; i++) result += arr[i];
 	return result / arrLen;
 }
-var renderChart = function() {
-	var dl;
-	if (gu.dateWindow_) {
-		dl = gu.dateWindow_[1] - gu.dateWindow_[0];
-	    if ($("FixEnd").checked) {
-			var ls = datau.length - 1;
-			gu.dateWindow_[1] = datau[ls][0];
-			gu.dateWindow_[0] = datau[ls][0] - dl;
-		} else if (gu.dateWindow_[0] < datau[0][0]) {
+function RendChart(){
+	var old = datau[0][0];
+	var x = gu.xAxisRange();
+	if (gu.dateWindow_) { 
+		if ($("FixEnd").checked) {
+			var dl = datau[0][0] - old;
+	    	if(dl == 0) {
+				var ls = datau.length - 1;
+				gu.dateWindow_[0] = datau[ls][0] - (x[1] - x[0]);
+				gu.dateWindow_[1] = datau[ls][0];
+			} else {
+				if(typeof gu.dateWindow_[0]==="number")
+					gu.dateWindow_[0] += dl;
+				else
+					gu.dateWindow_[0] = datau[0][0];
+				if(typeof gu.dateWindow_[1]==="number")
+					gu.dateWindow_[1] += dl;
+				else
+				    gu.dateWindow_[1] = datau[1][0];
+			}
+		}
+		if(x[0] < datau[0][0]) 
 			gu.dateWindow_[0] = datau[0][0];
-			gu.dateWindow_[1] = datau[0][0] + dl;
-	   	}
-	} else dl = datau.length/smprate;
-	$("wdsize").innerHTML = dl.toFixed(3);
+		if(x[1] < datau[1][0]) 
+			gu.dateWindow_[1] = datau[1][0];
+	}
+	$('wdsize').innerHTML=((x[1]-x[0])).toFixed(3);
 	if(rend && datau.length != 0) gu.updateOptions({'file': datau});
 }
 function convertArrayOfObjectsToCSV(value){
@@ -197,10 +244,17 @@ $("butSave").onclick =  function() {
 	link.setAttribute('download',"data.csv");
 	link.click();
 }
-if(window.innerHeight > 320) $('div_v').style.height = (window.innerHeight-80) + 'px';
+if(window.innerHeight > 320) {
+	$('div_v').style.height = (window.innerHeight/2-50) + 'px';
+	$('div_v2').style.height = (window.innerHeight/2-50) + 'px';
+}
 window.onresize = function(){
-	if(window.innerHeight > 320) $('div_v').style.height = (window.innerHeight-80) + 'px';
+	if(window.innerHeight > 320) {
+		$('div_v').style.height = (window.innerHeight/2-50) + 'px';
+		$('div_v2').style.height = (window.innerHeight/2-50) + 'px';
+	}
 	$('div_v').style.width = (window.innerWidth-50) + 'px';
+	$('div_v2').style.width = (window.innerWidth-50) + 'px';
 }
 function hex(number, length) {
     var str = (number.toString(16)).toUpperCase();
