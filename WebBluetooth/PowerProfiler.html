@@ -7,12 +7,13 @@
   </head>
   <body>
 	<div style="height: auto; width: auto; text-align: center;">
-	<div id="div_v2" style="height:140px;"></div>
+	<div id="div_vu" style="height:140px;"></div>
 	</div>
 	<div style="height: auto; width: auto; text-align: center;">
-	<div id="div_v"	style="height:140px;"></div>
-	<div id='labdiv2' style=></div>
-	<div id='labdiv' style=></div>
+	<div><b><span id='sumu'>?</span> V, <span id='sumi'>?</span> mA</b></div>
+	<div id="div_vi" style="height:140px;"></div>
+	<div id='labdivu' style=></div>
+	<div id='labdivi' style=></div>
 		<input type="button" id="butConnect" value="Connect">
 		<input type="button" id="butOnOff" value="Stop">
 		<input type="button" id="butClr" value="#">
@@ -36,14 +37,14 @@ else if(smprate < 0.25) smprate = 0.25;
 // INA219 settings:
 const INA219kShunt = 0.1;
 const INA219zShunt = -0.1;
-const INA219kBus = 0.5;
+const INA219kBus = 0.005;
 const INA219zBus = -1.0;
 const INA219PGA = 0; //0 - /1 (+-40mv), 1 - /2 (+-80mv), 2 - /4 (+-160mv), 3 - /8 (+-320mv)
 const INA219BUS = 0; //0 - 0..16V, 1 - 0..32V
 // INA226 settings:
 const INA226kShunt = 0.0025009; // SShunt 1 Om
 const INA226zShunt = 0.06082308;
-const INA226kBus = 1.25;
+const INA226kBus = 0.00125;
 const INA226zBus = -0.00365901;
 //
 var kShunt;  //INA226=1.25
@@ -64,23 +65,43 @@ var old_idx = 0;
 var samples = 10000;
 var rend = 1;
 var oldblkid = 0;
-var rdnextflg = false;
 var smpsa = [];
-var rollp = 1;
-var rollp2 = 1;
+var rollpu = 1;
+var rollpi = 1;
 function wsSmpRate() {
 	if(devcnn && rend) {
-	let idx = cur_idx, tt = new Date().getTime();
-	var sps = (idx - old_idx) * 1000/ (tt - sttim);
-	sttim = tt;	old_idx = idx;
-	smpsa.push(sps);
-	var len = smpsa.length;
-	if(len > 100) { smpsa.shift(); len-- };
-	var csps = 0;
-	for (var i = 0; i < len; i++) csps += smpsa[i];
-	csps = csps/len;
-	$('smprate').innerHTML = csps.toFixed(1) +' sps (' + Math.round(csps*4)+' bytes per sec)';
-}}
+		let idx = cur_idx, tt = new Date().getTime();
+		var sps = (idx - old_idx) * 1000/ (tt - sttim);
+		sttim = tt;	old_idx = idx;
+		smpsa.push(sps);
+		var len = smpsa.length;
+		if(len > 100) { smpsa.shift(); len-- };
+		var csps = 0;
+		for (var i = 0; i < len; i++) csps += smpsa[i];
+		csps = csps/len;
+		$('smprate').innerHTML = csps.toFixed(1) +' sps (' + Math.round(csps*4)+' bytes per sec)';
+	}
+	if(gui && datai.length != 0) {
+		var x = gui.xAxisRange();
+		let sumu = 0;
+		let sumi = 0;
+		let sum = 0;
+		datau.every(function(item, idx){
+			if(item[0] < x[0]) 
+				return true; 
+			else if(item[0] <= x[1]) {
+				sumu += item[1];
+				sumi += datai[idx][1];
+				sum++;
+				return true;
+			} else return false;
+		});
+		if(sum>0) {
+			$('sumi').innerHTML = (sumi/sum).toFixed(3);
+			$('sumu').innerHTML = (sumu/sum).toFixed(3);
+		}
+	}
+}
 $("butOnOff").onclick =  function() {
 	if(rend) {rend = 0; $("butOnOff").value = "Run";}
 	else {rend = 1; $("butOnOff").value = "Stop";}
@@ -98,19 +119,19 @@ $("butConnect").onclick =  function() {
 var title_id = 'INA2xx';
 // Буфер входящих данных
 var datau = new Array();
-var datau2 = new Array();
-var gu, gu2;
+var datai = new Array();
+var guu, gui;
 $("butClr").onclick =  function() {
 	datau = new Array();
-	datau2 = new Array();
+	datai = new Array();
 	sttim = new Date().getTime();
 	cur_idx = 0;
 	old_idx = 0;
 	stg = 0;
-	rollp = gu.rollPeriod();
-	rollp2 = gu2.rollPeriod();
-	gu.destroy();
-	gu2.destroy();
+	rollpu = gui.rollPeriod();
+	rollpi = gui.rollPeriod();
+	gui.destroy();
+	gui.destroy();
 }
 function ShowGrf(value) {
 	if(!sttim) {
@@ -121,11 +142,11 @@ function ShowGrf(value) {
 //		log('Raw['+value.byteLength+']: '+ value.getUint16(2,true)+ ', '+value.getUint16(4,true)+'..');
 		for (let i=2;i<value.byteLength;i+=4) {
 			datau.push([cur_idx/smprate, value.getUint16(i+2,true)*kBus+zBus]);
-			datau2.push([cur_idx/smprate, value.getInt16(i,true)*kShunt+zShunt]);
+			datai.push([cur_idx/smprate+0.5/smprate, value.getInt16(i,true)*kShunt+zShunt]);
 			cur_idx++;
 			if(cur_idx >= samples) {
 				datau.shift();
-				datau2.shift();
+				datai.shift();
 			}
 		}
 	}
@@ -134,43 +155,43 @@ function ShowGrf(value) {
 		old_idx = cur_idx;
 	}
 	if(!stg) {
-		gu2 = new Dygraph(
-			$("div_v2"),
-		    datau2,
+		guu = new Dygraph(
+			$("div_vu"),
+		    datau,
 			{
 				title: title_id,
 				showRangeSelector: false,
 				showRoller: true,
-				rollPeriod: rollp2,
+				rollPeriod: rollpu,
+				xlabel: 'T(sec)',
+				ylabel: 'U(V)',
+				colors: ['green'],
+				axes: {
+					x: {valueFormatter: function(x){return this.getLabels()[0] + ': '+ x.toPrecision(5);}}},
+				labels: ['T', 'U(V)'],
+				labelsDiv: $('labdivu'),
+				legend: 'always',  // "follow"
+				digitsAfterDecimal: 3,
+			});
+		gui = new Dygraph(
+			$("div_vi"),
+		    datai,
+			{
+				showRangeSelector: true,
+				showRoller: true,
+				rollPeriod: rollpi,
 //				xlabel: 'T(sec)',
 				ylabel: 'I(mA)',
 				colors: [ 'red'],
 				axes: {
 					x: {valueFormatter: function(x){return this.getLabels()[0] + ': '+ x.toPrecision(5);}}},
-					labels: ['T', 'I(mA)'],
-					labelsDiv: $('labdiv2'),
-					legend: 'always',  // "follow"
-					digitsAfterDecimal: 3,					
-			});
-		gu = new Dygraph(
-			$("div_v"),
-		    datau,
-			{
-				showRangeSelector: true,
-				showRoller: true,
-				rollPeriod: rollp,
-				xlabel: 'T(sec)',
-				ylabel: 'U(mV)',
-				colors: ['green'],
-				axes: {
-					x: {valueFormatter: function(x){return this.getLabels()[0] + ': '+ x.toPrecision(5);}}},
-				labels: ['T', 'U(mV)'],
-				labelsDiv: $('labdiv'),
+				labels: ['T', 'I(mA)'],
+				labelsDiv: $('labdivi'),
 				legend: 'always',  // "follow"
-				digitsAfterDecimal: 3,
+				digitsAfterDecimal: 3,					
 				drawCallback: function(g) {
-		    		var opts = {dateWindow: this.xAxisRange(), 'file': datau2};
-					gu2.updateOptions(opts); },
+		    		var opts = {dateWindow: this.xAxisRange(), 'file': datau};
+					guu.updateOptions(opts);},
 			});
 		let t = 500/smprate;
 		if(t < 50) t = 50;
@@ -184,59 +205,66 @@ function avg(arr) {
 	return result / arrLen;
 }
 function RendChart(){
-	var old = datau[0][0];
-	var x = gu.xAxisRange();
-	if (gu.dateWindow_) { 
+	var old = datai[0][0];
+	var x = gui.xAxisRange();
+	if (gui.dateWindow_) { 
 		if ($("FixEnd").checked) {
-			var dl = datau[0][0] - old;
+			var dl = datai[0][0] - old;
 	    	if(dl == 0) {
-				var ls = datau.length - 1;
-				gu.dateWindow_[0] = datau[ls][0] - (x[1] - x[0]);
-				gu.dateWindow_[1] = datau[ls][0];
+				var ls = datai.length - 1;
+				gui.dateWindow_[0] = datai[ls][0] - (x[1] - x[0]);
+				gui.dateWindow_[1] = datai[ls][0];
 			} else {
-				if(typeof gu.dateWindow_[0]==="number")
-					gu.dateWindow_[0] += dl;
+				if(typeof gui.dateWindow_[0]==="number")
+					gui.dateWindow_[0] += dl;
 				else
-					gu.dateWindow_[0] = datau[0][0];
-				if(typeof gu.dateWindow_[1]==="number")
-					gu.dateWindow_[1] += dl;
+					gui.dateWindow_[0] = datai[0][0];
+				if(typeof gui.dateWindow_[1]==="number")
+					gui.dateWindow_[1] += dl;
 				else
-				    gu.dateWindow_[1] = datau[1][0];
+				    gui.dateWindow_[1] = datai[1][0];
 			}
 		}
-		if(x[0] < datau[0][0]) 
-			gu.dateWindow_[0] = datau[0][0];
-		if(x[1] < datau[1][0]) 
-			gu.dateWindow_[1] = datau[1][0];
+		if(x[0] < datai[0][0]) 
+			gui.dateWindow_[0] = datai[0][0];
+		if(x[1] < datai[1][0]) 
+			gui.dateWindow_[1] = datai[1][0];
 	}
 	$('wdsize').innerHTML=((x[1]-x[0])).toFixed(3);
-	if(rend && datau.length != 0) gu.updateOptions({'file': datau});
+	if(rend && datai.length != 0) gui.updateOptions({'file': datai});
 }
 function convertArrayOfObjectsToCSV(value){
-	var result, ctr, keys, columnDelimiter, lineDelimiter, data;
-
-	data = value.data || null;
-	if (data == null || !data.length) {return null;}
+	var result, ctr, keysu, keysi, columnDelimiter, lineDelimiter, datau, datai;
+	datau = value.datau || null;
+	datai = value.datai || null;
+	if (datau == null || !datau.length) {return null;}
+	if (datai == null || !datai.length) {return null;}
 	columnDelimiter = value.columnDelimiter || ';';
 	lineDelimiter = value.lineDelimiter || '\n';
-	keys = Object.keys(data[1]);
 	result = '';
-	result += keys.join(columnDelimiter);
+	keysu = Object.keys(datau[1]);
+	keysi = Object.keys(datai[1]);
+	result += keysu.join(columnDelimiter);
+	result += keysi.join(columnDelimiter);
 	result += lineDelimiter;
-	data.forEach(function(item){
+	datau.forEach(function(item, idx){
 		ctr = 0;
-		keys.forEach(function(key){
+		keysu.forEach(function(key){
 			if (ctr > 0)
 				result += columnDelimiter;
 			result += item[key];
 			ctr++;
+		});
+		keysi.forEach(function(k){
+			result += columnDelimiter;
+			result += datai[idx][k];
 		});
 		result += lineDelimiter;
 	});
 	return result;
 }
 $("butSave").onclick =  function() {
-	var csv = convertArrayOfObjectsToCSV({data: datau});
+	var csv = convertArrayOfObjectsToCSV({datau: datau, datai: datai});
 	if (!csv.match(/^data:text\/csv/i)) {csv = 'data:text/csv;charset=utf-8,' + csv;}
 	var encodedUri = encodeURI(csv);
 	var link = document.createElement('a');
@@ -245,16 +273,16 @@ $("butSave").onclick =  function() {
 	link.click();
 }
 if(window.innerHeight > 320) {
-	$('div_v').style.height = (window.innerHeight/2-50) + 'px';
-	$('div_v2').style.height = (window.innerHeight/2-50) + 'px';
+	$('div_vi').style.height = (window.innerHeight/2-60) + 'px';
+	$('div_vu').style.height = (window.innerHeight/2-60) + 'px';
 }
 window.onresize = function(){
 	if(window.innerHeight > 320) {
-		$('div_v').style.height = (window.innerHeight/2-50) + 'px';
-		$('div_v2').style.height = (window.innerHeight/2-50) + 'px';
+		$('div_vi').style.height = (window.innerHeight/2-60) + 'px';
+		$('div_vu').style.height = (window.innerHeight/2-60) + 'px';
 	}
-	$('div_v').style.width = (window.innerWidth-50) + 'px';
-	$('div_v2').style.width = (window.innerWidth-50) + 'px';
+	$('div_vi').style.width = (window.innerWidth-50) + 'px';
+	$('div_vu').style.width = (window.innerWidth-50) + 'px';
 }
 function hex(number, length) {
     var str = (number.toString(16)).toUpperCase();

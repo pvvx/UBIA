@@ -252,7 +252,7 @@ var txrx_pkt = new Uint8Array(RXTX_SIZE+2);
 function SendInit(){
 	txrx_pkt[0] = RXTX_SIZE;
 	txrx_pkt[1] = 0x13;
-	for(i=2;i<txrx_pkt.length; i++) txrx_pkt[i]=i;
+	for(i=2;i<txrx_pkt.length; i++) txrx_pkt[i]=i-1;
 
 	const stop = 0; // =0 ->1, =1 -> 1.5, =2 => 2
 	const parity = 0; // =0 -> none, =1 -> even, =2 -> odd 
@@ -314,16 +314,16 @@ function handleCharacteristicValueChanged(event) {
 			let idx = value.getUint8(1);
 			if(idx == 0x13) {
 //				ResponsePkt('ResponsePkt', value);
-				if(ds > 0) {
+				if(ds == RXTX_SIZE && value.getUint8(RXTX_SIZE+1) == RXTX_SIZE) {
 					ua.cnt_rx += ds;	
 					ShowGrf();
-				}
+				} else	ResponsePkt('ErrorPkt', value);	
 				characteristicCache.writeValue(txrx_pkt);
 				ua.cnt_tx+=txrx_pkt.length-2;	
 			} else if(idx == 0x12) {
 				ua.start();
 				ResponsePkt('ResponsePkt', value);
-				let o = '#12 UART Init '+(value.getUint16(2,true)*100);
+				let o = '#12 UART Init '+(value.getUint16(2,true)*100)+' Baud, 8';
 				let p = value.getUint8(5);
 				if(p == 0)	o+='N';
 				else if(p == 1)	o+='E';
