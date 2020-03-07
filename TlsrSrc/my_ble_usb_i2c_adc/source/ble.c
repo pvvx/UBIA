@@ -55,8 +55,8 @@ u8					blt_rxfifo_b[];
 my_fifo_t			blt_txfifo;
 u8					blt_txfifo_b[];
 
-MYFIFO_INIT(blt_rxfifo, 64, 8); 	// 512 bytes + headers
-MYFIFO_INIT(blt_txfifo, 40, 16);	// 640 bytes + headers
+MYFIFO_INIT(blt_rxfifo, 64, 8); 	// 64*8 512 bytes + headers
+MYFIFO_INIT(blt_txfifo, 40, 16);	// 40*16 640 bytes + headers
 
 ble_con_t ble_con_ini;
 cur_ble_con_t cur_ble_con_ini;
@@ -150,7 +150,9 @@ int module_onReceiveData(void *par)
 	u8 len = pp->l2cap - 3;
 	blk_rx_pkt_t * p = (blk_rx_pkt_t *)&pp->dat;
 //	mini_printf("\r\nonReceiveData %d\r\n", len);
-	if(rx_len == 0 && len >= sizeof(blk_head_t) && len >= p->head.size + sizeof(blk_head_t)) {
+	if(rx_len == 0 && len >= sizeof(blk_head_t)
+		&& len >= p->head.size + sizeof(blk_head_t)
+		&& p->head.size <= sizeof(read_pkt.data)) {
 		rx_len = p->head.size + sizeof(blk_head_t);
 		memcpy(&read_pkt, p, rx_len);
 	}
@@ -425,11 +427,11 @@ void ble_init(void) {
 	blc_ll_initPowerManagement_module();        // pm module:      	 optional
 
 	//ATT initialization
-#if ((MTU_RX_DATA_SIZE) > 23)
-		blc_att_setRxMtuSize(MTU_RX_DATA_SIZE); 	// If not set RX MTU size, default is: 23 bytes, max 241
+#if 1 //
+	blc_att_setRxMtuSize(MTU_DATA_SIZE); 	// If not set RX MTU size, default is: 23 bytes, max 241
 #endif
 #if 1 //(!SET_TX_MTU)
-		blc_att_requestMtuSizeExchange(BLS_CONN_HANDLE, MTU_DATA_SIZE);
+	blc_att_requestMtuSizeExchange(BLS_CONN_HANDLE, MTU_DATA_SIZE);
 #endif
 //	blc_ll_exchangeDataLength(LL_LENGTH_RSP, DLE_DATA_SIZE);// LL_LENGTH_REQ, LL_LENGTH_RSP );
 	////// Host Initialization  //////////

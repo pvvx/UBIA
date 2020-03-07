@@ -37,7 +37,6 @@
 #define EP_TYPE_BULK         0x02
 #define EP_TYPE_INTERRUPT    0x03
 
-
 /** Endpoint number of the CDC device-to-host notification IN endpoint. */
 #define CDC_NOTIFICATION_EPNUM         2
 /** Endpoint number of the CDC device-to-host data IN endpoint. */
@@ -84,11 +83,44 @@ typedef struct {
     USB_CDC_Descriptor_t cdc_descriptor;
 } USB_Descriptor_Configuration_t;
 
-unsigned char *USBDESC_LanguageGet(void);
-unsigned char *USBDESC_VendorGet(void);
-unsigned char *USBDESC_ProductGet(void);
-unsigned char *USBDESC_SerialGet(void);
-unsigned char *USBDESC_DeviceGet(void);
-unsigned char *USBDESC_ConfigurationGet(void);
+extern SECTION_USB_CONST USB_Descriptor_String_t language_desc;
+extern SECTION_USB_CONST USB_Descriptor_String_t vendor_desc;
+extern SECTION_USB_CONST USB_Descriptor_String_t product_desc;
+extern SECTION_USB_CONST USB_Descriptor_String_t serial_desc;
+extern SECTION_USB_CONST USB_Descriptor_Device_t device_desc;
+extern SECTION_USB_CONST USB_Descriptor_Configuration_t configuration_desc;
+
+inline unsigned char *USBDESC_LanguageGet(void)
+{
+    return (unsigned char*) (&language_desc);
+}
+inline unsigned char *USBDESC_VendorGet(void)
+{
+    return (unsigned char*) (&vendor_desc);
+}
+inline unsigned char *USBDESC_ProductGet(void)
+{
+    return (unsigned char*) (&product_desc);
+}
+inline unsigned char *USBDESC_SerialGet(void)
+{
+	return (unsigned char*) (&serial_desc);
+}
+inline unsigned char *USBDESC_DeviceGet(void)
+{
+	return (unsigned char*) (&device_desc);
+}
+inline unsigned char *USBDESC_ConfigurationGet(void)
+{
+	return (unsigned char*) (&configuration_desc);
+}
+inline unsigned char *USBDESC_CdcGet(void)
+{
+	return (unsigned char*) (&configuration_desc.cdc_descriptor);
+}
+inline unsigned char *USBDESC_CdcInfGet(void)
+{
+	return (unsigned char*) (&configuration_desc.cdc_interface);
+}
 
 #endif // _USB_DESC_H_

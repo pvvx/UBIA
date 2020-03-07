@@ -23,23 +23,28 @@
 #ifdef USE_USB_CDC
 #include "usb.h"
 
-const USB_Descriptor_String_t language_desc = { 
+SECTION_USB_CONST
+USB_Descriptor_String_t language_desc = {
     {sizeof(USB_Descriptor_Header_t) + 2, DTYPE_String},
     {LANGUAGE_ID_ENG}};
 
-const USB_Descriptor_String_t vendor_desc = { 
+SECTION_USB_CONST
+USB_Descriptor_String_t vendor_desc = {
     {sizeof(USB_Descriptor_Header_t) + sizeof(STRING_VENDOR) - 2, DTYPE_String}, // Header
     STRING_VENDOR};
 
-const USB_Descriptor_String_t product_desc = { 
+SECTION_USB_CONST
+USB_Descriptor_String_t product_desc = {
     {sizeof(USB_Descriptor_Header_t) + sizeof(STRING_PRODUCT) - 2, DTYPE_String}, // Header
     STRING_PRODUCT};
 
-const USB_Descriptor_String_t serial_desc = { 
+SECTION_USB_CONST
+USB_Descriptor_String_t serial_desc = {
     {sizeof(USB_Descriptor_Header_t) + sizeof(STRING_SERIAL) - 2, DTYPE_String}, // Header
     STRING_SERIAL};
 
-const USB_Descriptor_Device_t device_desc = { 
+SECTION_USB_CONST
+USB_Descriptor_Device_t device_desc = {
     { sizeof(USB_Descriptor_Device_t), DTYPE_Device }, // Header
     
     0x0110, // USBSpecification, USB 1.1
@@ -48,7 +53,7 @@ const USB_Descriptor_Device_t device_desc = {
     0x02, // SubClass
     0x01, // Protocol
 
-    8, // Endpoint0Size, Maximum Packet Size for Zero Endpoint. Valid Sizes are 8, 16, 32, 64
+    8, // Endpoint0 Size, Maximum Packet Size for Zero Endpoint. Valid Sizes are 8, 16, 32, 64
 	0x248a, // VendorID
 	0x8267, // Product ID
     0x0100, // .ReleaseNumber
@@ -58,7 +63,8 @@ const USB_Descriptor_Device_t device_desc = {
     1 
 };
 
-const USB_Descriptor_Configuration_t configuration_desc = {
+SECTION_USB_CONST
+USB_Descriptor_Configuration_t configuration_desc = {
     { 
         {
             sizeof(USB_Descriptor_Configuration_Header_t),
@@ -169,46 +175,5 @@ const USB_Descriptor_Configuration_t configuration_desc = {
     },
 };
 
-
-
-unsigned char *USBDESC_LanguageGet(void) 
-{
-    return (unsigned char*) (&language_desc);
-}
-
-unsigned char *USBDESC_VendorGet(void) 
-{
-    return (unsigned char*) (&vendor_desc);
-}
-
-unsigned char *USBDESC_ProductGet(void) 
-{
-    return (unsigned char*) (&product_desc);
-}
-
-unsigned char *USBDESC_SerialGet(void) 
-{
-	return (unsigned char*) (&serial_desc);
-}
-
-unsigned char *USBDESC_DeviceGet(void) 
-{
-	return (unsigned char*) (&device_desc);
-}
-
-unsigned char *USBDESC_ConfigurationGet(void) 
-{
-	return (unsigned char*) (&configuration_desc);
-}
-
-unsigned char *USBDESC_CdcGet(void) 
-{
-	return (unsigned char*) (&configuration_desc.cdc_descriptor);
-}
-
-unsigned char *USBDESC_CdcInfGet(void) 
-{
-	return (unsigned char*) (&configuration_desc.cdc_interface);
-}
 
 #endif // USE_USB_CDC

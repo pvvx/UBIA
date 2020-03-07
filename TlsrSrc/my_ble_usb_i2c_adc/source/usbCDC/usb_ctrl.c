@@ -34,10 +34,11 @@
 static USB_Request_Header_t control_request;
 static unsigned char * g_response = 0;
 static unsigned short g_response_len = 0;
-static char g_stall = 0;
+static volatile char g_stall = 0;
 unsigned char g_rate = 0; //default 0 for all report
 extern void USBCDC_ControlRequestProcesss(unsigned char bRequest, unsigned short wValue, unsigned short wIndex, unsigned short wLength);
 
+SECTION_USB_CODE
 static void USB_ResponseSend(void)
 {
     unsigned int n;
@@ -56,6 +57,7 @@ static void USB_ResponseSend(void)
     }
 }
 
+SECTION_USB_CODE
 static void USB_DescDataPrepare(void) 
 {
     unsigned char value_l = (control_request.wValue) & 0xff;
@@ -109,9 +111,10 @@ static void USB_DescDataPrepare(void)
     return;
 }
 
-
+SECTION_USB_CODE
 static void USB_OutClassIntfReqHandle(int data_request) 
 {
+	(void)data_request;
     unsigned char property = control_request.bRequest;
 
     switch (property) {
@@ -125,6 +128,7 @@ static void USB_OutClassIntfReqHandle(int data_request)
     }
 }
 
+SECTION_USB_CODE
 static void USB_InClassIntfReqHandle() 
 {
     unsigned char property = control_request.bRequest;
@@ -142,18 +146,23 @@ static void USB_InClassIntfReqHandle()
     }
 }
 
+SECTION_USB_CODE
 static void USB_StdIntfReqHandle() 
 {}
 
+SECTION_USB_CODE
 static void USB_OutClassEndpReqHandle(int data_request) 
-{}
+{	(void)data_request; }
 
+SECTION_USB_CODE
 static void USB_InClassEndpReqHandle() 
 {}
 
+SECTION_USB_CODE
 static void USB_SetIntfHandle()
 {}
 
+SECTION_USB_CODE
 static void USB_RequestHandle(unsigned char data_request) 
 {
     unsigned char bmRequestType = control_request.bmRequestType;
@@ -209,6 +218,7 @@ static void USB_RequestHandle(unsigned char data_request)
     return;
 }
 
+SECTION_USB_CODE
 static void USB_CtlEpSetupHandle() 
 {
     USBHW_CtrlEpPtrReset();
@@ -227,6 +237,7 @@ static void USB_CtlEpSetupHandle()
     }
 }
 
+SECTION_USB_CODE
 static void USB_CtlEpDataHandle(void) 
 {
     USBHW_CtrlEpPtrReset();
@@ -240,6 +251,7 @@ static void USB_CtlEpDataHandle(void)
     }   
 }
 
+SECTION_USB_CODE
 static void USB_CtlEpStatusHandle() 
 {
     if (g_stall) {
@@ -250,15 +262,25 @@ static void USB_CtlEpStatusHandle()
     }	
 }
 
+#ifdef USB_IrqHandle
 /**
  * @brief This function handles the USB related irq.
  * @param   none
  * @return none
  */
-_attribute_ram_code_ void USB_IrqHandle(unsigned int irq_src)
-{
-	unsigned int irq;
-    irq = USBHW_CtrlEpIrqGet();
+_attribute_ram_code_
+void USB_IrqHandle(void) {
+	unsigned int irq_src = reg_irq_src;
+#else
+/**
+ * @brief This function handles the USB related irq.
+ * @param  irq_src = reg_irq_src
+ * @return none
+ */
+_attribute_ram_code_
+void USB_IrqHandle(unsigned int irq_src) {
+#endif
+	unsigned int irq = USBHW_CtrlEpIrqGet();
 	if ((irq_src & FLD_IRQ_EP0_SETUP_EN)
 	    && (irq & FLD_CTRL_EP_IRQ_SETUP)) {
         USBHW_CtrlEpIrqClr(FLD_CTRL_EP_IRQ_SETUP);
@@ -277,28 +299,21 @@ _attribute_ram_code_ void USB_IrqHandle(unsigned int irq_src)
     g_stall = 0;
 	if (irq_src &  (FLD_IRQ_EP_DATA_EN | FLD_IRQ_SET_INTF_EN)) {
 	    irq = reg_usb_irq; // data irq
-	    if(irq & BIT((USB_EDP_CDC_OUT & 0x07))){
-	    	reg_usb_irq = BIT((USB_EDP_CDC_OUT & 0x07)); // clear ime
+	    if(irq & BIT((CDC_RX_EPNUM & 0x07))){
+	    	reg_usb_irq = BIT((CDC_RX_EPNUM & 0x07)); // clear ime
 	        USBCDC_DataRecv();
-	        USBHW_DataEpAck(USB_EDP_CDC_OUT);
 	    }
-	    if(irq & BIT((USB_EDP_CDC_IN & 0x07))){
-	    	reg_usb_irq = BIT((USB_EDP_CDC_IN & 0x07)); // clear ime
-	        if(USBCDC_BulkDataSend()) {
-	            USBHW_DataEpAck(USB_EDP_CDC_OUT);
-	        }
+	    if(irq & BIT((CDC_TX_EPNUM & 0x07))){
+	    	reg_usb_irq = BIT((CDC_TX_EPNUM & 0x07)); // clear ime
+	        USBCDC_BulkDataSend();
 	    }
 	}
 #if	(USB_CDC_MAX_RX_BLK_SIZE > 64)
-	// reg_irq_mask FLD_IRQ_USB_250US_EN ?
     if ((reg_irq_mask3 & BIT(0)) && (irq_src & FLD_IRQ_USB_250US_EN)) { // USB 250 us ?
-//      reg_irq_src3 = BIT(0); // Clear FLD_IRQ_USB_250US_EN flag
-//   		if (usb_flg_rx_timeot) { // reg_irq_mask & FLD_IRQ_USB_250US_EN
-			if(--usb_flg_rx_timeot == 0) {
-				reg_irq_mask3 &= ~BIT(0); // reg_irq_mask &= ~FLD_IRQ_USB_250US_EN
-				USB_RxTimeOuts();
-			}
-//		}
+		if(--usb_flg_rx_timeot == 0) {
+			reg_irq_mask3 &= ~BIT(0); // reg_irq_mask &= ~FLD_IRQ_USB_250US_EN
+			USB_RxTimeOuts();
+		}
     }
 #endif
     if (irq_src & FLD_IRQ_USB_RST_EN) { // USB reset
@@ -310,13 +325,26 @@ _attribute_ram_code_ void USB_IrqHandle(unsigned int irq_src)
     	reg_irq_mask1 &= ~FLD_IRQ_USB_PWDN_EN;
     	USB_PWDN();
     }
-    reg_irq_src = irq_src & (~FLD_IRQ_TMR1_EN);
+#ifdef USB_IrqHandle
+    reg_irq_src = irq_src;
+#else
+    reg_irq_src = irq_src & (
+    		FLD_IRQ_USB_PWDN_EN
+    		| FLD_IRQ_EP0_SETUP_EN
+    		| FLD_IRQ_EP0_DAT_EN
+    		| FLD_IRQ_EP0_STA_EN
+    		| FLD_IRQ_SET_INTF_EN
+    		| FLD_IRQ_EP_DATA_EN
+    		| FLD_IRQ_USB_250US_EN
+    		| FLD_IRQ_USB_RST_EN);
+#endif
 }
 
-static void USB_InterruptInit() 
+SECTION_USB_CODE
+static inline void USB_InterruptInit()
 {
     USBHW_ManualInterruptEnable(FLD_CTRL_EP_AUTO_STD | FLD_CTRL_EP_AUTO_DESC);
-    USBHW_DataEpAck(USB_EDP_CDC_OUT);
+    USBHW_DataEpAck(CDC_RX_EPNUM);
 	//	USB Interrupts
 	reg_irq_mask |= 0
 //		| FLD_IRQ_USB_PWDN_EN
@@ -335,9 +363,14 @@ static void USB_InterruptInit()
  * @param   none
  * @return none
  */
+SECTION_USB_CODE
 void USB_Init()
 {
-    USBCDC_Init();
+	USBCDC_Init();
+#ifdef USB_SET_CFG_UART
+    USB_SET_CFG_UART(LineEncoding);
+#endif
     USB_InterruptInit();
 }
+
 #endif // USE_USB_CDC

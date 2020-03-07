@@ -51,7 +51,7 @@ _attribute_ram_code_ void USBCDC_RxCb(unsigned char *data, unsigned int len){
 		if(rx_len == 0
 			&& data
 			&& len >= sizeof(blk_head_t)
-			&& len <= MTU_RX_DATA_SIZE
+			&& len <= USB_CDC_MAX_RX_BLK_SIZE
 			&& data[0]+sizeof(blk_head_t) <= len) {
 			rx_len = data[0]+sizeof(blk_head_t);
 			memcpy(&read_pkt, data, rx_len);

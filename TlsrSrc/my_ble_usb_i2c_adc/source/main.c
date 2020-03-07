@@ -33,6 +33,7 @@
 #include "i2c_dev.h"
 #endif
 #include "app.h"
+#include "lfloader.h"
 
 _attribute_ram_code_ void irq_handler(void)
 {
@@ -64,6 +65,8 @@ int main (void) {
 	clock_init();
 
 	gpio_init();
+
+	load_floader();
 
 	///NOTE:This function must be placed before the following function rf_drv_init().
 	blc_app_loadCustomizedParameters();  //load customized freq_offset cap value and tp value

@@ -11,57 +11,52 @@
 #include "proj/common/types.h"
 #include "i2cbus.h"
 
-//  packet 20 + 27 * 8 байт  = 236 ? (236-2)/2 = 117 sps
-//  packet 20 + 27 * 7 байт  = 209 ? (209-2)/2 = 103 sps
-//  packet 20 + 27 * 6 байт  = 182 ? (182-2)/2 = 90 sps
-//#define MAX_DLE_DATA_SIZE 240 // 244
-//#define MAX_MTU_DATA_SIZE 247
 
 #define MIN_TSPS_US  200 // минимум для BLE 200 us
 
-#define SMPS_BLK_CNT	116 // ((20+27*7-2)/2)&0xFFFE = 102 or ((20+27*8-2)/2)&0xFFFE = 116 (9 блоков)
-#define DLE_DATA_SIZE (SMPS_BLK_CNT*2+2)
-#define MTU_DATA_SIZE (DLE_DATA_SIZE+7) // -(3 байта заголовка ATT и 4 байта заголовка L2CAP)
-#define MTU_RX_DATA_SIZE 63
+// 9 RF packets: 20 + 27*8 = 236 bytes, (236-2)/2 = max 117 16-bits word
+#define SMPS_BLK_CNT	116 // ((20+27*8-2)/2)&0xFFFE = 116 (9 rf-tx block)
+#define DLE_DATA_SIZE	(SMPS_BLK_CNT*2+2) // [116*2+2 = 234], MTU = 234+7 = 241 ?
+#define MTU_DATA_SIZE	(DLE_DATA_SIZE+7) //[max 241] -(3 байта заголовка ATT и 4 байта заголовка L2CAP)
 
 // DEV command id:
-#define CMD_DEV_VER  0x00 // Get Ver
+#define CMD_DEV_VER	0x00 // Get Ver
 // I2C/SBUS cfg
-#define CMD_DEV_CFG  0x01 // Get/Set CFG/ini I2C & Start measure
+#define CMD_DEV_CFG	0x01 // Get/Set CFG/ini I2C & Start measure
 // Save cfg
-#define CMD_DEV_SCF  0x02 // Store CFG/ini in Flash
+#define CMD_DEV_SCF	0x02 // Store CFG/ini in Flash
 // Status
-#define CMD_DEV_STA  0x03 // Status
+#define CMD_DEV_STA	0x03 // Status
 // BLE cfg
-#define CMD_DEV_CPU  0x04 // Connect parameters Update (BLE)
-#define CMD_DEV_BLE  0x05 // BLE parameters Update (BLE)
+#define CMD_DEV_CPU	0x04 // Connect parameters Update (BLE)
+#define CMD_DEV_BLE	0x05 // BLE parameters Update (BLE)
 // 0x06
 // I2C/SMBUS out regs
-#define CMD_DEV_I2C  0x07 // blk out regs i2c data
+#define CMD_DEV_I2C	0x07 // blk out regs i2c data
 // ADC cfg
-#define CMD_DEV_CAD  0x08 // Get/Set CFG/ini ADC & Start measure
+#define CMD_DEV_CAD	0x08 // Get/Set CFG/ini ADC & Start measure
 // DAC cfg
-#define CMD_DEV_DAC  0x09 // DAC cfg
+#define CMD_DEV_DAC	0x09 // DAC cfg
 // ADC out samples
-#define CMD_DEV_ADC  0x0A // blk out regs ADC data
+#define CMD_DEV_ADC	0x0A // blk out regs ADC data
 // TST device
-#define CMD_DEV_TST  0x0B // blk out X data, cfg TST device
+#define CMD_DEV_TST	0x0B // blk out X data, cfg TST device
 // I2C rd/wr
-#define CMD_DEV_UTR  0x0C // I2C read/write
+#define CMD_DEV_UTR	0x0C // I2C read/write
 // Debug
-#define CMD_DEV_DBG  0x0D // Debug
+#define CMD_DEV_DBG	0x0D // Debug
 // Power, Sleep
-#define CMD_DEV_PWR  0x0E // Power On/Off, Sleep
+#define CMD_DEV_PWR	0x0E // Power On/Off, Sleep
 // Runtime Error
-#define CMD_DEV_ERR  0x0F // Runtime Error
+#define CMD_DEV_ERR	0x0F // Runtime Error
 // I2C/SMBUS rd/wr regs
-#define CMD_DEV_GRG  0x10 // Get reg I2C
-#define CMD_DEV_SRG  0x11 // Set reg I2C
+#define CMD_DEV_GRG	0x10 // Get reg I2C
+#define CMD_DEV_SRG	0x11 // Set reg I2C
 // UART
-#define CMD_DEV_UAC  0x12 // Set UART
-#define CMD_DEV_UAR  0x13 // Send/Receive UART
+#define CMD_DEV_UAC	0x12 // Set UART
+#define CMD_DEV_UAR	0x13 // Send/Receive UART
 
-#define CMD_ERR_FLG   0x80 // send error cmd mask
+#define CMD_ERR_FLG	0x80 // send error cmd mask
 
 // Runtime Errors
 #define RTERR_USER	0x00
@@ -219,13 +214,6 @@ typedef struct __attribute__((packed)) {
 	uint8_t cmd;  // номер команды / тип пакета
 } blk_head_t;
 
-#ifndef MTU_RX_DATA_SIZE
-#define MTU_RX_DATA_SIZE (sizeof(blk_head_t) + sizeof(dev_i2c_cfg_t))
-#endif
-#if (MTU_RX_DATA_SIZE > 64)
-#error MTU_RX_DATA_SIZE!
-#endif
-
 // IN CMD_DEV_UTR I2C read/write
 /* см. Universal I2C/SMBUS read-write transaction struct in i2cbus.h
 typedef struct _i2c_utr_t {
@@ -243,18 +231,22 @@ typedef struct __attribute__((packed)) _i2c_rd_t{
 typedef struct __attribute__((packed)) _i2c_wr_t{
 	uint8_t dev_addr; // адрес на шине i2c
 	uint8_t rd_count; // кол-во регистров I2C / байт чтения после передачи, bit7 =1 -> end byte send ACK
-	uint8_t data[MTU_RX_DATA_SIZE-sizeof(blk_head_t)-sizeof(i2c_rd_t)]; // значения регистров
+#if (DLE_DATA_SIZE > 127+4)
+	uint8_t data[127]; // значения регистров
+#else
+	uint8_t data[DLE_DATA_SIZE-sizeof(blk_head_t)-2]; // значения регистров
+#endif
 } i2c_wr_t;
 
 typedef struct __attribute__((packed)) _blk_tx_pkt_t{
 	blk_head_t head;
 	union __attribute__((packed)) {
-		uint8_t uc[MTU_DATA_SIZE-sizeof(blk_head_t)];
-		int8_t sc[MTU_DATA_SIZE-sizeof(blk_head_t)];
-		uint16_t ui[(MTU_DATA_SIZE-sizeof(blk_head_t))/sizeof(uint16_t)];
-		int16_t si[(MTU_DATA_SIZE-sizeof(blk_head_t))/sizeof(int16_t)];
-		uint32_t ud[(MTU_DATA_SIZE-sizeof(blk_head_t))/sizeof(uint32_t)];
-		int32_t sd[(MTU_DATA_SIZE-sizeof(blk_head_t))/sizeof(uint32_t)];
+		uint8_t uc[DLE_DATA_SIZE-sizeof(blk_head_t)];
+		int8_t sc[DLE_DATA_SIZE-sizeof(blk_head_t)];
+		uint16_t ui[(DLE_DATA_SIZE-sizeof(blk_head_t))/sizeof(uint16_t)];
+		int16_t si[(DLE_DATA_SIZE-sizeof(blk_head_t))/sizeof(int16_t)];
+		uint32_t ud[(DLE_DATA_SIZE-sizeof(blk_head_t))/sizeof(uint32_t)];
+		int32_t sd[(DLE_DATA_SIZE-sizeof(blk_head_t))/sizeof(uint32_t)];
 		dev_i2c_cfg_t ci2c;
 		dev_adc_cfg_t cadc;
 		ble_con_t con;
@@ -275,12 +267,12 @@ typedef struct __attribute__((packed)) _blk_tx_pkt_t{
 typedef struct __attribute__((packed)) _blk_rx_pkt_t{
 	blk_head_t head;
 	union __attribute__((packed)) {
-		uint8_t uc[MTU_RX_DATA_SIZE-sizeof(blk_head_t)];
-		int8_t sc[MTU_RX_DATA_SIZE-sizeof(blk_head_t)];
-		uint16_t ui[(MTU_RX_DATA_SIZE-sizeof(blk_head_t))/sizeof(uint16_t)];
-		int16_t si[(MTU_RX_DATA_SIZE-sizeof(blk_head_t))/sizeof(int16_t)];
-		uint32_t ud[(MTU_RX_DATA_SIZE-sizeof(blk_head_t))/sizeof(uint32_t)];
-		int32_t sd[(MTU_RX_DATA_SIZE-sizeof(blk_head_t))/sizeof(uint32_t)];
+		uint8_t uc[DLE_DATA_SIZE-sizeof(blk_head_t)];
+		int8_t sc[DLE_DATA_SIZE-sizeof(blk_head_t)];
+		uint16_t ui[(DLE_DATA_SIZE-sizeof(blk_head_t))/sizeof(uint16_t)];
+		int16_t si[(DLE_DATA_SIZE-sizeof(blk_head_t))/sizeof(int16_t)];
+		uint32_t ud[(DLE_DATA_SIZE-sizeof(blk_head_t))/sizeof(uint32_t)];
+		int32_t sd[(DLE_DATA_SIZE-sizeof(blk_head_t))/sizeof(uint32_t)];
 		dev_i2c_cfg_t ci2c;
 		dev_adc_cfg_t cadc;
 		ble_con_t con;

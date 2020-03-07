@@ -25,31 +25,36 @@
 
 // some API:
 // Endpont8 is the alias of endpoint0
+SECTION_USB_CODE
 void USBHW_ManualInterruptDisable(int m) {
-	REG_CTRL_EP_IRQ_MODE |= m;
+	reg_ctrl_ep_irq_mode |= m;
 
 }
 
+SECTION_USB_CODE
 void USBHW_ManualInterruptEnable(int m) {
-	REG_CTRL_EP_IRQ_MODE &= (~m);
+	reg_ctrl_ep_irq_mode &= (~m);
 }
 
+SECTION_USB_CODE
 void USBHW_EpWrite(unsigned long ep,unsigned char * data, int len) {
 	int i;
-	REG_USB_EP_PTR(ep) = 0;
+	reg_usb_ep_ptr(ep) = 0;
 
 	for (i = 0; i < len; i++)
-		REG_USB_EP_DAT(ep) = data[i];
+		reg_usb_ep_dat(ep) = data[i];
 
-	REG_USB_EP_CTRL(ep) = FLD_EP_DAT_ACK;		// ACK
+	reg_usb_ep_ctrl(ep) = FLD_EP_DAT_ACK;		// ACK
 }
 
 // handy help function
+SECTION_USB_CODE
 void USBHW_CtrlEpU16Write(unsigned short v){
 	USBHW_CtrlEpDataWrite(v & 0xff);
 	USBHW_CtrlEpDataWrite(v >> 8);
 }
 
+SECTION_USB_CODE
 unsigned short USBHW_CtrlEpU16Read(void){
 	unsigned short v = USBHW_CtrlEpDataRead();
 	return (USBHW_CtrlEpDataRead() << 8) | v;

@@ -19,96 +19,16 @@
  *           file under Mutual Non-Disclosure Agreement. NO WARRENTY of ANY KIND is provided. 
  *           
  *******************************************************************************************************/
-// correct pvvx
 #ifndef    _USB_HW_H_
 #define    _USB_HW_H_
 #pragma once
 
-#define USB_MAX_RX_FIFO_SIZE		256 // hardware!
-#define USB_MAX_TX_FIFO_SIZE		64 // hardware!
-
-/****************************************************
- usb registers: begin  addr : 0x100
- *****************************************************/
-#define REG_CTRL_EP_PTR         REG_ADDR8(0x100)
-#define REG_CTRL_EP_DAT         REG_ADDR8(0x101)
-#define REG_CTRL_EP_CTRL        REG_ADDR8(0x102)
-
-// same for all endpoints
-
-#define REG_CTRL_EP_IRQ_STA     REG_ADDR8(0x103)
-
-#define REG_CTRL_EP_IRQ_MODE    REG_ADDR8(0x104)
-
-#define REG_USB_CTRL            REG_ADDR8(0x105)
-
-#define REG_USB_CYC_CALI        REG_ADDR16(0x106)
-#define REG_USB_MDEV            REG_ADDR8(0x10a)
-#define REG_USB_HOST_CONN       REG_ADDR8(0x10b)
-
-#define REG_USB_SUPS_CYC_CALI   REG_ADDR8(0x10c)
-#define REG_USB_INTF_ALT        REG_ADDR8(0x10d)
-
-#define REG_USB_EP8123_PTR      REG_ADDR32(0x110)
-#define REG_USB_EP8_PTR         REG_ADDR8(0x110)
-#define REG_USB_EP1_PTR         REG_ADDR8(0x111)
-#define REG_USB_EP2_PTR         REG_ADDR8(0x112)
-#define REG_USB_EP3_PTR         REG_ADDR8(0x113)
-#define REG_USB_EP4567_PTR      REG_ADDR32(0x114)
-#define REG_USB_EP4_PTR         REG_ADDR8(0x114)
-#define REG_USB_EP5_PTR         REG_ADDR8(0x115)
-#define REG_USB_EP6_PTR         REG_ADDR8(0x116)
-#define REG_USB_EP7_PTR         REG_ADDR8(0x117)
-#define REG_USB_EP_PTR(i)       REG_ADDR8(0x110+((i) & 0x07))
-
-#define REG_USB_EP8123_DAT      REG_ADDR32(0x118)
-#define REG_USB_EP8_DAT         REG_ADDR8(0x118)
-#define REG_USB_EP1_DAT         REG_ADDR8(0x119)
-#define REG_USB_EP2_DAT         REG_ADDR8(0x11a)
-#define REG_USB_EP3_DAT         REG_ADDR8(0x11b)
-#define REG_USB_EP4567_DAT      REG_ADDR32(0x11c)
-#define REG_USB_EP4_DAT         REG_ADDR8(0x11c)
-#define REG_USB_EP5_DAT         REG_ADDR8(0x11d)
-#define REG_USB_EP6_DAT         REG_ADDR8(0x11e)
-#define REG_USB_EP7_DAT         REG_ADDR8(0x11f)
-#define REG_USB_EP_DAT(i)       REG_ADDR8(0x118+((i) & 0x07))
-
-#define REG_USB_EP8_CTRL        REG_ADDR8(0x120)
-#define REG_USB_EP1_CTRL        REG_ADDR8(0x121)
-#define REG_USB_EP2_CTRL        REG_ADDR8(0x122)
-#define REG_USB_EP3_CTRL        REG_ADDR8(0x123)
-#define REG_USB_EP4_CTRL        REG_ADDR8(0x124)
-#define REG_USB_EP5_CTRL        REG_ADDR8(0x125)
-#define REG_USB_EP6_CTRL        REG_ADDR8(0x126)
-#define REG_USB_EP7_CTRL        REG_ADDR8(0x127)
-#define REG_USB_EP_CTRL(i)      REG_ADDR8(0x120+((i) & 0x07))
-
-#define REG_USB_EP8123_BUF_ADDR REG_ADDR32(0x128)
-#define REG_USB_EP8_BUF_ADDR    REG_ADDR8(0x128)
-#define REG_USB_EP1_BUF_ADDR    REG_ADDR8(0x129)
-#define REG_USB_EP2_BUF_ADDR    REG_ADDR8(0x12a)
-#define REG_USB_EP3_BUF_ADDR    REG_ADDR8(0x12b)
-#define REG_USB_EP4567_BUF_ADDR REG_ADDR32(0x12c)
-#define REG_USB_EP4_BUF_ADDR    REG_ADDR8(0x12c)
-#define REG_USB_EP5_BUF_ADDR    REG_ADDR8(0x12d)
-#define REG_USB_EP6_BUF_ADDR    REG_ADDR8(0x12e)
-#define REG_USB_EP7_BUF_ADDR    REG_ADDR8(0x12f)
-#define REG_USB_EP_BUF_ADDR(i)  REG_ADDR8(0x128+((i) & 0x07))
-
-#define REG_USB_RAM_CTRL        REG_ADDR8(0x130)
-
-#define REG_USB_ISO_MODE        REG_ADDR8(0x138)
-#define REG_USB_IRQ             REG_ADDR8(0x139)
-#define REG_USB_MASK            REG_ADDR8(0x13a)
-#define REG_USB_EP8_SEND_MAX    REG_ADDR8(0x13b)
-#define REG_USB_EP8_SEND_THRE   REG_ADDR8(0x13c)
-#define REG_USB_EP8_FIFO_MODE   REG_ADDR8(0x13d)
-#define REG_USB_EP_MAX_SIZE     REG_ADDR8(0x13e)
-
+//#define USB_MAX_RX_FIFO_SIZE		256
+//#define USB_MAX_TX_FIFO_SIZE		64
 
 enum {
     USB_EDP_PRINTER_IN = 8, // endpoint 8 is alias of enpoint 0,  becareful.  // default hw buf len = 64
-    USB_EDP_MOUSE = 2,          // default hw buf len = 8
+    USB_EDP_MOUSE = 2,          // default hw buf len = 8 // CDC_NOTIFICATION_EPNUM
     USB_EDP_KEYBOARD_IN = 1,    // default hw buf len = 8
     USB_EDP_KEYBOARD_OUT = 3,   // default hw buf len = 16
     USB_EDP_AUDIO_IN = 4,       // default hw buf len = 64
@@ -119,8 +39,8 @@ enum {
     USB_EDP_MS_OUT = USB_EDP_PRINTER_OUT,
     USB_EDP_SOMATIC_IN = USB_EDP_AUDIO_IN,      //  when USB_SOMATIC_ENABLE, USB_EDP_PRINTER_OUT disable
     USB_EDP_SOMATIC_OUT = USB_EDP_PRINTER_OUT,
-    USB_EDP_CDC_IN = 4,
-    USB_EDP_CDC_OUT = 5,
+    USB_EDP_CDC_IN = 4, // CDC_TX_EPNUM
+    USB_EDP_CDC_OUT = 5, // CDC_RX_EPNUM
 };
 
 /**
@@ -130,7 +50,7 @@ enum {
  */
  static  inline  void  USBHW_Ep8FifoModeSet(unsigned char dat)
 {
-	REG_USB_EP8_FIFO_MODE = dat;
+	reg_usb_ep8_fifo_mode = dat;
 }
 
 /**
@@ -140,7 +60,7 @@ enum {
  */
  static  inline void USBHW_PrinterThresholdSet(unsigned char th)
 {
-	REG_USB_EP8_SEND_THRE = th;
+	reg_usb_ep8_send_thre = th;
 }
 
 /**
@@ -150,7 +70,7 @@ enum {
  */
 static  inline unsigned long USBHW_CtrlEpIrqGet(void)
 {
-	return REG_CTRL_EP_IRQ_STA;
+	return reg_ctrl_ep_irq_sta;
 }
 
 /**
@@ -160,7 +80,7 @@ static  inline unsigned long USBHW_CtrlEpIrqGet(void)
  */
 static  inline void USBHW_CtrlEpIrqClr(int irq)
 {
-	REG_CTRL_EP_IRQ_STA = irq;
+	reg_ctrl_ep_irq_sta = irq;
 }
 
 /**
@@ -170,7 +90,7 @@ static  inline void USBHW_CtrlEpIrqClr(int irq)
  */
 static  inline void USBHW_CtrlEpCtrlWrite(unsigned char data)
 {
-	REG_CTRL_EP_CTRL = data;
+	reg_ctrl_ep_ctrl = data;
 }
 
 /**
@@ -180,7 +100,7 @@ static  inline void USBHW_CtrlEpCtrlWrite(unsigned char data)
  */
 static  inline void USBHW_CtrlEpPtrReset(void)
 {
-	REG_CTRL_EP_PTR = 0;
+	reg_ctrl_ep_ptr = 0;
 }
 
 /**
@@ -190,7 +110,7 @@ static  inline void USBHW_CtrlEpPtrReset(void)
  */
 static  inline unsigned char USBHW_CtrlEpDataRead(void)
 {
-	return REG_CTRL_EP_DAT;
+	return reg_ctrl_ep_dat;
 }
 
 /**
@@ -200,7 +120,7 @@ static  inline unsigned char USBHW_CtrlEpDataRead(void)
  */
 static  inline void USBHW_CtrlEpDataWrite(unsigned char data)
 {
-	REG_CTRL_EP_DAT = data;
+	reg_ctrl_ep_dat = data;
 }
 
 /**
@@ -210,7 +130,7 @@ static  inline void USBHW_CtrlEpDataWrite(unsigned char data)
  */
 static  inline unsigned char USBHW_IsCtrlEpBusy()
 {
-	return REG_CTRL_EP_IRQ_STA & FLD_USB_EP_BUSY;
+	return reg_ctrl_ep_irq_sta & FLD_USB_EP_BUSY;
 }
 
 /**
@@ -220,7 +140,7 @@ static  inline unsigned char USBHW_IsCtrlEpBusy()
  */
 static  inline unsigned char USBHW_EpDataRead(unsigned long ep)
 {
-	return REG_USB_EP_DAT(ep & 0x07);
+	return reg_usb_ep_dat(ep);
 }
 
 /**
@@ -231,7 +151,7 @@ static  inline unsigned char USBHW_EpDataRead(unsigned long ep)
  */
 static  inline void USBHW_EpDataWrite(unsigned long ep, unsigned char data)
 {
-	REG_USB_EP_DAT(ep & 0x07) = data;
+	reg_usb_ep_dat(ep) = data;
 }
 
 /**
@@ -241,7 +161,7 @@ static  inline void USBHW_EpDataWrite(unsigned long ep, unsigned char data)
  */
 static  inline unsigned long USBHW_IsEpBusy(unsigned long ep)
 {
-	return REG_USB_EP_CTRL(ep & 0x07) & FLD_USB_EP_BUSY;
+	return reg_usb_ep_ctrl(ep) & FLD_USB_EP_BUSY;
 }
 
 /**
@@ -251,7 +171,7 @@ static  inline unsigned long USBHW_IsEpBusy(unsigned long ep)
  */
 static  inline void USBHW_DataEpAck(unsigned long ep)
 {
-	REG_USB_EP_CTRL(ep & 0x07) = FLD_USB_EP_BUSY;
+	reg_usb_ep_ctrl(ep) = FLD_USB_EP_BUSY;
 }
 
 /**
@@ -261,7 +181,7 @@ static  inline void USBHW_DataEpAck(unsigned long ep)
  */
 static  inline void USBHW_DataEpStall(unsigned long ep)
 {
-	REG_USB_EP_CTRL(ep & 0x07) = FLD_USB_EP_STALL;
+	reg_usb_ep_ctrl(ep) = FLD_USB_EP_STALL;
 }
 
 /**
@@ -271,7 +191,7 @@ static  inline void USBHW_DataEpStall(unsigned long ep)
  */
 static  inline void USBHW_EpPtrReset(unsigned long ep)
 {
-	REG_USB_EP_PTR(ep & 0x07) = 0;
+	reg_usb_ep_ptr(ep) = 0;
 }
 
 /**

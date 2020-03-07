@@ -22,6 +22,14 @@
 #ifndef		_DRIVER_H_
 #define		_DRIVER_H_
 
+#ifndef SECTION_USB_CODE
+#define SECTION_USB_CODE
+#endif
+
+#ifndef SECTION_USB_CONST
+#define SECTION_USB_CONST const
+#endif
+
 #include "usbCDC/usb_hw.h"
 #include "usbCDC/usb_ctrl.h"
 #include "usbCDC/usb_stdDescriptors.h"

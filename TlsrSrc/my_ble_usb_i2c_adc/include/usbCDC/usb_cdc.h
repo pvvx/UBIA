@@ -44,8 +44,6 @@
 #define USB_RX_LAST64BLK_TIMEOUT 1750 // 1750
 #endif
 
-#define USB_TX_ACK_BLK_TIMEOUT 	 1500 // 1500 // таймаут подтверждения передачи блока
-
 /**
  *  @brief  Define USB CDC subclass 
  */
@@ -185,7 +183,6 @@ typedef struct {
 typedef enum usbcdc_sts_e {
     USB_OK = 0,
     USB_BUSY
-//    USB_MULTIBLOCK,
 } USBCDC_Sts_t;
 
 /**
@@ -218,8 +215,12 @@ typedef struct{
 } USB_ClassInfo_CDC_Device_t;
 
 typedef struct {
+#ifndef USB_TX_CALLBACK
     cdc_cbtxFn_t txCb;
+#endif
+#ifndef USB_RX_CALLBACK
     cdc_cbrxFn_t rxCb;
+#endif
     unsigned char *txBuf; // если NULL - всё предано
     unsigned char *rxBuf; // если NULL - ?
     unsigned short lastSendIndex; // указатель в txBuf на ещё не переданный байт
@@ -272,7 +273,12 @@ void USBCDC_DataRecv(void);
  * @param   none
  * @return none
  */
-void USBCDC_Init(void);
+static inline void USBCDC_Init(void) {
+    cdc_vs.lastRecvIndex = 0;
+#ifdef USB_SET_CFG_UART
+    USB_SET_CFG_UART(LineEncoding);
+#endif
+}
 
 /**
  * @brief This function sets the USB CDC tx and rx callback function
@@ -280,15 +286,19 @@ void USBCDC_Init(void);
  * @param[in]   txCb tx callback function
  * @return none
  */
-void USBCDC_CBSet(cdc_cbrxFn_t rxFunc, cdc_cbtxFn_t txCb);
+#if !(defined(USB_TX_CALLBACK) || defined(USB_TX_CALLBACK))
+static inline void USBCDC_CBSet(cdc_cbrxFn_t rxFunc, cdc_cbtxFn_t txCb) {
+    cdc_vs.rxCb = rxFunc;
+    cdc_vs.txCb = txCb;
+}
+#endif
 
 /**
  * @brief This function sets the USB CDC rx buffer
  * @param[in]   buf pointer to the rx buffer
  * @return none
  */
-static inline void USBCDC_RxBufSet(unsigned char *buf)
-{
+static inline void USBCDC_RxBufSet(unsigned char *buf) {
     cdc_vs.rxBuf = buf;
 }
 
@@ -297,8 +307,7 @@ static inline void USBCDC_RxBufSet(unsigned char *buf)
  * @param   none
  * @return 1: the USB interface is available 0: the USB interface is busy
  */
-static inline unsigned int USBCDC_IsAvailable(void)
-{
+static inline unsigned int USBCDC_IsAvailable(void) {
     return (cdc_vs.txBuf == 0);
 }
 

@@ -44,11 +44,20 @@ enum{
  */
 void USB_Init(void);
 
+#ifdef USB_IrqHandle
 /**
  * @brief This function handles the USB related irq.
- * @param   irq_src = reg_irq_src
+ * @param   none
+ * @return none
+ */
+void USB_IrqHandle(void);
+#else
+/**
+ * @brief This function handles the USB related irq.
+ * @param  irq_src = reg_irq_src
  * @return none
  */
 void USB_IrqHandle(unsigned int irq_src);
+#endif
 
 

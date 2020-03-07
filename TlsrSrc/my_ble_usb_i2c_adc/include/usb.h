@@ -33,7 +33,7 @@ extern u8 usb_pwup;
 //----------------------------- USB stack
 // Define USB rx/tx buffer
 #define RX_BUF_LEN    USB_CDC_MAX_RX_BLK_SIZE // in bytes
-#define TX_BUF_LEN    MTU_DATA_SIZE // in bytes
+#define TX_BUF_LEN    DLE_DATA_SIZE // in bytes
 
 typedef struct _usb_buf_t{
 	unsigned char rx[RX_BUF_LEN]; // 64 bytes
