@@ -18,16 +18,16 @@
 #if (USE_I2C_DEV)
 #include "i2c_dev.h"
 #endif
-#if (USE_INT_ADC)
+#if (USE_ADC_DEV)
 #include "adc_dev.h"
 #endif
 #if (USE_HX711)
 #include "hx711.h"
 #endif
-#if (USE_INT_DAC)
+#if (USE_DAC_DEV)
 #include "dac.h"
 #endif
-#if	(USE_INT_UART)
+#if	(USE_UART_DEV)
 #include "uart_dev.h"
 #endif
 
@@ -92,7 +92,7 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				pbufo->data.ui[1] = INT_DEV_VER; // Ver 1.2.3.4 = 0x1234
 				txlen = sizeof(u16) + sizeof(u16) + sizeof(blk_head_t);
 				break;
-#if (USE_INT_UART)
+#if (USE_UART_DEV)
 			case CMD_DEV_UAR: // Send UART
 				//	if(!(reg_uart_status1 & FLD_UART_TX_DONE))
 				txlen = pbufi->head.size;
@@ -171,7 +171,7 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				if(pbufi->data.scf.i2c)
 					pbufo->data.scf.i2c = flash_write_cfg(&cfg_i2c, EEP_ID_I2C_CFG, sizeof(cfg_i2c));
 #endif
-#if	(USE_INT_ADC)
+#if	(USE_ADC_DEV)
 				if(pbufi->data.scf.adc)
 					pbufo->data.scf.adc = flash_write_cfg(&cfg_adc, EEP_ID_ADC_CFG, sizeof(cfg_adc));
 #endif
@@ -181,11 +181,11 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				if(pbufi->data.scf.adv)
 					pbufo->data.scf.adv = flash_write_cfg(&ble_cfg_ini, EEP_ID_BLE_CFG, sizeof(ble_cfg_ini));
 #endif
-#if	(USE_INT_DAC)
+#if	(USE_DAC_DEV)
 				if(pbufi->data.scf.dac)
 					pbufo->data.scf.dac = flash_write_cfg(&cfg_dac, EEP_ID_DAC_CFG, sizeof(cfg_dac));
 #endif
-#if	(USE_INT_UART)
+#if	(USE_UART_DEV)
 				if(pbufi->data.scf.uart)
 					pbufo->data.scf.uart = flash_write_cfg(&cfg_uart, EEP_ID_UART_CFG, sizeof(cfg_uart));
 #endif
@@ -219,7 +219,7 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				};
 				break;
 #endif
-#if (USE_INT_ADC)
+#if (USE_ADC_DEV)
 			case CMD_DEV_CAD: // Get/Set CFG/ini ADC & Start measure
 				if (pbufi->head.size) {
 					memcpy(&cfg_adc, &pbufi->data.cadc,
@@ -362,7 +362,7 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				if(pbufi->data.pwr.ExtDevPowerOff) {
 					ExtDevPowerOff();
 				}
-#if (USE_INT_DAC)
+#if (USE_DAC_DEV)
 				if(pbufi->data.pwr.DAC_off) {
 					sdm_off();
 				}
@@ -373,12 +373,12 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 					I2CDevSleep();
 				}
 #endif
-#if (USE_INT_ADC)
+#if (USE_ADC_DEV)
 				if(pbufi->data.pwr.ADC_Stop) {
 					ADC_Stop();
 				}
 #endif
-#if (USE_INT_UART)
+#if (USE_UART_DEV)
 				if(pbufi->data.pwr.Uart_off) {
 					uart_deinit();
 				}
@@ -405,7 +405,7 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				}
 				txlen = 0 + sizeof(blk_head_t);
 				break;
-#if (USE_INT_DAC)
+#if (USE_DAC_DEV)
 			case CMD_DEV_DAC: // Dac cfg
 				txlen = pbufi->head.size;
 				if (txlen) {

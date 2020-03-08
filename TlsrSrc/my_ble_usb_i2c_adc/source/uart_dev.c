@@ -5,7 +5,7 @@
  *      Author: pvvx
  */
 #include "proj/tl_common.h"
-#if (USE_INT_UART)
+#if (USE_UART_DEV)
 #include "proj/drivers/uart.h"
 #include "uart_dev.h"
 
@@ -155,4 +155,4 @@ void Uart_Irq(void) {
 }
 #endif
 
-#endif //USE_INT_UART
+#endif //USE_UART_DEV

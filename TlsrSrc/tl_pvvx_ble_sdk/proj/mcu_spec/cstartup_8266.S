@@ -48,13 +48,13 @@
 	.global		__reset
 	.global	 	__irq
 	.global 	__start
-	.global		__LOAD_RAM
+@	.global		__LOAD_RAM
 
 __start:					@ MUST,  referenced by boot.link
 
 	.extern irq_handler
 
-	.extern  _ramcode_size_div_16_
+@	.extern  _ramcode_size_div_16_
 	.extern  _ramcode_size_div_256_
 	.extern  _ramcode_size_div_16_align_256_
 	.extern  _ictag_start_
@@ -86,103 +86,101 @@ __reset:
 @	tloadr     	r1, DAT0 + 44
 @	tstorer		r1, [r0, #0]
 
-	tloadr	r0, FLL_D
-	tloadr	r1, FLL_D+4
-	tloadr	r2, FLL_D+8
-
+	tloadr	r0, FLL_D		@ 0xffffffff
+	tloadr	r1, FLL_D+4		@ _end_bss_
+	tloadr	r2, FLL_D+8		@ 0x80c000
 FLL_STK:
 	tcmp	r1, r2
 	tjge	FLL_STK_END
 	tstorer r0, [r1, #0]
 	tadd    r1, #4
 	tj		FLL_STK
-FLL_STK_END:
 
-	tloadr	r0, DAT0
+FLL_STK_END:
+	tloadr	r0, DAT0		@ IRQ
 	tmcsr	r0			
-	tloadr	r0, DAT0 + 8
+	tloadr	r0, DAT0 + 8	@ irq_stk + IRQ_STK_SIZE
 	tmov	r13, r0  
 
-	tloadr	r0, DAT0 + 4
+	tloadr	r0, DAT0 + 4	@ SVC
 	tmcsr	r0	
-	tloadr	r0, DAT0 + 12
+	tloadr	r0, DAT0 + 12	@ 0x80c000
 	tmov	r13, r0  
 
 	tmov	r0, #0
-	tloadr	r1, DAT0 + 16
-	tloadr	r2, DAT0 + 20
-
+	tloadr	r1, DAT0 + 16	@ _start_bss_
+	tloadr	r2, DAT0 + 20	@ _end_bss_
 ZERO:
 	tcmp	r1, r2
 	tjge	ZERO_END
 	tstorer	r0, [r1, #0]
 	tadd    r1, #4
 	tj		ZERO
+
 ZERO_END:
-
-	tloadr	r1, DAT0 + 28
-	tloadr	r2, DAT0 + 32
-
+	tloadr	r1, DAT0 + 28	@ _ictag_start_
+	tloadr	r2, DAT0 + 32	@ _ictag_end_
 ZERO_TAG:
 	tcmp	r1, r2
 	tjge	ZERO_TAG_END
 	tstorer	r0, [r1, #0]
 	tadd    r1, #4
 	tj		ZERO_TAG
+
 ZERO_TAG_END:
 
 SETIC:
-	tloadr     	r1, DAT0 + 24
-	tloadr      r0, DAT0 + 36					@ IC tag start
+	tloadr     	r1, DAT0 + 24		@ 0x80060c
+	tloadr      r0, DAT0 + 36		@ _ramcode_size_div_256_ IC tag start
 #ifdef MCU_CORE_8266_OTA_BOOT
 	tloadr      r0, DAT0 + 36
 	tloadr      r0, DAT0 + 36
 	tloadr      r0, DAT0 + 36
 #else
-	tstorerb	r0, [r1, #0]
-	tadd    	r0, #1							@ IC tag end
-	tstorerb	r0, [r1, #1]
+	tstorerb	r0, [r1, #0]		@ 0x80060c
+	tadd    	r0, #1				@ IC tag end
+	tstorerb	r0, [r1, #1]		@ 0x80060c + 1
 #endif
 	@tmov		r0, #0;
-	@tstorerb	r0, [r1, #2]
+	@tstorerb	r0, [r1, #2]		@ 0x80060c + 2
 
 COPY_CODE_INIT:
      tmov		r3, #115			@ =0x73 OTA FW ready flag at 0x73000; (0x73000 = #115 << 12)
-     tshftl		r3, r3, #12		@ 0x73<<12
-     tloadr		r3, [r3, #0]
+     tshftl		r3, r3, #12			@ 0x73<<12
+     tloadr		r3, [r3, #0]		@ [0x73000]
 #ifdef MCU_CORE_8266_OTA_BOOT
-	 tcmp		r3, #0			@ 0x0
+	 tcmp		r3, #0				@ 0x0
 #else
-     tcmp		r3, #165		@ *(u32 *)0x73000 == 0xa5
+     tcmp		r3, #165			@ *(u32 *)0x73000 == 0xa5
 #endif
-     tjne		COPY_DATA_INIT
+     tjne		COPY_DATA_INIT		@ go start main
 
-     tmov		r2, #114		@ OTA boot code at: 0x72000 (OTA128K: 0x72000 = 114 << 12)
-     tloadr		r3, COPY_CODE_DAT
-     tloadr		r0, COPY_CODE_DAT + 4
-     tshftl		r2, r2, #12		@ 0x72<<12
+     tmov		r2, #114			@ OTA boot code at: 0x72000 (OTA128K: 0x72000 = 114 << 12)
+     tloadr		r3, COPY_CODE_DAT		@ 0x808000
+     tloadr		r0, COPY_CODE_DAT + 4	@ 0x808600
+     tshftl		r2, r2, #12				@ 0x72<<12 = 0x72000
 COPY_CODE_START:
      tloadm		r2!, {r1}
      tstorem	r3!, {r1}
      tcmp		r3, r0
      tjne		COPY_CODE_START
 
-     tloadr		r3, COPY_CODE_DAT + 8
-     tmov		r2, #136		@0x88
-     tstorerb	r2, [r3, #0]
-
+     tloadr		r3, COPY_CODE_DAT + 8	@ 0x800602
+     tmov		r2, #136				@ 0x88
+     tstorerb	r2, [r3, #0]			@ [0x800602] = 0x88 -> CPU reboot
 COPY_CODE_END:
      tj		COPY_CODE_END
+
 	.balign	4
 COPY_CODE_DAT:
-	.word	(0x808000)
-	.word	(0x808600)
-	.word	(0x800602)
+	.word	(0x808000)	@0
+	.word	(0x808600)	@4
+	.word	(0x800602)	@8
 
 COPY_DATA_INIT:
-	tloadr		r1, DATA_I
-	tloadr		r2, DATA_I+4
-	tloadr		r3, DATA_I+8
+	tloadr		r1, DATA_I			@ _dstored_
+	tloadr		r2, DATA_I+4		@ _start_data_
+	tloadr		r3, DATA_I+8		@ _end_data_
 COPY_DATA:
 	tcmp		r2, r3
 	tjge		COPY_DATA_END
@@ -203,7 +201,8 @@ SETSPISPEED:
 #endif
 
 	tjl	main
-END:	tj	END
+END:
+	tj	END
 
 	.balign	4
 DAT0:
@@ -217,21 +216,16 @@ DAT0:
 	.word	_ictag_start_               @28		@ IC tag start
 	.word	_ictag_end_	            	@32		@ IC tag end
 	.word	_ramcode_size_div_256_		@36
-@	.word	(0x808000 + __LOAD_RAM * 0x100)                  @28		@ IC tag start
-@	.word	(0x808000 + (__LOAD_RAM + 1) * 0x100)                  @32		@ IC tag end
-@	.word	(0x80000e)    				@36
-@	.word	(0x80058c)                  @36		gpio
-@	.word	(0x800620)                  @40		watchdog
-@	.word	(0x802c01)                  @44		watchdog
+
 DATA_I:	
-	.word	_dstored_
-	.word	_start_data_
-	.word	_end_data_
+	.word	_dstored_		@0
+	.word	_start_data_	@4
+	.word	_end_data_		@8
 
 FLL_D:
-	.word	0xffffffff
-	.word	(_start_data_)
-	.word	(0x80c000)
+	.word	0xffffffff		@0
+	.word	(_end_bss_)		@4
+	.word	(0x80c000)		@8
 
 	.align 4
 __irq:

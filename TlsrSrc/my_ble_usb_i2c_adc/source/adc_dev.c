@@ -5,7 +5,7 @@
  *      Author: pvvx
  */
 #include "proj/tl_common.h"
-#if USE_INT_ADC
+#if USE_ADC_DEV
 #include "adc_dev.h"
 
 dev_adc_cfg_t cfg_adc;
@@ -40,4 +40,4 @@ int InitADCDevice(void) {
 	return 1;
 }
 
-#endif // USE_INT_ADC
+#endif // USE_ADC_DEV

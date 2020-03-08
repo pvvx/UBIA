@@ -20,10 +20,11 @@ extern "C" {
 #define USE_BLE 		1
 #define USE_USB_CDC 	1
 #define USE_I2C_DEV 	1
-#define USE_INT_ADC 	1
-#define USE_INT_DAC 	1
+#define USE_SPI_DEV 	1
+#define USE_ADC_DEV 	1
+#define USE_DAC_DEV 	1
 #define USE_HX711 		1
-#define USE_INT_UART 	1
+#define USE_UART_DEV 	1
 // -----
 
 #define INT_DEV_ID	0x1021  // DevID = 0x1021
@@ -74,7 +75,7 @@ extern volatile unsigned char sleep_mode; // flag, bit0 = 1 -> pm not sleep, bit
 //#define USE_WATCHDOG				(62*8192) // us
 
 /* StartupInits */
-#define USE_ADC			USE_INT_ADC	// StartupInits() включит CLK ADC
+#define USE_ADC			USE_ADC_DEV	// StartupInits() включит CLK ADC
 #define USE_AES 		1	// StartupInits() включит CLK AES
 #define USE_AUD 		0	// StartupInits() включит CLK AUD
 #define USE_USB			1	// StartupInits() включит CLK USB

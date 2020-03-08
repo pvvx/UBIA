@@ -2,7 +2,7 @@
 
 * **8266_jdy_10.bin** - the main project file.
 
-* **floader.bin** - file of project [TlsrComProg-Usbfloader](https://github.com/pvvx/TlsrComProg/tree/master/Usbfloader)
+* **floader.bin** - file of project [TlsrComProg-Usbfloader](https://github.com/pvvx/TlsrComProg/tree/master/Usbfloader).
 Used to download firmware via USB-COM.
 It is activated if, at module startup, the SWS pin is shorted to GND.
 

@@ -32,7 +32,7 @@
 							<tool command="tc32-elf-gcc -ffunction-sections -fdata-sections" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG}${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="com.telink.tc32eclipse.tool.compiler.TC32Win.app.release.847983073" name="TC32 Compiler" superClass="com.telink.tc32eclipse.tool.compiler.TC32Win.app.release">
 								<option id="com.telink.tc32eclipse.compiler.option.debug.level.577339541" name="Generate Debugging Info" superClass="com.telink.tc32eclipse.compiler.option.debug.level" value="com.telink.tc32eclipse.compiler.option.debug.level.none" valueType="enumerated"/>
 								<option id="com.telink.tc32eclipse.compiler.option.optimize.1477192684" name="Optimization Level" superClass="com.telink.tc32eclipse.compiler.option.optimize" value="com.telink.tc32eclipse.compiler.optimize.two" valueType="enumerated"/>
-								<option id="com.telink.tc32eclipse.compiler.option.otherflags.1928116580" name="Other flags" superClass="com.telink.tc32eclipse.compiler.option.otherflags" value="-fshort-wchar -fms-extensions" valueType="string"/>
+								<option id="com.telink.tc32eclipse.compiler.option.otherflags.1928116580" name="Other flags" superClass="com.telink.tc32eclipse.compiler.option.otherflags" value="-fshort-wchar -fms-extensions -fdata-sections -ffunction-sections" valueType="string"/>
 								<option id="com.telink.tc32eclipse.compiler.option.std.1068623832" name="Language Standard" superClass="com.telink.tc32eclipse.compiler.option.std" value="com.telink.tc32eclipse.compiler.option.std.gnu99" valueType="enumerated"/>
 								<option id="com.telink.tc32eclipse.compiler.option.optimize.other.847780185" name="Other Optimization Flags" superClass="com.telink.tc32eclipse.compiler.option.optimize.other" value="-finline-small-functions" valueType="string"/>
 								<option id="com.telink.tc32eclipse.compiler.option.optimize.packstruct.572353061" name="Pack structs (-fpack-struct)" superClass="com.telink.tc32eclipse.compiler.option.optimize.packstruct" value="true" valueType="boolean"/>
@@ -46,6 +46,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${SDK}}&quot;"/>
 								</option>
 								<option id="com.telink.tc32eclipse.compiler.option.undef.172752411" name="Undefine Syms (-U)" superClass="com.telink.tc32eclipse.compiler.option.undef"/>
+								<option id="com.telink.tc32eclipse.compiler.option.language.uchar.1423987132" name="char is unsigned (-funsigned-char)" superClass="com.telink.tc32eclipse.compiler.option.language.uchar" value="true" valueType="boolean"/>
+								<option id="com.telink.tc32eclipse.compiler.option.language.ubitfields.442101337" name="bitfields are unsigned (-funsigned-bitfields)" superClass="com.telink.tc32eclipse.compiler.option.language.ubitfields" value="true" valueType="boolean"/>
 								<inputType id="com.telink.tc32eclipse.compiler.TC32Win.input.1586283756" name="C Source Files" superClass="com.telink.tc32eclipse.compiler.TC32Win.input"/>
 							</tool>
 							<tool command="tc32-elf-ld --gc-sections" id="com.telink.tc32eclipse.tool.linker.TC32Win.app.release.1956641163" name="TC32 C Linker" superClass="com.telink.tc32eclipse.tool.linker.TC32Win.app.release">
@@ -68,7 +70,7 @@
 								<option id="com.telink.tc32eclipse.objcopy.flash.option.output.1297187919" name="Output Filename" superClass="com.telink.tc32eclipse.objcopy.flash.option.output" value="" valueType="string"/>
 								<option id="com.telink.tc32eclipse.objcopy.option.flash.stdopts.1699310763" name="Options to create flash image" superClass="com.telink.tc32eclipse.objcopy.option.flash.stdopts" value="" valueType="string"/>
 							</tool>
-							<tool command="tc32-elf-size" commandLinePattern="${COMMAND} ${FLAGS} ${INPUTS}" id="com.telink.tc32eclipse.tool.size.TC32Win.app.release.1734077463" name="Print Size" superClass="com.telink.tc32eclipse.tool.size.TC32Win.app.release">
+							<tool command="${workspace_loc://${SDK}}/tl_chow_mem.sh" commandLinePattern="${COMMAND} ${FLAGS} ${SDK}" id="com.telink.tc32eclipse.tool.size.TC32Win.app.release.1734077463" name="Print Size" superClass="com.telink.tc32eclipse.tool.size.TC32Win.app.release">
 								<option id="com.telink.tc32eclipse.size.option.totals.1003288368" name="Show Totals" superClass="com.telink.tc32eclipse.size.option.totals" value="true" valueType="boolean"/>
 							</tool>
 						</toolChain>
@@ -80,7 +82,6 @@
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.language.mapping"/>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
-			<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 			<storageModule moduleId="scannerConfiguration">
 				<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 				<profile id="org.eclipse.cdt.make.core.GCCStandardMakePerProjectProfile">
@@ -995,6 +996,26 @@
 				</scannerConfigBuildInfo>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
+			<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
+				<buildTargets>
+					<target name="all" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+						<buildCommand>make</buildCommand>
+						<buildArguments>-j</buildArguments>
+						<buildTarget>all</buildTarget>
+						<stopOnError>true</stopOnError>
+						<useDefaultCommand>true</useDefaultCommand>
+						<runAllBuilders>true</runAllBuilders>
+					</target>
+					<target name="clean" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+						<buildCommand>make</buildCommand>
+						<buildArguments>-j</buildArguments>
+						<buildTarget>clean</buildTarget>
+						<stopOnError>true</stopOnError>
+						<useDefaultCommand>true</useDefaultCommand>
+						<runAllBuilders>true</runAllBuilders>
+					</target>
+				</buildTargets>
+			</storageModule>
 		</cconfiguration>
 		<cconfiguration id="com.telink.tc32eclipse.configuration.app.release.1121156933.1715305487.2075187956.1454992863.132969007.501524205.1380164055.987396901.2076157562.1809959923.346019507.306240912.530308564.1621834744.2015687532.580051831.2011573918.1196506780.1144183805.1471598056">
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="com.telink.tc32eclipse.configuration.app.release.1121156933.1715305487.2075187956.1454992863.132969007.501524205.1380164055.987396901.2076157562.1809959923.346019507.306240912.530308564.1621834744.2015687532.580051831.2011573918.1196506780.1144183805.1471598056" moduleId="org.eclipse.cdt.core.settings" name="8266_e104_bt05">
@@ -1027,7 +1048,7 @@
 							<tool command="tc32-elf-gcc -ffunction-sections -fdata-sections" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG}${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="com.telink.tc32eclipse.tool.compiler.TC32Win.app.release.1676496411" name="TC32 Compiler" superClass="com.telink.tc32eclipse.tool.compiler.TC32Win.app.release">
 								<option id="com.telink.tc32eclipse.compiler.option.debug.level.1565449851" name="Generate Debugging Info" superClass="com.telink.tc32eclipse.compiler.option.debug.level" value="com.telink.tc32eclipse.compiler.option.debug.level.none" valueType="enumerated"/>
 								<option id="com.telink.tc32eclipse.compiler.option.optimize.1503058783" name="Optimization Level" superClass="com.telink.tc32eclipse.compiler.option.optimize" value="com.telink.tc32eclipse.compiler.optimize.two" valueType="enumerated"/>
-								<option id="com.telink.tc32eclipse.compiler.option.otherflags.1155182352" name="Other flags" superClass="com.telink.tc32eclipse.compiler.option.otherflags" value="-fshort-wchar -fms-extensions" valueType="string"/>
+								<option id="com.telink.tc32eclipse.compiler.option.otherflags.1155182352" name="Other flags" superClass="com.telink.tc32eclipse.compiler.option.otherflags" value="-fshort-wchar -fms-extensions -fdata-sections -ffunction-sections" valueType="string"/>
 								<option id="com.telink.tc32eclipse.compiler.option.std.22561723" name="Language Standard" superClass="com.telink.tc32eclipse.compiler.option.std" value="com.telink.tc32eclipse.compiler.option.std.gnu99" valueType="enumerated"/>
 								<option id="com.telink.tc32eclipse.compiler.option.optimize.other.1106520885" name="Other Optimization Flags" superClass="com.telink.tc32eclipse.compiler.option.optimize.other" value="-finline-small-functions" valueType="string"/>
 								<option id="com.telink.tc32eclipse.compiler.option.optimize.packstruct.27088737" name="Pack structs (-fpack-struct)" superClass="com.telink.tc32eclipse.compiler.option.optimize.packstruct" value="true" valueType="boolean"/>
@@ -1063,7 +1084,7 @@
 								<option id="com.telink.tc32eclipse.objcopy.flash.option.output.426342988" name="Output Filename" superClass="com.telink.tc32eclipse.objcopy.flash.option.output" value="" valueType="string"/>
 								<option id="com.telink.tc32eclipse.objcopy.option.flash.stdopts.2024793047" name="Options to create flash image" superClass="com.telink.tc32eclipse.objcopy.option.flash.stdopts" value="" valueType="string"/>
 							</tool>
-							<tool command="tc32-elf-size" commandLinePattern="${COMMAND} ${FLAGS} ${INPUTS}" id="com.telink.tc32eclipse.tool.size.TC32Win.app.release.2063860823" name="Print Size" superClass="com.telink.tc32eclipse.tool.size.TC32Win.app.release">
+							<tool command="${workspace_loc://${SDK}}/tl_chow_mem.sh" commandLinePattern="${COMMAND} ${FLAGS} ${SDK}" id="com.telink.tc32eclipse.tool.size.TC32Win.app.release.2063860823" name="Print Size" superClass="com.telink.tc32eclipse.tool.size.TC32Win.app.release">
 								<option id="com.telink.tc32eclipse.size.option.totals.93920687" name="Show Totals" superClass="com.telink.tc32eclipse.size.option.totals" value="true" valueType="boolean"/>
 							</tool>
 						</toolChain>
@@ -1075,7 +1096,6 @@
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.language.mapping"/>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
-			<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 			<storageModule moduleId="scannerConfiguration">
 				<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
 				<profile id="org.eclipse.cdt.make.core.GCCStandardMakePerProjectProfile">
@@ -1990,6 +2010,26 @@
 				</scannerConfigBuildInfo>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
+			<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
+				<buildTargets>
+					<target name="all" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+						<buildCommand>make</buildCommand>
+						<buildArguments>-j</buildArguments>
+						<buildTarget>all</buildTarget>
+						<stopOnError>true</stopOnError>
+						<useDefaultCommand>true</useDefaultCommand>
+						<runAllBuilders>true</runAllBuilders>
+					</target>
+					<target name="clean" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+						<buildCommand>make</buildCommand>
+						<buildArguments>-j</buildArguments>
+						<buildTarget>clean</buildTarget>
+						<stopOnError>true</stopOnError>
+						<useDefaultCommand>true</useDefaultCommand>
+						<runAllBuilders>true</runAllBuilders>
+					</target>
+				</buildTargets>
+			</storageModule>
 		</cconfiguration>
 	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">

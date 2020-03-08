@@ -19,16 +19,16 @@
 #if (USE_I2C_DEV)
 #include "i2c_dev.h"
 #endif
-#if (USE_INT_ADC)
+#if (USE_ADC_DEV)
 #include "adc_dev.h"
 #endif
 #if (USE_HX711)
 #include "hx711.h"
 #endif
-#if (USE_INT_DAC)
+#if (USE_DAC_DEV)
 #include "dac.h"
 #endif
-#if	(USE_INT_UART)
+#if	(USE_UART_DEV)
 #include "uart_dev.h"
 #endif
 
@@ -96,19 +96,19 @@ void eep_init(void)
 	cfg_i2c.pktcnt = 0; // read off
 //	I2CDevSleep();
 #endif
-#if USE_INT_ADC
+#if USE_ADC_DEV
 	if (flash_read_cfg(&cfg_adc, EEP_ID_ADC_CFG, sizeof(cfg_adc)) != sizeof(cfg_adc)) {
 		memcpy(&cfg_adc, &def_cfg_adc, sizeof(cfg_adc));
 	}
 //	cfg_adc.pktcnt = 0;
 	ADC_Stop();
 #endif
-#if USE_INT_DAC
+#if USE_DAC_DEV
 	if (flash_read_cfg(&cfg_dac, EEP_ID_DAC_CFG, sizeof(cfg_dac)) != sizeof(cfg_dac)) {
 		memcpy(&cfg_dac, &def_cfg_dac, sizeof(cfg_dac));
 	}
 #endif
-#if USE_INT_UART
+#if USE_UART_DEV
 	if (flash_read_cfg(&cfg_uart, EEP_ID_UART_CFG, sizeof(cfg_uart)) != sizeof(cfg_uart)) {
 		memcpy(&cfg_uart, &def_cfg_uart, sizeof(cfg_uart));
 	}

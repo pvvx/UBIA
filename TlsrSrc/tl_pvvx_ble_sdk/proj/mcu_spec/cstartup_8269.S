@@ -194,7 +194,7 @@ DATA_I:
 
 FLL_D:
 	.word	0xffffffff
-	.word	(_start_data_)
+	.word	(_end_bss_)
 	.word	(0x810000)
 
 	.align 4

@@ -4,59 +4,78 @@ ENTRY(__start)
 
 SECTIONS
 {
-    . = 0x0;
-        .vectors :
-        {
-        *(.vectors)
-        *(.vectors.*)	/* MUST as follows, when compile with -ffunction-sections -fdata-sections, session name may changed */
-        }
-        .ram_code :
-        {
-        *(.ram_code)
-        *(.ram_code.*)
-        }
-    PROVIDE(_ramcode_size_ = . );
-	PROVIDE(_ramcode_size_div_16_ = (. + 15 ) / 16);
-	PROVIDE(_ramcode_size_div_256_ = (. + 255) / 256);
-	PROVIDE(_ramcode_size_div_16_align_256_ = ( (. + 255) / 256) * 16);
-        .text :
-        {
-        *(.text)
-        *(.text.*)
-        }
-        .rodata :
-        {
-        *(.rodata)
-        *(.rodata.*)
-        }
+	. = 0x0;
+		.vectors :
+		{
+		*(.vectors)
+		*(.vectors.*)	/* MUST as follows, when compile with -ffunction-sections -fdata-sections, session name may changed */
+		}
+		. = ALIGN (4);
+		.ram_code : 
+		{
+		_start_ram_code_ = ABSOLUTE(.);
+		*(.ram_code)
+		*(.ram_code.*)
+		. = ALIGN (4);
+		_end_ram_code_ = ABSOLUTE(.);
+		}
+		.text :
+		{
+		_start_text_ = ABSOLUTE(.); 
+		*(.text)
+		*(.text.*)
+		. = ALIGN (4);
+		_end_text_ = ABSOLUTE(.); 
+		}
+		.rodata :
+		{
+		_start_rodata_ = ABSOLUTE(.);
+		*(.rodata)
+		*(.rodata.*)
+		. = ALIGN (4);
+		_end_rodata_ = ABSOLUTE(.);
+		}
+	_dstored_  = ABSOLUTE(.);
 
-    . = (((. + 3) / 4)*4);
-        PROVIDE(_dstored_ = .);
-        PROVIDE(_code_size_ = .);
+/*	Use Flash: */
+	. = _end_ram_code_ + 0x808000;
+/*	Use SRAM: */
+/*	. = _dstored_ + 0x808000; */
+	. = ALIGN (0x100);
+	_ictag_start_ = ABSOLUTE(.);
+	. = . + 0x100;
+	_ictag_end_ = ABSOLUTE(.);
+	. = . + 0x800;
+	_icdata_end_ = ABSOLUTE(.);
+/*	Use SRAM: moved up .data */
+		.data :
+		AT (_dstored_)
+		{
+		_start_data_ = ABSOLUTE(.);
+		*(.data);
+		*(.data.*);
+		. = ALIGN (4);
+		_end_data_ = ABSOLUTE(.);
+		}
+		.bss :
+		{
+		_start_bss_ = ABSOLUTE(.);
+		*(.sbss)
+		*(.sbss.*)
+		*(.bss)
+		*(.bss.*)
+	. = ALIGN (4);
+		}
+	_end_bss_ = ABSOLUTE(.);
+	_ramcode_size_ = _dstored_ + _data_size_;
+	PROVIDE(_ram_code_size_ = _end_ram_code_ - _start_ram_code_);
+	PROVIDE(_text_size_ = _dstored_ - _end_rodata_);  
+	PROVIDE(_rodata_size_ = _end_rodata_ - _start_rodata_);
+	PROVIDE(_data_size_ = _end_data_ - _start_data_);
+/*	PROVIDE(_bin_size_ = _ram_code_size_ + _text_size_ + _rodata_size_ + _data_size_); */
+	PROVIDE(_bin_size_ = _dstored_ + _data_size_);
 
-	. = 0x808900 + _ramcode_size_div_256_ * 0x100;	/* 0x100 alighned, must greater than or equal to:0x808000 + ram_code_size +  irq_vector(0x100) + IC_tag(0x100) + IC_cache(0x800) == 0x808a00 + ram_code_size */
-        .data :
-          AT ( _dstored_ )
-         {
-    . = (((. + 3) / 4)*4);
-         PROVIDE(_start_data_ = . );
-         *(.data);
-         *(.data.*);
-    . = (((. + 3) / 4)*4);
-         PROVIDE(_end_data_ = . );
-         }
-
-        .bss :
-        {
-	. = (((. + 3) / 4)*4);
-	PROVIDE(_start_bss_ = .);
-        *(.sbss)
-        *(.sbss.*)
-        *(.bss)
-        *(.bss.*)
-        }
-    PROVIDE(_end_bss_ = .);
-    PROVIDE(_bin_size_ = _code_size_ + _end_data_ - _start_data_);
-    PROVIDE(_ictag_start_ = 0x808000 + (_ramcode_size_div_256_) * 0x100);
-    PROVIDE(_ictag_end_ = 0x808000 + (_ramcode_size_div_256_ + 1) * 0x100);
+	PROVIDE(_ramcode_size_div_256_ = (_ictag_start_ - 0x808000 + 0xff) / 0x100 );
+	PROVIDE(_ramcode_size_div_16_align_256_ = _ramcode_size_div_256_ * 0x10 );
+	
 }

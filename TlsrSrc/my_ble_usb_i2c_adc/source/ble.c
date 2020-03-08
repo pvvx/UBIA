@@ -17,16 +17,16 @@
 #if (USE_I2C_DEV)
 #include "i2c_dev.h"
 #endif
-#if (USE_INT_ADC)
+#if (USE_ADC_DEV)
 #include "adc_dev.h"
 #endif
 #if (USE_HX711)
 #include "hx711.h"
 #endif
-#if (USE_INT_DAC)
+#if (USE_DAC_DEV)
 #include "dac.h"
 #endif
-#if	(USE_INT_UART)
+#if	(USE_UART_DEV)
 #include "uart_dev.h"
 #endif
 
@@ -537,7 +537,7 @@ void ble_init(void) {
 #endif
 			| FLD_CLK_MCU_EN
 			| FLD_CLK_MAC_EN
-#if USE_INT_ADC
+#if USE_ADC_DEV
 //				| FLD_CLK_ADC_EN
 #endif
 			| FLD_CLK_ZB_EN
@@ -672,7 +672,7 @@ void main_ble_loop() {
 //					tick_wakeup = clock_time();
 				}// else
 				if(!tx_len) {
-#if USE_INT_ADC
+#if USE_ADC_DEV
 				if(cfg_adc.pktcnt // вывод ADC samples активен
 //					&& blc_ll_getTxFifoNumber() < 10
 					&& (i = get_adc_dfifo((u16 *)&send_pkt.data.ui, cfg_adc.pktcnt, SMPS_BLK_CNT)) != 0) {
@@ -709,7 +709,7 @@ void main_ble_loop() {
 					tx_len = sizeof(hx711_out_t)+sizeof(blk_head_t);
 				} else
 #endif
-#if (USE_INT_UART)
+#if (USE_UART_DEV)
 				if(reg_dma_rx_rdy0 & FLD_DMA_UART_RX) {
 					tx_len = uart_rx_buff[0];
 					if(tx_len) {
@@ -763,16 +763,16 @@ void main_ble_loop() {
 			Timer_Stop();
 			I2CDevSleep();
 #endif
-#if USE_INT_ADC
+#if USE_ADC_DEV
 			ADC_Stop();
 #endif
 #if (USE_HX711)
 			hx711_go_sleep();
 #endif
-#if USE_INT_UART
+#if USE_UART_DEV
 			uart_deinit();
 #endif
-#if USE_INT_DAC
+#if USE_DAC_DEV
 			sdm_off();
 #endif
 			ExtDevPowerOff();
@@ -799,7 +799,7 @@ void main_ble_loop() {
 				cpu_sleep_wakeup(DEEPSLEEP_MODE, PM_WAKEUP_PAD, 0);
 			}
 		}
-#if 1 // (USE_INT_ADC)
+#if 1 // (USE_ADC_DEV)
 		if(sleep_mode&2) {
 #if LOOP_MIN_CYCLE
 			if(ble_loop_count < LOOP_MIN_CYCLE)
@@ -812,7 +812,7 @@ void main_ble_loop() {
 #endif
 		} else
 #endif
-#if 1 // (USE_INT_UART  || USE_INT_DAC)
+#if 1 // (USE_UART_DEV  || USE_DAC_DEV)
 		if(sleep_mode&4) {
 			bls_pm_setSuspendMask(MCU_STALL);
 		} else

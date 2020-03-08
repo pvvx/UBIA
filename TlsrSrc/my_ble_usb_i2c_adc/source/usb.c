@@ -11,16 +11,16 @@
 #if (USE_I2C_DEV)
 #include "i2c_dev.h"
 #endif
-#if (USE_INT_ADC)
+#if (USE_ADC_DEV)
 #include "adc_dev.h"
 #endif
 #if (USE_HX711)
 #include "hx711.h"
 #endif
-#if (USE_INT_DAC)
+#if (USE_DAC_DEV)
 #include "dac.h"
 #endif
-#if	(USE_INT_UART)
+#if	(USE_UART_DEV)
 #include "uart_dev.h"
 #endif
 
@@ -76,7 +76,7 @@ void usb_init(void) {
 #endif
 				| FLD_CLK_MCU_EN
 				| FLD_CLK_MAC_EN
-#if USE_INT_ADC
+#if USE_ADC_DEV
 //				| FLD_CLK_ADC_EN
 #endif
 //				| FLD_CLK_ZB_EN
@@ -167,7 +167,7 @@ void main_usb_loop() {
 			tx_len = 0;
 		}
 	} else
-#if USE_INT_ADC
+#if USE_ADC_DEV
 	if(cfg_adc.pktcnt
 		&& (i = get_adc_dfifo((u16 *)&send_pkt.data.ui, cfg_adc.pktcnt, SMPS_BLK_CNT)) != 0) {
 		all_rd_count += i;
@@ -208,7 +208,7 @@ void main_usb_loop() {
 		tx_len = sizeof(hx711_out_t)+sizeof(blk_head_t);
 	} else
 #endif
-#if (USE_INT_UART)
+#if (USE_UART_DEV)
 	if(reg_dma_rx_rdy0 & FLD_DMA_UART_RX) {
 		tx_len = uart_rx_buff[0];
 		memcpy(&send_pkt.data, &uart_rx_buff[4], tx_len);
@@ -227,7 +227,7 @@ void main_usb_loop() {
 		Timer_Stop();
 		I2CDevSleep();
 #endif
-#if USE_INT_ADC
+#if USE_ADC_DEV
 		ADC_Stop();
 #endif
 #if (USE_HX711)
@@ -236,10 +236,10 @@ void main_usb_loop() {
 		hx711_wr = 0;
 		hx711_rd = 0;
 #endif
-#if USE_INT_UART
+#if USE_UART_DEV
 		uart_deinit();
 #endif
-#if USE_INT_DAC
+#if USE_DAC_DEV
 		sdm_off();
 #endif
 		ExtDevPowerOff();
