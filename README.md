@@ -25,7 +25,7 @@ Universal I2C/SMBus + ADC/DAC + UART to USB / BLE adapter.
 
 ### UART:
 >* 300..4000000 Buad rate
->* 58 bytes block
+>* 232 bytes block
 >* BLE throughput: 30 transactions (half duplex, tx-rx) per sec (4 kbytes)
 
 ### BLE Power (default config)
