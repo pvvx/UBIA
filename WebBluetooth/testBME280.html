@@ -2,18 +2,12 @@
 <html>
   <head>
 	<link rel="stylesheet" href="tests.css">
-	<title>PowerProfiler</title>
+	<title>Get BME280 data</title>
 	<script type="text/javascript" src="dygraph.min.js"></script>
   </head>
   <body>
 	<div style="height: auto; width: auto; text-align: center;">
-	<div id="div_vu" style="height:140px;"></div>
-	</div>
-	<div style="height: auto; width: auto; text-align: center;">
-	<div><b><span id='sumu'>?</span> V, <span id='sumi'>?</span> mA</b></div>
-	<div id="div_vi" style="height:140px;"></div>
-	<div id='labdivu' style=></div>
-	<div id='labdivi' style=></div>
+	<div id="div_v"	style="height:400px;"></div>
 		<input type="button" id="butConnect" value="Connect">
 		<input type="button" id="butOnOff" value="Stop">
 		<input type="button" id="butClr" value="#">
@@ -22,86 +16,44 @@
 		<input type="radio" name='rm1' id="FixNone"/>
 		<label for="FixNone">Float</label>
 		<input type="button" id="butSave" value="Save data.csv"><br>
-		Window: <span id='wdsize'>?</span> sec, Sample Rate: <span id='smprate'>?</span>
+		Window: <span id='wdsize'>?</span> sec, Sample Rate: <span id='smprate'>?</span> smps
+	<div id='labdiv' style=></div>
 	</div>
   </body>
 <script type="text/javascript">
-// User Set: 
-var smprate = 1250; // set 0.5..1250 sps (x2 points: I and U)
-// Power (TLSR8266+INA219):
-// BLE Not connected: 0.09 mA
-// Connected 0.5..50 sps -> Low power mode: 0.7..3.5 mA
-// Connected 50..2200 sps -> Power mode: 8.9..14.5 mA
-if(smprate > 2500) smprate = 2500; // test only!
-else if(smprate < 0.25) smprate = 0.25;
-// INA219 settings:
-const INA219kShunt = 0.1;
-const INA219zShunt = -0.1;
-const INA219kBus = 0.0005;
-const INA219zBus = -0.1;
-const INA219PGA = 0; //0 - /1 (+-40mv), 1 - /2 (+-80mv), 2 - /4 (+-160mv), 3 - /8 (+-320mv)
-const INA219BUS = 0; //0 - 0..16V, 1 - 0..32V
-// INA226 settings:
-const INA226kShunt = 0.0025009; // SShunt 1 Om
-const INA226zShunt = 0.06082308;
-const INA226kBus = 0.00125;
-const INA226zBus = -0.00365901;
-//
-var kShunt;  //INA226=1.25
-var zShunt = 0.0;
-var kBus = 0.5;  //INA226=0.05
-var zBus = 0.0;
 var $ = function(id) {
 	return document.getElementById(id);
 }
 // Вывод в терминал
 function log(data) {console.log(data);}
+//-------------------------
+var smprate = 10; // 0.5..25 sps (BMP280 Set Measurement rate 10[Hz])
+// Disconnect -> 0.09 mA
+//-------------------------
 var devcnn = 0;
 var stg = 0;
 var smps = smprate;
 var sttim = 0;
 var cur_idx = 0;
 var old_idx = 0;
-var samples = 10000;
+var samples = 40000;
 var rend = 1;
 var oldblkid = 0;
+var rdnextflg = false;
 var smpsa = [];
-var rollpu = 1;
-var rollpi = 1;
 function wsSmpRate() {
 	if(devcnn && rend) {
-		let idx = cur_idx, tt = new Date().getTime();
-		var sps = (idx - old_idx) * 1000/ (tt - sttim);
-		sttim = tt;	old_idx = idx;
-		smpsa.push(sps);
-		var len = smpsa.length;
-		if(len > 100) { smpsa.shift(); len-- };
-		var csps = 0;
-		for (var i = 0; i < len; i++) csps += smpsa[i];
-		csps = csps/len;
-		$('smprate').innerHTML = csps.toFixed(1) +' sps (' + Math.round(csps*4)+' bytes per sec)';
-	}
-	if(gui && datai.length != 0) {
-		var x = gui.xAxisRange();
-		let sumu = 0;
-		let sumi = 0;
-		let sum = 0;
-		datau.every(function(item, idx){
-			if(item[0] < x[0]) 
-				return true; 
-			else if(item[0] <= x[1]) {
-				sumu += item[1];
-				sumi += datai[idx][1];
-				sum++;
-				return true;
-			} else return false;
-		});
-		if(sum>0) {
-			$('sumi').innerHTML = (sumi/sum).toFixed(3);
-			$('sumu').innerHTML = (sumu/sum).toFixed(3);
-		}
-	}
-}
+	let idx = cur_idx, tt = new Date().getTime();
+	var sps = (idx - old_idx) * 1000/ (tt - sttim);
+	sttim = tt;	old_idx = idx;
+	smpsa.push(sps);
+	var len = smpsa.length;
+	if(len > 100) { smpsa.shift(); len-- };
+	var csps = 0;
+	for (var i = 0; i < len; i++) csps += smpsa[i];
+	csps = csps/len;
+	$('smprate').innerHTML = csps.toFixed(1);
+}}
 $("butOnOff").onclick =  function() {
 	if(rend) {rend = 0; $("butOnOff").value = "Run";}
 	else {rend = 1; $("butOnOff").value = "Stop";}
@@ -116,22 +68,91 @@ $("butConnect").onclick =  function() {
 	if(devcnn != 0) {$("butConnect").value = "Disconnect..."; disconnect();}
 	else {$("butConnect").value = "Connect..."; connect();};
 }
-var title_id = 'INA2xx';
 // Буфер входящих данных
-var datau = new Array();
-var datai = new Array();
-var guu, gui;
+var datau = [];
+var gu;
 $("butClr").onclick =  function() {
 	datau = new Array();
-	datai = new Array();
 	sttim = new Date().getTime();
 	cur_idx = 0;
 	old_idx = 0;
 	stg = 0;
-	rollpu = gui.rollPeriod();
-	rollpi = gui.rollPeriod();
-	gui.destroy();
-	gui.destroy();
+	gu.destroy();
+}
+//BMP280 http://www.adafruit.com/datasheets/BST-BMP180-DS000-09.pdf
+var trim;
+// Save Trimming parameters (0x88..0xE7) [95=0x5F]
+function SaveTrimmingParameters(value) {
+	trim = {};
+	trim.t1 = value.getUint16(4,true); // 0x88+4-4=0x88
+	trim.t2 = value.getInt16(6,true);
+	trim.t3 = value.getInt16(8,true);
+	trim.p1 = value.getUint16(10,true);
+	trim.p2 = value.getInt16(12,true);
+	trim.p3 = value.getInt16(14,true);
+	trim.p4 = value.getInt16(16,true);
+	trim.p5 = value.getInt16(18,true);
+	trim.p6 = value.getInt16(20,true);
+	trim.p7 = value.getInt16(22,true);
+	trim.p8 = value.getInt16(24,true);
+	trim.p9 = value.getInt16(26,true);
+	trim.h1 = value.getUint8(29);
+	trim.h2 = value.getInt16(93,true);	// 0x88+93-4=0xE1
+	trim.h3 = value.getUint8(95);
+	trim.h4 = (value.getInt8(96)<<4) | (value.getUint8(97)&0x0f);
+	trim.h5 = (value.getInt8(98)<<4) | (value.getUint8(97)>>4);
+	trim.h6 = value.getInt8(99);	// 0x88+99-4=0xE7
+	log('ChipID: 0x' + hex(value.getUint8(76),2)); // 0x88+76-4=0xD0
+	log('Trimming parameters:');
+	log('Tx = '+ trim.t1 +', '+trim.t2 +', '+trim.t3);
+	log('Px = '+ trim.p1 +', '+trim.p2 +', '+trim.p3+', '+trim.p4 +', '+trim.p5+', '+trim.p6 +', '+trim.p7+', '+trim.p8 +', '+trim.p9);
+	log('Hx = '+ trim.h1 +', '+trim.h2 +', '+trim.h3+', '+trim.h4 +', '+trim.h5+', '+trim.h6);
+}
+
+var t_fine;
+function CalkTemp(value) {
+	let adc_T = (value.getUint16(11,false)<<4)|(value.getUint8(13)>>4); // 0xF3+11-4=0xFA
+//	log('adc_T = '+ adc_T);
+	let var1 = (adc_T/16384.0 - trim.t1/1024.0) * trim.t2;
+	let var2 = ((adc_T/131072.0 - trim.t1/8192.0) * (adc_T/131072.0 - trim.t1/8192.0)) * trim.t3;
+	t_fine = var1 + var2;
+	return (t_fine / 5120.0);
+}
+function CalkPressure(value) {
+	adc_P = (value.getUint16(8,false)<<4)|(value.getUint8(10)>>4); // 0xF3+8-4=0xF7
+//	log('adc_P = '+ adc_P);
+	let var1 = (t_fine / 2.0) - 64000.0;
+	let var2 = var1 * var1 * trim.p6 / 32768.0;
+	var2 = var2 + var1 * trim.p5 * 2.0;
+	var2 = (var2 / 4.0) + (trim.p4 * 65536.0);
+	var1 = (trim.p3 * var1 * var1 / 524288.0 + trim.p2 * var1) / 524288.0;
+	var1 = (1.0 + var1 / 32768.0) * trim.p1;
+	if (var1 == 0.0) return 0; // avoid exception caused by division by zero
+	let x = 1048576.0 - adc_P;
+	x = (x - var2 / 4096.0) * 6250.0 / var1;
+	var1 = trim.p9 * x * x / 2147483648.0;
+	var2 = x * trim.p8 / 32768.0;
+	return (x + (var1 + var2 + trim.p7) / 16.0);
+}
+function CalkHumidity(value) { 
+	adc_H = value.getUint16(14,false); // 0xF3+14-4=0xFD
+//	log('adc_H = '+ adc_H);
+	var_h = t_fine - 76800.0;
+	if (var_h != 0.0) var_h = (adc_H - (trim.h4 * 64.0 + (trim.h5 / 16384.0) * var_h)) 
+    	* (trim.h2 / 65536.0) * (1.0 + (trim.h6 / 67108864.0) * var_h * (1.0 + (trim.h3 / 67108864.0) * var_h));
+	else return 0.0;
+	var_h = var_h * (1.0 - trim.h1 * var_h / 524288.0);
+	if (var_h > 100.0) var_h = 100.0;
+	else if (var_h < 0.0) var_h = 0.0;
+	return var_h;
+}	
+function seaLevelForAltitude(altitude, atmospheric) {
+  return atmospheric/Math.pow(1.0 - (altitude / 44330.0), 5.255);
+}
+var seaLevelhPa = seaLevelForAltitude(16, 99714);
+//get altitude in m
+function bmp280CalcAltitude(press) {
+	return 44330.0 * (1.0 - Math.pow(press/seaLevelhPa, 0.19029));
 }
 function ShowGrf(value) {
 	if(!sttim) {
@@ -139,63 +160,43 @@ function ShowGrf(value) {
 		setInterval(function(){wsSmpRate()}, 500);
 	}
 	if(rend) {
-//		log('Raw['+value.byteLength+']: '+ value.getUint16(2,true)+ ', '+value.getUint16(4,true)+'..');
-		for (let i=2;i<value.byteLength;i+=4) {
-			datau.push([cur_idx/smprate, value.getUint16(i+2,true)*kBus+zBus]);
-			datai.push([cur_idx/smprate+0.5/smprate, value.getInt16(i,true)*kShunt+zShunt]);
-			cur_idx++;
-			if(cur_idx >= samples) {
-				datau.shift();
-				datai.shift();
-			}
-		}
+		let T = CalkTemp(value);
+		let RH = CalkHumidity(value);
+		let H = (Math.log10(RH)-2)/0.4343 + (17.62*T)/(243.12+T);
+//		log('RH: '+ RH);
+		let Dp = 243.12*H/(17.62-H); // this is the dew point in Celsius	
+//		let H = Math.log(RH/100.0) + (17.624*T)/(243.04+T);
+//		let Dp = 243.04*H/(17.625-H); // this is the dew point in Celsius	
+		datau.push([cur_idx/smprate, T, CalkPressure(value)*0.00750062, Dp]);
+		cur_idx++;
+		if(cur_idx >= samples) datau.shift();
 	}
 	else {
 		sttim = new Date().getTime();
 		old_idx = cur_idx;
 	}
 	if(!stg) {
-		guu = new Dygraph(
-			$("div_vu"),
+		gu = new Dygraph(
+			$("div_v"),
 		    datau,
 			{
-				title: title_id,
-				showRangeSelector: false,
-				showRoller: true,
-				rollPeriod: rollpu,
-				xlabel: 'T(sec)',
-				ylabel: 'U(V)',
-				colors: ['green'],
-				axes: {
-					x: {valueFormatter: function(x){return this.getLabels()[0] + ': '+ x.toPrecision(5);}}},
-				labels: ['T', 'U(V)'],
-				labelsDiv: $('labdivu'),
-				legend: 'always',  // "follow"
-				digitsAfterDecimal: 3,
-			});
-		gui = new Dygraph(
-			$("div_vi"),
-		    datai,
-			{
+				title: 'Sensor BMP280',
 				showRangeSelector: true,
 				showRoller: true,
-				rollPeriod: rollpi,
-//				xlabel: 'T(sec)',
-				ylabel: 'I(mA)',
-				colors: [ 'red'],
+				rollPeriod: 5,
+				xlabel: 'Time(sec)',
+				ylabel: 'Temp/DewPoint(C&deg;)',
+				y2label: 'P(mmHh)',
+				colors: ['green', 'red', 'blue'],
+				series : { 'P(mmHh)': { axis: 'y2' } },
 				axes: {
 					x: {valueFormatter: function(x){return this.getLabels()[0] + ': '+ x.toPrecision(5);}}},
-				labels: ['T', 'I(mA)'],
-				labelsDiv: $('labdivi'),
-				legend: 'always',  // "follow"
-				digitsAfterDecimal: 3,					
-				drawCallback: function(g) {
-		    		var opts = {dateWindow: this.xAxisRange(), 'file': datau};
-					guu.updateOptions(opts);},
+					labels: ['T(sec)', 'T(C°)', 'P(mmHh)', 'Dp(C°)'],
+					labelsDiv: $('labdiv'),
+					legend: 'always',  // "follow"
+					digitsAfterDecimal: 3,
 			});
-		let t = 500/smprate;
-		if(t < 50) t = 50;
-		setInterval(function(){RendChart()}, t);
+		setInterval(function(){renderChart()}, 50);
 		stg = 1;
 	}
 }
@@ -204,67 +205,47 @@ function avg(arr) {
 	for (var i = 0; i < arrLen; i++) result += arr[i];
 	return result / arrLen;
 }
-function RendChart(){
-	var old = datai[0][0];
-	var x = gui.xAxisRange();
-	if (gui.dateWindow_) { 
-		if ($("FixEnd").checked) {
-			var dl = datai[0][0] - old;
-	    	if(dl == 0) {
-				var ls = datai.length - 1;
-				gui.dateWindow_[0] = datai[ls][0] - (x[1] - x[0]);
-				gui.dateWindow_[1] = datai[ls][0];
-			} else {
-				if(typeof gui.dateWindow_[0]==="number")
-					gui.dateWindow_[0] += dl;
-				else
-					gui.dateWindow_[0] = datai[0][0];
-				if(typeof gui.dateWindow_[1]==="number")
-					gui.dateWindow_[1] += dl;
-				else
-				    gui.dateWindow_[1] = datai[1][0];
-			}
-		}
-		if(x[0] < datai[0][0]) 
-			gui.dateWindow_[0] = datai[0][0];
-		if(x[1] < datai[1][0]) 
-			gui.dateWindow_[1] = datai[1][0];
-	}
-	$('wdsize').innerHTML=((x[1]-x[0])).toFixed(3);
-	if(rend && datai.length != 0) gui.updateOptions({'file': datai});
+var renderChart = function() {
+	var dl;
+	if (gu.dateWindow_) {
+		dl = gu.dateWindow_[1] - gu.dateWindow_[0];
+	    if ($("FixEnd").checked) {
+			var ls = datau.length - 1;
+			gu.dateWindow_[1] = datau[ls][0];
+			gu.dateWindow_[0] = datau[ls][0] - dl;
+		} else if (gu.dateWindow_[0] < datau[0][0]) {
+			gu.dateWindow_[0] = datau[0][0];
+			gu.dateWindow_[1] = datau[0][0] + dl;
+	   	}
+	} else dl = datau.length/smprate;
+	$("wdsize").innerHTML = dl.toFixed(3);
+	if(rend && datau.length != 0) gu.updateOptions({'file': datau});
 }
 function convertArrayOfObjectsToCSV(value){
-	var result, ctr, keysu, keysi, columnDelimiter, lineDelimiter, datau, datai;
-	datau = value.datau || null;
-	datai = value.datai || null;
-	if (datau == null || !datau.length) {return null;}
-	if (datai == null || !datai.length) {return null;}
+	var result, ctr, keys, columnDelimiter, lineDelimiter, data;
+
+	data = value.data || null;
+	if (data == null || !data.length) {return null;}
 	columnDelimiter = value.columnDelimiter || ';';
 	lineDelimiter = value.lineDelimiter || '\n';
+	keys = Object.keys(data[1]);
 	result = '';
-	keysu = Object.keys(datau[1]);
-	keysi = Object.keys(datai[1]);
-	result += keysu.join(columnDelimiter);
-	result += keysi.join(columnDelimiter);
+	result += keys.join(columnDelimiter);
 	result += lineDelimiter;
-	datau.forEach(function(item, idx){
+	data.forEach(function(item){
 		ctr = 0;
-		keysu.forEach(function(key){
+		keys.forEach(function(key){
 			if (ctr > 0)
 				result += columnDelimiter;
 			result += item[key];
 			ctr++;
-		});
-		keysi.forEach(function(k){
-			result += columnDelimiter;
-			result += datai[idx][k];
 		});
 		result += lineDelimiter;
 	});
 	return result;
 }
 $("butSave").onclick =  function() {
-	var csv = convertArrayOfObjectsToCSV({datau: datau, datai: datai});
+	var csv = convertArrayOfObjectsToCSV({data: datau});
 	if (!csv.match(/^data:text\/csv/i)) {csv = 'data:text/csv;charset=utf-8,' + csv;}
 	var encodedUri = encodeURI(csv);
 	var link = document.createElement('a');
@@ -272,24 +253,19 @@ $("butSave").onclick =  function() {
 	link.setAttribute('download',"data.csv");
 	link.click();
 }
-if(window.innerHeight > 320) {
-	$('div_vi').style.height = (window.innerHeight/2-60) + 'px';
-	$('div_vu').style.height = (window.innerHeight/2-60) + 'px';
-}
+if(window.innerHeight > 320) $('div_v').style.height = (window.innerHeight-80) + 'px';
 window.onresize = function(){
-	if(window.innerHeight > 320) {
-		$('div_vi').style.height = (window.innerHeight/2-60) + 'px';
-		$('div_vu').style.height = (window.innerHeight/2-60) + 'px';
-	}
-	$('div_vi').style.width = (window.innerWidth-50) + 'px';
-	$('div_vu').style.width = (window.innerWidth-50) + 'px';
+	if(window.innerHeight > 320) $('div_v').style.height = (window.innerHeight-80) + 'px';
+//	$('div_v').style.width = (window.innerWidth-50) + 'px';
 }
-function hex(number, length) {
-    var str = (number.toString(16)).toUpperCase();
-    while (str.length < length) str = '0' + str;
-    return str;
-} 
-var pack_samples = 2;
+/* typedef struct {
+	uint8_t size;	// размер данных пакета (=0 байт)
+	uint8_t cmd;	// номер команды / тип пакета (=0)
+} get_id_t; */
+function SendWhoIs(){
+	log('Send command #00: WhoIs?');
+	characteristicCache.writeValue(new Uint8Array([0, 0]));
+}
 /* typedef struct {
 	uint8_t size;	// размер данных пакета (=0 байт)
 	uint8_t cmd;	// номер команды / тип пакета (=4)
@@ -324,7 +300,7 @@ function ConnParUpdate(tms) {
 	con_par.interval = t;
 	con_par.interval_max = t + t/10; // 10%
 	con_par.interval_min = t - t/10;
-	if(t < 25) con_par.latency = 4;
+	if(t < 25) con_par.latency = 0;
 	else con_par.latency = 0;
 	// t 6..3200 -> timeout (100..1600)*10 = 0.1..16 sec
 	con_par.timeout = ((t-6)*0.5 + 100) & 0xffff; // max tmeout 0x0C80 * 10 = 32000 ms
@@ -333,78 +309,58 @@ function ConnParUpdate(tms) {
 	GetConnParms();
 }	
 /* typedef struct {
-	uint8_t size;	// размер данных пакета (=0 байт)
-	uint8_t cmd;	// номер команды / тип пакета (=0)
-} get_id_t; */
-function SendWhoIs(){
-	log('Send command #00: WhoIs?');
-	characteristicCache.writeValue(new Uint8Array([0, 0]));
-}
-/* typedef struct {
-	uint8_t size;	//+0 размер данных пакета 
-	uint8_t cmd;	//+1 номер команды / тип пакета (=1)
-	uint8_t pktcnt;  	//+2 кол-во передаваемых значений из регистров в одном пакете передачи
-	uint8_t shltime; //+3 множитель периода опроса, time << multiplier
-	uint16_t time; 		//+4 период опроса регистров чтения в us
-	uint16_t clk_khz; 	//+6 частота i2c шины в kHz
+	uint8_t size;	// размер данных пакета 
+	uint8_t cmd;	// номер команды / тип пакета (=1)
+	uint8_t pktcnt;  	// кол-во передаваемых значений из регистров в одном пакете передачи
+	uint8_t multiplier; // множитель периода опроса, time << multiplier
+	uint16_t time; 		// период опроса регистров чтения в us
+	uint16_t clk_khz; 	// частота i2c шины в kHz
 	reg_wr_t init[MAX_INIT_REGS];
 	reg_rd_t rd[MAX_READ_REGS];
 	reg_wr_t slp[2];
 } dev_i2c_cfg_t; */
-function SendStart(ina_id) {
-	let cfgreg;
-	let pktcnt = pack_samples; // max for MTU TLSR8266, data 116*2+2 = 234 bytes
-	let shltime = 0;
-	let tus = 1000000/smprate;
-	if(pktcnt < 2) pktcnt = 2;
-	while(tus > 0x1ffff) {tus /= 2; shltime++ };
-	tus /= 2;
-	let cmd = new Uint8Array([11, 1, 116, 0, 0xff,0xff, 0xE8,0x03, 128,0x00,0x9f,0x39, 0])
-	if(ina_id == 0x5449) {
-		log('INA226 chip registered!');
-		title_id = 'INA226';
-		kShunt = INA226kShunt;
-		zShunt = INA226zShunt;
-		kBus = INA226kBus;
-		zBus = INA226zBus;
-		let ca = 0;
-		let xsps = 500000/140;
-		while(xsps > smprate && ca < 7) {ca++;xsps/=2;}
-		cfgreg = 0x0007|(ca<<3)|(ca<<6);
-	} else {
-		log('INA219 chip?');
-		title_id = 'INA219';
-		kShunt = INA219kShunt;
-		zShunt = INA219zShunt;
-		kBus = INA219kBus;
-		zBus = INA219zBus;
-		let ca = 0;
-		let xsps = 500000/84;
-		while(xsps > smprate && ca < 15) {if(ca == 3) ca=7; ca++; xsps/=2;}
-		cfgreg = 0x0007|(INA219BUS<<13)|(INA219PGA<<11)|(ca<<3)|(ca<<7);
-	}			
-	cmd[2] = pktcnt;
-	cmd[3] = shltime; 
-	cmd[4] = tus & 0xff; cmd[5] = (tus>>8) & 0xff;
-	cmd[10] = cfgreg & 0xff; cmd[11] = (cfgreg>>8) & 0xff; // Configuration Register
-	log('cfgreg: 0x'+hex(cfgreg,4)+', cnt: '+pktcnt+', sk: '+shltime+', tus: '+tus);
-	log('Send command #1: Set config - Start, I2C CLK 1MHz, Read Shunt & Bus, step '+(1000/smprate)+' ms');
-	characteristicCache.writeValue(cmd);
-}
+var pack_samples = 8;
 function SendInit(){
-	log('Send command #1: StartInit(stop)');
-	characteristicCache.writeValue(new Uint8Array([38, 1, 
-	0, 0, 80, 195, 232, 3, 128, 0, 255, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 1, 128, 2, 128, 1, 128, 2, 128, 0, 0, 0, 0, 0, 0, 0]))
+//	log('Send command#01: Init I2C/SMBUS CLK 400 kHz...'); // - init I2C 
+//	characteristicCache.writeValue(new Uint8Array([7, 1, 0, 0, 255, 255, 0x90, 1, 0]));
+	log('Send command#01: Init I2C/SMBUS CLK 1 MHz...'); // - init I2C 
+	characteristicCache.writeValue(new Uint8Array([7, 1, 0, 0, 255, 255, 0xe8, 3, 0]));
+}
+function SendStartMeasurement(){
+	log('Send command #0C: Set Contfig registor & Start Measurement...');
+	characteristicCache.writeValue(new Uint8Array([0x05, 0x0C, 0x00, 0x00, 0xEC, 0xF4, 0xB7]));
+}
+function SetCntlMeasurement1(){
+	log('Send command #0C: Set Controls Measurement registor...');
+	characteristicCache.writeValue(new Uint8Array([0x05, 0x0C, 0x00, 0x00, 0xEC, 0xF5, 0x10]));
+}
+function SetCntlMeasurement2(){
+	log('Send command #0C: Set Controls Humidity registor...');
+	characteristicCache.writeValue(new Uint8Array([0x05, 0x0C, 0x00, 0x00, 0xEC, 0xF2, 0x05]));
+}
+function ReadTrimmingParameter(){
+	log('Send command #0C: Read Trimming parameter...'); // [0x88..0xE7]
+	characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0xE1, 0xEC, 0x88]));
+}
+function ReadMeasurementValues(){
+//	log('Send command #0C: Read measurement values...'); // [0xF3..0xFE]
+	characteristicCache.writeValue(new Uint8Array([0x04, 0x0C, 0x01, 0x8E, 0xEC, 0xF3]));
 }	
+
+function hex(number, length) {
+    var str = (number.toString(16)).toUpperCase();
+    while (str.length < length) str = '0' + str;
+    return str;
+} 
 function ResponsePkt(head, value) {
 	let ds = value.getUint8(0);
-	let s = '#'+hex(value.getUint8(1),2)+' '+head + '['+ds+']:';
-	for(let i=0; i < ds; i++) {
+	let s = '#'+value.getUint8(1).toString(16)+' '+head + '['+ds+']:';
+    for(let i=0; i < ds; i++) {
 		s+=' '+value.getUint8(i+2);
 		if(i<ds-1) s+=',';
 	}
 	log(s);
-}
+}	
 function WaitConnection() {
 	if(devcnn && !stg) {
 		disconnect(); 
@@ -413,54 +369,103 @@ function WaitConnection() {
 }
 var ping_timer = 0;
 function PingTimeout() { ping_timer = 1; }
+var err_rd_i2c = 0;
 var stage_read = 0;
-var dev_ina_id = 0;
 var start_time = new Date;
 function handleCharacteristicValueChanged(event) {
 	let value = event.target.value.buffer ? event.target.value : new DataView(event.target.value);
+//	log('blk['+value.byteLength+'] '+value.getUint16(2,true)+','+value.getUint16(4,true)+'...');
 	if(value.byteLength > 1) {
 		let ds = value.getUint8(0);
 		if(ds+2 >= value.byteLength) {
 			let idx = value.getUint8(1);
-			if(idx == 7) {
-/* typedef struct {
-	uint8_t size;	// размер данных пакета (1..116 байт)
-	uint8_t cmd;	// номер команды / тип пакета (=0x07)
-	uint16_t data[size/2];
-} dev_i2c_data_t; */
+			if(idx == 0x0C) {
+//				log('#0C I2C data [' + ds + ']');
+				if(ds == 16) {
+//					ResponsePkt('ResponsePkt', value);
+//					if(value.getUint8(5) & 0x9) stage_read = 3; // reread
+//					else 
+					ShowGrf(value);
+				} 
+				if (stage_read == 2) {
+					SetCntlMeasurement2();
+					stage_read = 3;
+				} else if (stage_read == 3) { // ds == 99
+					ReadTrimmingParameter();
+					stage_read = 4;
+				} else if (stage_read == 4) { // ds == 99
+					ResponsePkt('ResponsePkt', value);
+					SaveTrimmingParameters(value);
+					SendStartMeasurement();
+					start_time = new Date;
+					stage_read = 5;
+				} else if (stage_read == 5) {
+					ReadMeasurementValues();
+				}
+				err_rd_i2c = 0;
+			} else if(idx == 0x0A) {
 //				ResponsePkt('ResponsePkt', value);
-//				log('#07 I2C data [' + ds + ']');
-				ShowGrf(value);
+				log('#0A ADC data [' + ds + ']');
+//				ShowGrf(value);
 				if(ping_timer != 0) {
 					ping_timer = 0;
 					log('Send command #03: Get Status...');
 					characteristicCache.writeValue(new Uint8Array([0x00, 0x03]));
 					setTimeout(PingTimeout, 20000);
 				}
-			}
-			else if(idx == 0x10 && ds > 3) {
+			} else if(idx == 0x07) {
+/* typedef struct {
+	uint8_t size;	// размер данных пакета (=0 байт)
+	uint8_t cmd;	// номер команды / тип пакета (=0x0C)
+	uint8_t char rdlen; 
+	uint8_t char rddata[];
+} i2c_utr_t; */
 //				ResponsePkt('ResponsePkt', value);
-				log('#10 I2C(0x'+hex(value.getUint8(2), 2)+') Register['+hex(value.getUint8(3),2)+'] = '+hex(value.getUint16(4,true),4));
-				if(value.getUint8(3) == 254) {
-					dev_ina_id = value.getUint16(4,true);
-					if(smprate > 50) { // > 50 sps -> Not low power! Interval read regs < 10 ms, max pack of 116 samples
-						let t = 500/smprate; // 1000/(smprate*2) шаг опроса регистров INAxxx в ms (50 sps -> 10 ms, 1000 sps -> 0.5 ms)
-						pack_samples = (2+200/t)&0xFE; // ограничение периода передачи пакета до 200 ms
-						if(pack_samples > 116) pack_samples = 116;
-						ConnParUpdate(pack_samples*t/4); // interval
-					}					
-					else {	// Low Power Enable -> 5 intervals min for send BLE data (min pack of 4 samples)
-						pack_samples = 4; //(smprate/2 + 5)&0xFE;
-						ConnParUpdate(500/smprate);
-					}
-				}
-			}
-			else if(idx == 0x0F || idx >= 0x80) {
-				ResponsePkt('ErrorPkt', value);
+//				ShowGrf(value);
+				if(ping_timer != 0) {
+					ping_timer = 0;
+					log('Send command #03: Get Status...');
+					characteristicCache.writeValue(new Uint8Array([0x00, 0x03]));
+					setTimeout(PingTimeout, 20000);
+				}					
+			} else if(idx == 0x0F) {
+/* typedef struct {
+	uint8_t size;	// размер данных пакета (1..116 байт)
+	uint8_t cmd;	// номер команды / тип пакета (=0x0f)
+	...
+} dev_runtime_rrr_t; */
+				let err_id = value.getUint16(2,true);
+				let err_num = value.getUint16(4,true);
+				log('#0F Runtime Error 0x'+hex(err_id,4)+':'+hex(err_num,4));
 				disconnect();
-				alert('Error! (see logs)');
+				alert('Runtime Error 0x'+hex(err_id,4)+':'+hex(err_num,4)+'!');
+			} else if(idx == 0x01 && ds >= 38) {
+				ResponsePkt('ResponsePkt', value);
+/* typedef struct {
+	uint8_t size;	//+0 размер данных пакета 
+	uint8_t cmd;	//+1 номер команды / тип пакета (=1)
+	uint8_t pktcnt;  	//+2 кол-во передаваемых значений из регистров в одном пакете передачи
+	uint8_t multiplier; //+3 множитель периода опроса, time << multiplier
+	uint16_t time; 		//+4 период опроса регистров чтения в us
+	uint16_t clk_khz; 	//+6 частота i2c шины в kHz
+	reg_wr_t init[MAX_INIT_REGS];
+	reg_rd_t rd[MAX_READ_REGS];
+	reg_wr_t slp[2];
+} dev_i2c_cfg_t; */
+	    		let s = '#01 I2CConfig['+ds+']: pkt_count: '+value.getUint8(2);
+				if(value.getUint8(2) == 0) {
+					s+=' -> Stop';
+				} else {
+					s+=', time: '+value.getUint16(4,true)+' << '+(value.getUint8(3)+1)+' = '+(value.getUint16(4,true)<<(value.getUint8(3)+1))+' us';
+					s+=', I2C CLK: '+value.getUint16(6,true) +' kHz, ...';
+				}
+				log(s);
+				SetCntlMeasurement1();
+				start_time = new Date;
+				stage_read = 2;				
 			}
 			else if(idx == 0x00 && ds > 3) {
+				err_rd_i2c = 0;
 				stage_read = 0;				
 /* typedef struct {
 	uint8_t size;	// размер данных пакета (=4 байт)
@@ -474,8 +479,11 @@ function handleCharacteristicValueChanged(event) {
 				if((dev_id & 0xff) != 0x21) {
 					disconnect();
 					alert('DeviceID: '+ hex(dev_id,4)+', Ver: '+hex(ver_id, 4)+'\r\nUnknown BLE Device!');
-				} else
-					SendInit();
+				} else {
+					if(smprate > 50) smprate = 50
+					else if(smprate < 0.5) smprate = 0.5;
+					ConnParUpdate(250/smprate); // Set interval 25+ ms (min 7.5 ms)
+				}
 			}
 			else if(idx == 0x04 && ds >= 16) {
 /* typedef struct {
@@ -509,36 +517,11 @@ function handleCharacteristicValueChanged(event) {
 							con_par.set--;
 						}
 					} else {
-						stage_read = 1;
-						SendStart(dev_ina_id);
-						start_time = new Date().getTime();
+						stage_read = 1; // stage 1
+						SendInit();
+						start_time = new Date;
 						setTimeout(PingTimeout, 20000);
 					}
-				}
-			} else	if(idx == 0x01 && ds >=38 ) {
-//				ResponsePkt('ResponsePkt', value);
-/* typedef struct {
-	uint8_t size;	//+0 размер данных пакета 
-	uint8_t cmd;	//+1 номер команды / тип пакета (=1)
-	uint8_t pktcnt;  	//+2 кол-во передаваемых значений из регистров в одном пакете передачи
-	uint8_t multiplier; //+3 множитель периода опроса, time << multiplier
-	uint16_t time; 		//+4 период опроса регистров чтения в us
-	uint16_t clk_khz; 	//+6 частота i2c шины в kHz
-	reg_wr_t init[MAX_INIT_REGS];
-	reg_rd_t rd[MAX_READ_REGS];
-	reg_wr_t slp[2];
-} dev_i2c_cfg_t; */
-	    		let s = '#01 I2CConfig['+ds+']: pkt_count: '+value.getUint8(2);
-				if(value.getUint8(2) == 0) {
-					s+=' -> Stop';
-				} else {
-					s+=', time: '+value.getUint16(4,true)+' << '+(value.getUint8(3)+1)+' = '+(value.getUint16(4,true)<<(value.getUint8(3)+1))+' us';
-					s+=', I2C CLK: '+value.getUint16(6,true) +' kHz, ...';
-				}
-				log(s);
-				if(!stage_read) {
-					log('Send command #10: Read register 0xFE from I2C device at 0x80...');
-					characteristicCache.writeValue(new Uint8Array([2, 0x10, 0x80, 0xfe]));
 				}
 			} else if(idx == 0x03 && ds >= 8) {
 /* typedef struct {
@@ -555,6 +538,38 @@ function handleCharacteristicValueChanged(event) {
 					tt = tt*500/(Date.now() - start_time);
 					log('Real sps: '+ tt.toFixed(3) + '?');
 				}
+			} else if(idx == 0x10 && ds > 3) {
+/* typedef struct {
+	uint8_t size;	// размер данных пакета (=0 байт)
+	uint8_t cmd;	// номер команды / тип пакета (=0x10)
+	uint8_t i2c_addr;
+	uint8_t reg_addr;
+	uint16_t value;
+} dev_rdregi2c_t; */
+//				ResponsePkt('ResponsePkt', value);
+				log('#10 I2C(0x'+hex(value.getUint8(2), 2)+') ['+hex(value.getUint8(3),2)+'] = '+hex(value.getUint16(4,true),4));
+			} else if(idx == 0x81) {
+				SendStartMeasurement();
+				start_time = new Date;
+				stage_read = 2;
+
+			} else if(idx == 0x8C && stage_read > 2 && err_rd_i2c < 3) {
+				err_rd_i2c++;
+				log('Error '+err_rd_i2c+' #0C I2C data [' + ds + '], re...');
+				if (stage_read == 2) {
+					SetCntlMeasurement2();
+				} else if (stage_read == 3) {
+					ReadTrimmingParameter();
+				} else if (stage_read == 4) {
+					SendStartMeasurement();
+				} else if (stage_read == 5) {
+					log('Send command #0C: Read measurement values...');
+					ReadMeasurementValues();
+				}
+			} else if(idx >= 0x80) {
+				ResponsePkt('ErrorPkt', value);
+				disconnect();
+				alert('Error! (see logs)');
 			} else
 				ResponsePkt('ResponsePkt', value);
 		}
@@ -581,6 +596,15 @@ function startNotifications(characteristic) {
 		setTimeout(WaitConnection, 5000+7500/smprate);
 	});
 }
+function ResponsePkt(head, value) {
+	let ds = value.getUint8(0);
+	let s = head + '['+ds+']#'+value.getUint8(1).toString(16)+':';
+    for(let i=0; i < ds; i++) {
+		s+=' '+value.getUint8(i+2);
+		if(i<ds-1) s+=',';
+	}
+	log(s);
+}	
 // Запустить выбор Bluetooth устройства и подключиться к выбранному
 function connect() {
 	return (deviceCache ? Promise.resolve(deviceCache) :

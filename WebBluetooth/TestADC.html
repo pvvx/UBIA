@@ -23,7 +23,7 @@
 <script type="text/javascript">
 // if min Connection interval 11.5 -> max 3333 sps
 // if min Connection interval 7.5 -> max 5 ksps
-var smprate = 3333; // 250..5000 sps (116*2+2)/(0.0075*3)=10400 bytes in sec
+var smprate = 5000; // 250..5000 sps (116*2+2)/(0.0075*3)=10400 bytes in sec
 /* ADC Channels 0..1.3V:
 bit0,4:
 =0x05:	PD4 ExtPower
@@ -207,8 +207,16 @@ function SendWhoIs(){
 	log('Send command #00: WhoIs?');
 	characteristicCache.writeValue(new Uint8Array([0, 0]));
 }
-var con_interval;
 var pack_samples = 4;
+/* typedef struct {
+	uint8_t size;	// размер данных пакета (=0 байт)
+	uint8_t cmd;	// номер команды / тип пакета (=4)
+} get_con_t; */
+function GetConnParms() {
+	log('Send command #4: Get current connect parameters...');
+	characteristicCache.writeValue(new Uint8Array([0, 4]));
+}	
+var con_par = {};
 /* typedef struct {
 	uint8_t size;	// размер данных пакета (0..8 байт, =0 - get, =1..8 set)
 	uint8_t cmd;	// номер команды / тип пакета (=4)
@@ -217,20 +225,31 @@ var pack_samples = 4;
 	uint16_t latency; // Number of LL latency connection events (0x0000 - 0x03e8)
 	uint16_t timeout; // Connection Timeout (0x000A - 0x0C80 * 10 ms)
 } set_con_t; */
+function SetConnParms() {
+	con_par.set = 7;
+	log('Set Connect parameters #04: interval '+(con_par.interval*1.25)+' ms, latency '+con_par.latency+', timeout '+(con_par.timeout*10)+' ms');
+	characteristicCache.writeValue(new Uint8Array([8, 4,
+		con_par.interval&0xff,(con_par.interval>>8)&0xff, 
+		con_par.interval&0xff,((con_par.interval>>8)&0xff)|0x80,
+		con_par.latency,0, con_par.timeout&0xff,(con_par.timeout>>8)&0xff]));
+}
 function ConnParUpdate(tms) {
 	let t = tms/1.25;
 	if (t < 6) t = 6; // min interval 6 * 1.25 = 7.5 ms
 	else if (t > 3200) t = 3200; // max interval 0x0C80 * 1.25 = 4000 ms
 	t = t & 0xffff;
-	con_interval = t;
-	// cni 6..3200 -> tmeout (100..1600)*10 = 1..16 sec
-	let tt = (t-6)*0.5 + 100; // max tmeout 0x0C80 * 10 = 32000 ms
 	let lce = 0; // latency connection events
-	if(t < 25) lce = 4;
-	log('Set Connect parameters #04: interval '+tms.toFixed(2)+' ms (real '+(t*1.25)+'), latency '+lce+', timeout '+(tt*10)+' ms');
-	t |= 0x8000;
-	characteristicCache.writeValue(new Uint8Array([8, 4, t&0xff,(t>>8)&0xff, t&0xff,(t>>8)&0xff, lce,0, tt&0xff,(tt>>8)&0xff]));
-}
+	con_par.interval = t;
+	con_par.interval_max = t + t/10; // 10%
+	con_par.interval_min = t - t/10;
+	if(t < 25) con_par.latency = 4;
+	else con_par.latency = 0;
+	// t 6..3200 -> timeout (100..1600)*10 = 0.1..16 sec
+	con_par.timeout = ((t-6)*0.5 + 100) & 0xffff; // max tmeout 0x0C80 * 10 = 32000 ms
+	con_par.set = 0;
+	log('Connect parameters: interval '+tms.toFixed(2)+' ms (real '+(con_par.interval*1.25)+'), latency '+con_par.latency+', timeout '+(con_par.timeout*10)+' ms');
+	GetConnParms();
+}	
 /* typedef struct { // TLSR8266 ADC + DFIFO
 	uint8_t size;	// размер данных пакета (0..4 байт: 0 - get, 1..4 set)
 	uint8_t cmd;	// номер команды / тип пакета (=8)
@@ -346,18 +365,27 @@ function handleCharacteristicValueChanged(event) {
 	uint16_t cur_timeout; // Current Connection Timeout (0x000A - 0x0C80 * 10 ms)
 } dev_con_t; */
 				log('#04 Connect parameters [interval (min/max): '+value.getUint16(2,true)*1.25+ '/'+ value.getUint16(4,true)*1.25+' ms, latency: ' +value.getUint16(6,true)+', timeout: '+value.getUint16(8,true)*10+' ms]')
-				log('Current Connect parameters ('+value.getUint16(10,true)+') [interval: '+value.getUint16(12,true)*1.25+' ms, latency: ' +value.getUint16(14,true)+', timeout: '+value.getUint16(16,true)*10+' ms]')
+				let cur_interval = value.getUint16(12,true);
+				let cur_latency = value.getUint16(14,true);
+				let cur_timeout = value.getUint16(16,true);
+				log('Current Connect parameters ('+value.getUint16(10,true)+') [interval: '+cur_interval*1.25+' ms, latency: ' +cur_latency+', timeout: '+cur_timeout*10+' ms]')
 				if(!stage_read) {
-					if(value.getUint16(12,true) != con_interval) {
-/* typedef struct {
-	uint8_t size;	// размер данных пакета (=0 байт)
-	uint8_t cmd;	// номер команды / тип пакета (=4)
-} get_con_t; */
-						log('Send command #4: Get current connect parameters...');
-						characteristicCache.writeValue(new Uint8Array([0, 4]));
+					if(cur_interval > con_par.interval_max
+					|| cur_interval < con_par.interval_min
+					|| cur_latency != con_par.latency
+					|| cur_timeout != con_par.timeout) {
+						if(con_par.set == 0) {
+							if(cur_interval != con_par.interval && cur_latency == con_par.latency && cur_timeout == con_par.timeout) 
+								con_par.timeout++; // bag BT+AC600: not set con.interval
+							SetConnParms();
+						} else {
+							GetConnParms();
+							con_par.set--;
+						}
 					} else {
 						stage_read = 1; // stage 1
 						SendInit();
+						start_time = new Date().getTime();
 					}
 				}
 			} else if(idx == 0x08 && ds >= 6) {
