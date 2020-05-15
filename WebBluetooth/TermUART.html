@@ -25,36 +25,36 @@ const UART_BAUD = 115200; // 300 baud to 4 Mbaud (16M/4,5,6,7,8..262144)
 const STOP_BITS = 0; // =0 ->1, =1 -> 1.5, =2 => 2 stop bits
 const PARITY_BIT = 0; // =0 -> none, =1 -> even, =2 -> odd
 
-// Получение ссылок на элементы UI
+// РџРѕР»СѓС‡РµРЅРёРµ СЃСЃС‹Р»РѕРє РЅР° СЌР»РµРјРµРЅС‚С‹ UI
 let connectButton = document.getElementById('connect');
 let disconnectButton = document.getElementById('disconnect');
 let terminalContainer = document.getElementById('terminal');
 let sendForm = document.getElementById('send-form');
 let inputField = document.getElementById('input');
 
-// Промежуточный буфер для входящих данных
+// РџСЂРѕРјРµР¶СѓС‚РѕС‡РЅС‹Р№ Р±СѓС„РµСЂ РґР»СЏ РІС…РѕРґСЏС‰РёС… РґР°РЅРЅС‹С…
 let readBuffer = '';
 
-// Подключение к устройству при нажатии на кнопку Connect
+// РџРѕРґРєР»СЋС‡РµРЅРёРµ Рє СѓСЃС‚СЂРѕР№СЃС‚РІСѓ РїСЂРё РЅР°Р¶Р°С‚РёРё РЅР° РєРЅРѕРїРєСѓ Connect
 connectButton.addEventListener('click', function() {
 	connect();
 });
 
-// Отключение от устройства при нажатии на кнопку Disconnect
+// РћС‚РєР»СЋС‡РµРЅРёРµ РѕС‚ СѓСЃС‚СЂРѕР№СЃС‚РІР° РїСЂРё РЅР°Р¶Р°С‚РёРё РЅР° РєРЅРѕРїРєСѓ Disconnect
 disconnectButton.addEventListener('click', function() {
   disconnect();
 });
 
-// Обработка события отправки формы
+// РћР±СЂР°Р±РѕС‚РєР° СЃРѕР±С‹С‚РёСЏ РѕС‚РїСЂР°РІРєРё С„РѕСЂРјС‹
 sendForm.addEventListener('submit', function(event) {
 	if(!devcnn.connect || devcnn.stage < 2) return;
-	event.preventDefault(); // Предотвратить отправку формы
-	send(inputField.value); // Отправить содержимое текстового поля
-	inputField.value = '';  // Обнулить текстовое поле
-	inputField.focus();     // Вернуть фокус на текстовое поле
+	event.preventDefault(); // РџСЂРµРґРѕС‚РІСЂР°С‚РёС‚СЊ РѕС‚РїСЂР°РІРєСѓ С„РѕСЂРјС‹
+	send(inputField.value); // РћС‚РїСЂР°РІРёС‚СЊ СЃРѕРґРµСЂР¶РёРјРѕРµ С‚РµРєСЃС‚РѕРІРѕРіРѕ РїРѕР»СЏ
+	inputField.value = '';  // РћР±РЅСѓР»РёС‚СЊ С‚РµРєСЃС‚РѕРІРѕРµ РїРѕР»Рµ
+	inputField.focus();     // Р’РµСЂРЅСѓС‚СЊ С„РѕРєСѓСЃ РЅР° С‚РµРєСЃС‚РѕРІРѕРµ РїРѕР»Рµ
 });
 
-// Вывод в терминал
+// Р’С‹РІРѕРґ РІ С‚РµСЂРјРёРЅР°Р»
 function log(data, type = '') {
 	terminalContainer.insertAdjacentHTML('beforeend',
 	  '<div' + (type ? ' class="' + type + '"' : '') + '>' + data + '</div>');
@@ -241,11 +241,11 @@ function handleCharacteristicValueChanged(event) {
 	}
 }
 //--BLE---------------------------------------
-// Кэш объекта выбранного устройства
+// РљСЌС€ РѕР±СЉРµРєС‚Р° РІС‹Р±СЂР°РЅРЅРѕРіРѕ СѓСЃС‚СЂРѕР№СЃС‚РІР°
 let deviceCache = null;
-// Кэш объекта характеристики
+// РљСЌС€ РѕР±СЉРµРєС‚Р° С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєРё
 let characteristicCache = null;
-// Включение получения уведомлений об изменении характеристики
+// Р’РєР»СЋС‡РµРЅРёРµ РїРѕР»СѓС‡РµРЅРёСЏ СѓРІРµРґРѕРјР»РµРЅРёР№ РѕР± РёР·РјРµРЅРµРЅРёРё С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєРё
 function startNotifications(characteristic) {
 	log('Starting notifications...');
 	return characteristic.startNotifications().
@@ -259,7 +259,7 @@ function startNotifications(characteristic) {
 		devcnn.wtimeout = setTimeout(WaitConnection, 5500);
 	});
 }
-// Запустить выбор Bluetooth устройства и подключиться к выбранному
+// Р—Р°РїСѓСЃС‚РёС‚СЊ РІС‹Р±РѕСЂ Bluetooth СѓСЃС‚СЂРѕР№СЃС‚РІР° Рё РїРѕРґРєР»СЋС‡РёС‚СЊСЃСЏ Рє РІС‹Р±СЂР°РЅРЅРѕРјСѓ
 function connect() {
 	if(devcnn.connect) return;
 	return (deviceCache ? Promise.resolve(deviceCache) :
@@ -268,7 +268,7 @@ function connect() {
 			then(characteristic => startNotifications(characteristic)).
 		catch(error => { log(error); });
 }
-// Запрос выбора Bluetooth устройства
+// Р—Р°РїСЂРѕСЃ РІС‹Р±РѕСЂР° Bluetooth СѓСЃС‚СЂРѕР№СЃС‚РІР°
 function requestBluetoothDevice() {
 	devcnn.connect = 0;
 	devcnn.stage = 0;
@@ -287,7 +287,7 @@ function requestBluetoothDevice() {
 		return deviceCache;
 	});
 }
-// Обработчик разъединения
+// РћР±СЂР°Р±РѕС‚С‡РёРє СЂР°Р·СЉРµРґРёРЅРµРЅРёСЏ
 function handleDisconnection(event) {
 	let device = event.target;
 	if(devcnn.connect != 0) {
@@ -297,7 +297,7 @@ function handleDisconnection(event) {
 			catch(error => log(error));
 	}
 }
-// Подключение к определенному устройству, получение сервиса и характеристики
+// РџРѕРґРєР»СЋС‡РµРЅРёРµ Рє РѕРїСЂРµРґРµР»РµРЅРЅРѕРјСѓ СѓСЃС‚СЂРѕР№СЃС‚РІСѓ, РїРѕР»СѓС‡РµРЅРёРµ СЃРµСЂРІРёСЃР° Рё С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєРё
 function connectDeviceAndCacheCharacteristic(device) {
   if (device.gatt.connected && characteristicCache) {
 	return Promise.resolve(characteristicCache);
@@ -318,7 +318,7 @@ function connectDeviceAndCacheCharacteristic(device) {
 		return characteristicCache;
 	  });
 }
-// Отключиться от подключенного устройства
+// РћС‚РєР»СЋС‡РёС‚СЊСЃСЏ РѕС‚ РїРѕРґРєР»СЋС‡РµРЅРЅРѕРіРѕ СѓСЃС‚СЂРѕР№СЃС‚РІР°
 function disconnect() {
 	if(!devcnn.connect) return;
 	devcnn.connect = 0;
@@ -357,7 +357,7 @@ function disconnect() {
 		log('"' + deviceCache.name + '" bluetooth device is already disconnected');
 }
 
-// Отправить данные подключенному устройству
+// РћС‚РїСЂР°РІРёС‚СЊ РґР°РЅРЅС‹Рµ РїРѕРґРєР»СЋС‡РµРЅРЅРѕРјСѓ СѓСЃС‚СЂРѕР№СЃС‚РІСѓ
 function send(data) {
 	if (!data || !characteristicCache) return;
 	let d = new TextEncoder().encode(data);
@@ -370,7 +370,7 @@ function send(data) {
 	characteristicCache.writeValue(blk);
 }
 
-// Записать значение в характеристику
+// Р—Р°РїРёСЃР°С‚СЊ Р·РЅР°С‡РµРЅРёРµ РІ С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєСѓ
 function writeUart(data) {
 	if (!devcnn.connect || !characteristicCache) return;
 	let l = data.length;
