@@ -1,3 +1,4 @@
+CC?=gcc
 CFLAGS+=
 SFLAGS:=-Os --std=gnu99
 WFLAGS:=-Wall -Werror -pedantic

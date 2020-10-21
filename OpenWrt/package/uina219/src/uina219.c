@@ -18,11 +18,11 @@
  *
  * Example run and output:
  *
- * OpenWRT:~# ina219 -b 0 -i 60
+ * OpenWRT:~# uina219 -b 0 -i 100
  *
- * 22:49 12168mV  134.2mA
- * 22:50 12168mV  239.9mA
- * 22:51 12168mV  134.7mA
+ *       12168mV  134.02mA
+ *       12168mV  239.92mA
+ *       12168mV  134.73mA
  *
  */
 
@@ -51,6 +51,8 @@
 #define CALIBRATION_REG     5
 
 #define INA_ADDRESS         0x80
+
+#define SET_TTY_OPT	1
 
 #if 0
 #include <netinet/in.h>
@@ -105,8 +107,9 @@ int ubia_read_blk(uint8_t cmd) {
 				continue;
 			} else
 				break;
-		} else
+		} else {
 			usleep(1000);
+		}
 	} while (cnt_err--);
 	printf("UBIA read failed: %s\n", strerror( errno));
 	return -1;
@@ -182,7 +185,7 @@ void show_usage(char *progname) {
 			"      -a --address <addr> Override I2C address of INA219 from default of 0x%02X.\n",
 			i2c_address);
 	fprintf( stderr,
-			"      -b --bus <i2c bus>  Override I2C bus from default of %d.\n",
+			"      -b --bus <ttyACMx>  Override ttyACM device from default of %d.\n",
 			i2c_bus);
 	fprintf( stderr, "      -s --setcfg <value> Set Configuration Register (default: 0x%04X)\n", config);
 	fprintf( stderr, "      -l --length <value> Set count read (default: %u)\n", samplescount);
