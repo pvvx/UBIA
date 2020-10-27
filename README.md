@@ -38,8 +38,8 @@ Universal I2C/SMBus + ADC/DAC + UART to USB / BLE adapter.
 >* [STM32-BluePill](https://github.com/pvvx/TlsrTools)
 >* [ET104-BT10-EVK](https://github.com/pvvx/TLSR8269-EVK)
 
-[IDE](http://wiki.telink-semi.cn/dokuwiki/doku.php?id=menu:tools:ide_quick_start)
+[IDE](http://wiki.telink-semi.cn/wiki/IDE-and-Tools/IDE-for-TLSR8-Chips/)
 
-[SDK](http://wiki.telink-semi.cn/dokuwiki/doku.php?id=menu:chipset:tslr826x)
+[SDK](http://wiki.telink-semi.cn/wiki/chip-series/TLSR826x-Series/)
 
 [forum](https://esp8266.ru/forum/threads/ubia-usb-ble-to-i2c-smbus-adapter.4810/)
