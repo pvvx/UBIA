@@ -84,7 +84,7 @@
 		<link>
 			<name>sdk</name>
 			<type>2</type>
-			<location>E:/Telink/wk/tl_pvvx_ble_sdk</location>
+			<locationURI>$%7BPARENT-1-PROJECT_LOC%7D/tl_pvvx_ble_sdk</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>
