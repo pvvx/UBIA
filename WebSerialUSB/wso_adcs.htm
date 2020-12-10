@@ -199,10 +199,8 @@ function draw() {
 	let levelRisingEdge = Math.round($('ysync').value * 65536);
 	let _xsync = Math.round($('xsync').value * width);
 	let xsync_ = width - _xsync;
-	let timeData1 = data_ch1;
 	let scaling = height / 65536;
 	let przdg = 0;
-	let len = timeData1.length;
 
 	ctx.fillStyle = 'rgba(0, 20, 0, 0.2)';
 	ctx.fillRect(0, 0, width, height);
@@ -213,17 +211,20 @@ function draw() {
 	ctx.lineWidth = 1;
 	ctx.setLineDash([]);
 
-	if (timeData1.length > width*2) {
-	przdg = _xsync;
-	while (timeData1[przdg] > levelRisingEdge-1 && przdg <= timeData1.length - xsync_) przdg++;
-	while (timeData1[przdg] < levelRisingEdge+1 && przdg <= timeData1.length - xsync_) przdg++;
-	if (przdg >= timeData1.length - xsync_) { // not przdg
-		if(timeData1.length > width*4)
-			data_ch1 = data_ch1.slice(width*2);
-	} else if (przdg > 0) {
-		showData1 = data_ch1.slice(przdg - _xsync, przdg + xsync_);
-		data_ch1 = data_ch1.slice(przdg + xsync_);
-	}
+	let dsize = data_ch1.length;
+	let ssize;
+	if (dsize > width*2) {
+		przdg = _xsync;
+		while (data_ch1[przdg] > levelRisingEdge-1 && przdg <= dsize - xsync_) przdg++;
+		while (data_ch1[przdg] < levelRisingEdge+1 && przdg <= dsize - xsync_) przdg++;
+		if (przdg > 0 && przdg < dsize - xsync_) {
+			showData1 = data_ch1.slice(przdg - _xsync, przdg + xsync_);
+			if(dsize > width*4)
+				data_ch1 = data_ch1.slice(dsize - width*2);
+			else
+				data_ch1 = data_ch1.slice(przdg + xsync_);
+		} else if(dsize > width*4)
+			data_ch1 = data_ch1.slice(dsize - width*2);
 	}
 	for (let x = 0; x < showData1.length && x < width; x++)
 	ctx.lineTo(x, height - showData1[x] * scaling);
