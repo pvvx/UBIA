@@ -102,11 +102,7 @@ class SerialController {
 var serialController = new SerialController();
 const connect = $('butOpen');
 async function DeviceStart() {
-	start_adc_ok = false;
 	connect.value = 'Close';
-	await delay(50);
-	blk = new Uint8Array(); // flush RX
-	await serialController.write_raw(new Uint8Array([0, 0])); // [0, 0] // GetVersion
 	console.log('Device: StopADC...');
 	await serialController.write_raw(new Uint8Array([1, 8, 0])); // [1, 1, 0] // Stop ADC
 	await delay(50);
@@ -114,10 +110,15 @@ async function DeviceStart() {
 	await serialController.write_raw(new Uint8Array([1, 1, 0])); // [1, 1, 0] // Stop I2C
 	await delay(50);
 	console.log('Device: GetVersion...');
+	blk = new Uint8Array(); // flush RX
+	start_adc_ok = false;
 	serialController.read_raw_all(DeviceRead);
-	await delay(50);
-	if(!start_adc_ok)
-		alert('Not Start USB-BLE Device!');
+	let i = 7;
+	while(!start_adc_ok && i--){
+		await StartADC(100, smprate);
+		await delay(50);
+	}
+	serialController.write_raw(new Uint8Array([0, 0])); // [0, 0] // GetVersion
 }
 async function DeviceStop() {
 	console.log('Device: StopADC...');
@@ -257,19 +258,21 @@ Diff/PGA Channel:
 =0x6E:	PC1, PGA
 =0x8D:	PC2, PGA
 */
-function StartADC(pack_samples, smps = 1000, chnl = 0x09, pga20db = 0, pga2db5 = 0){
-	if(smps < 245) smps = 245;
+async function StartADC(pack_samples, smps = 1000, chnl = 0x09, pga20db = 0, pga2db5 = 0){
+	if(smps < 500) smps = 500;
 	else if(smps > 50000) smprate = 50000;
 	smps = Math.round(smps);
 	console.log('Send command #08: Init ADC ('+smps+' sps)');
 /* typedef struct { // TLSR8266 ADC + DFIFO
-	uint8_t size;	// размер данных пакета (0..4 байт: 0 - get, 1..4 set)
+	uint8_t size;	// размер данных пакета (0..8 байт: 0 - get, 1..4 set)
 	uint8_t cmd;	// номер команды / тип пакета (=8)
 	uint8_t pktcnt;	// кол-во передаваемых значений из регистров в одном пакете передачи (1..116 байта, BT4.2 MTU TX = 125)
-	uint8_t chnl;	// Channel 0..0x12
+	uint8_t chnl;	// Channel 0..0x8D
 	uint16_t smps;	// Sample Rate
+	uint8_t pga20db; // PGA
+	uint8_t pga2db5; // PGA
 } dev_adc_t; */
-	serialController.write_raw(new Uint8Array([6, 8, pack_samples, chnl, smps&0xff, (smps>>8)&0xff, pga20db&0x50, pga2db5]));
+	return serialController.write_raw(new Uint8Array([6, 8, pack_samples, chnl, smps&0xff, (smps>>8)&0xff, pga20db&0x50, pga2db5]));
 }
 var start_adc_ok = false;
 var blk;
@@ -303,8 +306,6 @@ function DeviceRead(data) {
 						alert('%s\r\nUnknown USB-BLE Device!', str);
 					} else {
 					    console.log(str);
-						// Next command: set cfg ADC, start ADC
-						StartADC(100, smprate);
 					}
 				} else if(blkcmd == 0x01) { // response to the command stop i2c 0x01 -> i2c config
 					if((blkid & 0x80)!=0) {
