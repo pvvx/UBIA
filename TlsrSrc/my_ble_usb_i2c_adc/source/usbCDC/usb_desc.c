@@ -23,6 +23,17 @@
 #ifdef USE_USB_CDC
 #include "usb.h"
 
+#ifndef USB_VID
+#define USB_VID		0x248a
+#endif
+#ifndef USB_PID
+#define USB_PID		0x8267
+#endif
+#ifndef USB_MAX_POWER
+#define USB_MAX_POWER 	50 // mA
+#endif
+
+
 SECTION_USB_CONST
 USB_Descriptor_String_t language_desc = {
     {sizeof(USB_Descriptor_Header_t) + 2, DTYPE_String},
@@ -54,8 +65,8 @@ USB_Descriptor_Device_t device_desc = {
     0x01, // Protocol
 
     8, // Endpoint0 Size, Maximum Packet Size for Zero Endpoint. Valid Sizes are 8, 16, 32, 64
-	0x248a, // VendorID
-	0x8267, // Product ID
+	USB_VID, // VendorID
+	USB_PID, // Product ID
     0x0100, // .ReleaseNumber
     USB_STRING_VENDOR, // .ManufacturerStrIndex
     USB_STRING_PRODUCT, // .ProductStrIndex
@@ -75,7 +86,7 @@ USB_Descriptor_Configuration_t configuration_desc = {
         1, // Configuration index
         NO_DESCRIPTOR, // Configuration String
         USB_CONFIG_ATTR_RESERVED | USB_CONFIG_ATTR_REMOTEWAKEUP, // Attributes
-        USB_CONFIG_POWER_MA(50) // MaxPower = 100mA
+        USB_CONFIG_POWER_MA(USB_MAX_POWER) // MaxPower = 100mA
     },
 
     {
