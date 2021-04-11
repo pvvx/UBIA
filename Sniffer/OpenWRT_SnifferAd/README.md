@@ -24,6 +24,10 @@ gcc -O2 -Wall -o cc2540 cc2540.c -s
 
 RSSI (dBm) = 94 - RSSI 
 
+---
+
+[Work](https://www.youtube.com/watch?v=MqFcY5Hovpw)
+
 
 
 
