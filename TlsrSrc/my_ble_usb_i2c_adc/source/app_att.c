@@ -172,6 +172,15 @@ int module_onSendData(void *par) {
 }
 #endif // #if (SPP_SERVICE_ENABLE)
 
+
+extern u32 blt_ota_start_tick, connection_ping_time;
+int pre_otaWrite(void * p) {
+	blt_ota_start_tick = clock_time() | 1;
+	connection_ping_time = blt_ota_start_tick;
+	return otaWrite(p);
+}
+
+
 // Include attribute (Battery service)
 //static u16 include[3] = {0x0026, 0x0028, SERVICE_UUID_BATTERY};
 
@@ -351,7 +360,7 @@ const attribute_t my_Attributes[] = {
 	// OTA
 	{4,ATT_PERMISSIONS_READ, 2,16,(u8*)(&my_primaryServiceUUID), (u8*)(&my_OtaServiceUUID), 0},
 	{0,ATT_PERMISSIONS_READ, 2,sizeof(my_OtaCharVal),(u8*)(&my_characterUUID), (u8*)(my_OtaCharVal), 0},				//prop
-	{0,ATT_PERMISSIONS_RDWR,16,sizeof(my_OtaData),(u8*)(&my_OtaUUID),	(&my_OtaData), &otaWrite, &otaRead},			//value
+	{0,ATT_PERMISSIONS_RDWR,16,sizeof(my_OtaData),(u8*)(&my_OtaUUID),	(&my_OtaData), &pre_otaWrite, &otaRead},			//value
 	{0,ATT_PERMISSIONS_READ, 2,sizeof(my_OtaName),(u8*)(&userdesc_UUID), (u8*)(my_OtaName), 0},
 
 };

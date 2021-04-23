@@ -163,7 +163,7 @@ int module_onReceiveData(void *par)
 void entry_ota_mode(void)
 {
 	sleep_mode = 1;
-
+	connection_ping_time = clock_time();
 	bls_ota_setTimeout(100 * 1000000); //set OTA timeout  100 S
 #ifdef BLUE_LED
 	gpio_write(BLUE_LED, ON); // LED on for indicate OTA mode

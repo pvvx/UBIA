@@ -1,7 +1,7 @@
 ## USB/BLE to I2C/ADC/DAC/UART
 
 Universal I2C/SMBus + ADC/DAC + UART to USB / BLE adapter.
-#### JDY-10 (Tlsr8266, Bt 4.2, Rf Tx +8db)
+#### JDY-10 (Tlsr8266, Bt 4.0, Rf Tx +8db)
 ![SCH](https://github.com/pvvx/UBIA/blob/master/DOCs/img/tBLETST_JDY10_sch.gif)
 
 ### I2C/SMBus:
@@ -37,6 +37,9 @@ Universal I2C/SMBus + ADC/DAC + UART to USB / BLE adapter.
 >* [COM-port](https://github.com/pvvx/TlsrComProg)
 >* [STM32-BluePill](https://github.com/pvvx/TlsrTools)
 >* [ET104-BT10-EVK](https://github.com/pvvx/TLSR8269-EVK)
+
+
+[TelinkOTA](https://pvvx.github.io/UBIA/TelinkOTA.html)
 
 [IDE](http://wiki.telink-semi.cn/wiki/IDE-and-Tools/IDE-for-TLSR8-Chips/)
 
