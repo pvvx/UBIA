@@ -54,7 +54,11 @@ _attribute_ram_code_ void irq_handler(void)
 
 int main (void) {
 #if (USE_BLE)
+#if USE_EXT_32K_CRYSTAL
+	blc_pm_select_external_32k_crystal();
+#else
 	blc_pm_select_internal_32k_crystal();
+#endif
 
 	cpu_wakeup_init(CRYSTAL_TYPE);
 

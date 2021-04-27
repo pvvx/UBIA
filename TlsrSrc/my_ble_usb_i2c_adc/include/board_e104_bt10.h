@@ -79,6 +79,7 @@ extern "C" {
 #define MCU_CORE_TYPE		MCU_CORE_8269
 /* Running chip flash size select. If '1' - 1M, otherwise (or undefined) - 512K. */
 #define FLASH_SIZE_1M		0
+#define USE_EXT_32K_CRYSTAL 0
 
 #ifndef CLOCK_SYS_TYPE
 /*--------------- System clock config -----------------------

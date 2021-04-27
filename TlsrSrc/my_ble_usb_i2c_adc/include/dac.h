@@ -8,13 +8,6 @@
 #ifndef DAC_H_
 #define DAC_H_
 
-/**
- * @brief     configure the SDM buffer's address and size
- * @param[in] pbuff - the first address of buffer SDM read data from.
- * @param[in] size_buff - the size of pbuff (bytes).
- * @return    none
- */
-
 extern dev_dac_cfg_t cfg_dac;
 extern  const dev_dac_cfg_t def_cfg_dac;
 

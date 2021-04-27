@@ -13,6 +13,9 @@
 dev_dac_cfg_t cfg_dac;
 const dev_dac_cfg_t def_cfg_dac = {
 		.value[0] = 0x8000,
+#if (MCU_CORE_TYPE != MCU_CORE_8266)
+		.value[1] = 0x8000,
+#endif
 		.mode = 1,
 		.slk_mhz = 8,
 		.step = 1,
