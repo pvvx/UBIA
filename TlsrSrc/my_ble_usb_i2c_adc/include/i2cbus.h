@@ -15,7 +15,7 @@ typedef struct _i2c_utr_t {
 	unsigned char wrdata[1]; // i2c_addr_wr, wr_byte1, wr_byte2, wr_byte3, ... wr_byte126
 } i2c_utr_t;
 
-void I2CBusInit(unsigned int clk);
+void I2CBusInit(unsigned int clk, unsigned int clock_stretching);
 void I2CBusDeInit(void);
 int I2CBusReadWord(unsigned char i2c_addr, unsigned char reg_addr, void *preg_data);
 int I2CBusWriteWord(unsigned char i2c_addr, unsigned char reg_addr, unsigned short reg_data);

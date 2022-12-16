@@ -30,6 +30,9 @@
 #if	(USE_UART_DEV)
 #include "uart_dev.h"
 #endif
+#if	(USE_SPI_DEV)
+#include "spi_dev.h"
+#endif
 
 u32 all_rd_count = 0; // status
 u32 not_send_count = 0; // status
@@ -103,7 +106,7 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 						sleep_mode |= 4;
 #endif
 					} else
-					if(UartTxBusy()) {
+						if(UartTxBusy()) {
 						pbufo->head.size = sizeof(dev_err_t);
 						pbufo->head.cmd = CMD_DEV_ERR;
 						pbufo->data.err.id = RTERR_UART;
@@ -345,6 +348,34 @@ unsigned int cmd_decode(blk_tx_pkt_t * pbufo, blk_rx_pkt_t * pbufi, unsigned int
 				}
 				break;
 #endif // USE_I2C_DEV
+#if (USE_SPI_DEV)
+			case CMD_DEV_SRW: // SPI read/write
+				txlen = pbufi->data.srw.rdlen;
+				pbufo->data.srw.wr_count = pbufi->head.size - 1;
+				if(pbufi->head.size >= 1
+					&&  txlen <= sizeof(pbufo->data.srw.data)) {
+					SpiUtr(&pbufo->data.srw.data,
+							&pbufi->data.srw,
+							pbufo->data.srw.wr_count);
+					txlen += 1 + sizeof(blk_head_t);
+				} else {
+					pbufo->head.cmd |= CMD_ERR_FLG; // Error cmd
+					txlen = 0 + sizeof(blk_head_t);
+				}
+				break;
+			case CMD_DEV_SPI: // Init SPI
+				txlen = pbufi->head.size;
+				if (txlen) {
+					if(txlen > sizeof(spi_ini))
+						txlen = sizeof(spi_ini);
+					memcpy(&spi_ini, &pbufi->data.spi, txlen);
+					SpiInit();
+				}
+//				pbufo->data.uc[0] = dac_cmd(&pbufi->data.dac);
+				memcpy(&pbufo->data.spi, &spi_ini, sizeof(spi_ini));
+				txlen = sizeof(spi_ini) + sizeof(blk_head_t);
+				break;
+#endif // USE_SPI_DEV
 			case CMD_DEV_PWR: // Power On/Off, Sleep
 				if(pbufi->head.size < sizeof(dev_pwr_slp_t)) {
 					pbufo->head.cmd |= CMD_ERR_FLG; // Error cmd

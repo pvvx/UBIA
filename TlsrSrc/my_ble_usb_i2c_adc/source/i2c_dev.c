@@ -124,7 +124,7 @@ void I2CDevSleep() {
 	cfg_i2c.pktcnt = 0;
 	t_rd_us = 0;
 	if(cfg_i2c.slp[0].dev_addr) {
-		I2CBusInit(cfg_i2c.clk_khz);
+		I2CBusInit(cfg_i2c.clk_khz, 0);
 		I2CBusWriteWord(cfg_i2c.slp[0].dev_addr,cfg_i2c.slp[0].reg_addr, cfg_i2c.slp[0].data); // Power-Down (or Shutdown)
 		if(cfg_i2c.slp[1].dev_addr)
 			I2CBusWriteWord(cfg_i2c.slp[0].dev_addr,cfg_i2c.slp[0].reg_addr, cfg_i2c.slp[0].data); // Power-Down (or Shutdown)
@@ -137,7 +137,7 @@ void I2CDevSleep() {
 static u8 general_call_reset[] = { 0, 0, 0, 6 };
 /* I2C Device WakeUp */
 void I2CDevWakeUp() {
-	I2CBusInit(400);
+	I2CBusInit(400, 0);
 	I2CBusUtr(0, (i2c_utr_t *)&general_call_reset, 1);
 }
 
@@ -149,6 +149,7 @@ void I2CDevWakeUp() {
  */
 int InitI2CDevice(void) {
 	u32 i, x;
+	u16 clk_khz;
 	timer_flg = 0;
 #if (USE_USB_CDC && USE_BLE)
 	if(usb_actived) {
@@ -168,9 +169,13 @@ int InitI2CDevice(void) {
 	x = 30;
 #endif
 	if(cfg_i2c.pktcnt > x) cfg_i2c.pktcnt = x;
-	if(cfg_i2c.clk_khz < 50 || cfg_i2c.clk_khz > 2500)
-		cfg_i2c.clk_khz = 1000;
-	I2CBusInit(cfg_i2c.clk_khz);
+	clk_khz = cfg_i2c.clk_khz & 0x7fff;
+	if(clk_khz < 50 || clk_khz > 2500) {
+		clk_khz = 1000;
+		cfg_i2c.clk_khz &= 0x8000;
+		cfg_i2c.clk_khz |= clk_khz;
+	}
+	I2CBusInit(clk_khz, cfg_i2c.clk_khz & 0x8000);
 	t_rd_us = cfg_i2c.time << cfg_i2c.multiplier;
 	// ~ 30 us при 1 MHz I2C CLK (5 us + 25 us)
 	if(t_rd_us < i || t_rd_us > 0xffffffff/CLOCK_SYS_CLOCK_1US) {

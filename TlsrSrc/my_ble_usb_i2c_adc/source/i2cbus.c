@@ -276,7 +276,7 @@ void I2CBusDeInit(void) {
 	BM_CLR(reg_rst_clk0, FLD_CLK_I2C_EN);
 }
 
-void I2CBusInit(unsigned int clk_khz) {
+void I2CBusInit(unsigned int clk_khz, unsigned int clock_stretching) {
 //	int ret = 0;
 #if (MCU_CORE_TYPE == MCU_CORE_8266)
 #if 0
@@ -326,9 +326,12 @@ void I2CBusInit(unsigned int clk_khz) {
 //	reg_i2c_id = cfg->i2c_addr;	//set the id of i2c module.
 
 	BM_SET(reg_i2c_mode, FLD_I2C_MODE_MASTER);  // enable master mode.
+	if(clock_stretching)
+		BM_CLR(reg_i2c_mode, FLD_I2C_HOLD_MASTER); // Enable clock stretching
+	else
+		BM_SET(reg_i2c_mode, FLD_I2C_HOLD_MASTER); // Disable clock stretching
 	BM_SET(reg_rst_clk0, FLD_CLK_I2C_EN);       // enable i2c clock
 	BM_CLR(reg_spi_sp, FLD_SPI_ENABLE);        // force PADs act as I2C; i2c and spi share the hardware of IC
-
 	//Start/Stop By Master, SDA & SCL = "1"
     reg_i2c_ctrl = FLD_I2C_CMD_START | FLD_I2C_CMD_STOP; // launch stop cycle
     while(reg_i2c_status & FLD_I2C_CMD_BUSY);

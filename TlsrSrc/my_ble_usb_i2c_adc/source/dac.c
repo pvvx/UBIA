@@ -172,9 +172,11 @@ extern dev_adc_cfg_t cfg_adc;
 extern int init_adc_dfifo(dev_adc_cfg_t * p);
 // 		0409 05 10 6300
 static void test(dev_dac_cfg_t *p) {
+#if (USE_ADC)
 	// ADC/step = 488.28125
 	cfg_adc.sps = p->step*488 + (p->step>>2); // *488.25
 	init_adc_dfifo(&cfg_adc);
+#endif
 	sdm_set_buf(dfifo, sizeof(dfifo));
 	sdm_init(p->slk_mhz, p->step, 0x40);
 }
@@ -196,7 +198,9 @@ unsigned int dac_cmd(dev_dac_cfg_t *p) {
 		sdm_init(p->slk_mhz, 1, p->volume);
 		break;
 	case 2: // test! out value (adc off!)
+#if (USE_ADC)
 		ADC_Stop();
+#endif
 		gen_u(p->value[0]);
 #if (USE_BLE)
 		sleep_mode |= 4;
@@ -204,7 +208,9 @@ unsigned int dac_cmd(dev_dac_cfg_t *p) {
 		sdm_init(p->slk_mhz, p->step, p->volume);
 		break;
 	case 3: // test! out triangular (adc off!)
+#if (USE_ADC)
 		ADC_Stop();
+#endif
 		gen_triangular();
 #if (USE_BLE)
 		sleep_mode |= 4;

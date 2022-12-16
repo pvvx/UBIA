@@ -55,6 +55,10 @@
 // UART
 #define CMD_DEV_UAC	0x12 // Set UART
 #define CMD_DEV_UAR	0x13 // Send/Receive UART
+// SPI
+#define CMD_DEV_SPI	0x14 // Init SPI
+#define CMD_DEV_SRW	0x15 // Send/Receive SPI
+
 
 #define CMD_ERR_FLG	0x80 // send error cmd mask
 
@@ -155,7 +159,7 @@ typedef struct __attribute__((packed)) _dev_i2c_cfg_t {
 	uint8_t pktcnt;  	// кол-во передаваемых значений из регистров в одном пакете передачи
 	uint8_t multiplier; // множитель периода опроса, time << multiplier
 	uint16_t time; 		// период опроса регистров чтения в us
-	uint16_t clk_khz; 	// частота i2c шины в kHz
+	uint16_t clk_khz; 	// частота i2c шины в kHz, bit15 =1 enable clock stretching
 	reg_wr_t init[MAX_INIT_REGS];
 	reg_rd_t rd[MAX_READ_REGS];
 	reg_wr_t slp[2];
@@ -238,6 +242,27 @@ typedef struct __attribute__((packed)) _i2c_wr_t{
 #endif
 } i2c_wr_t;
 
+// SPI CMD_DEV_SPI 14
+typedef struct _spi_ini_t {
+	unsigned char div;	// 0 -> 8MHz, 1 -> 4MHz, 2 -> 2.67MHz, 3 -> 2MHz, ... 8MHz/(div+1)
+	unsigned char mode; // 0,1,2,3
+} spi_ini_t;
+// SPI CMD_DEV_SRW 15 write/read
+typedef struct _spi_utr_t {
+	unsigned char rdlen;
+	unsigned char wrdata[1];
+} spi_utr_t;
+// OUT CMD_DEV_SWR SPI read/write
+typedef struct __attribute__((packed)) _spi_wr_t{
+	uint8_t wr_count; // кол-во байт записи
+#if (DLE_DATA_SIZE > 127+4)
+	uint8_t data[127]; // считанные значения
+#else
+	uint8_t data[DLE_DATA_SIZE-sizeof(blk_head_t)-2]; // значения регистров
+#endif
+} spi_wr_t;
+
+
 typedef struct __attribute__((packed)) _blk_tx_pkt_t{
 	blk_head_t head;
 	union __attribute__((packed)) {
@@ -261,6 +286,8 @@ typedef struct __attribute__((packed)) _blk_tx_pkt_t{
 		dev_dac_cfg_t dac;
 		hx711_out_t hxo;
 		dev_uart_cfg_t ua;
+		spi_ini_t spi;
+		spi_wr_t srw;
 	} data;
 } blk_tx_pkt_t;
 
@@ -287,6 +314,8 @@ typedef struct __attribute__((packed)) _blk_rx_pkt_t{
 		dev_dac_cfg_t dac;
 		hx711_set_t hxi;
 		dev_uart_cfg_t ua;
+		spi_ini_t spi;
+		spi_utr_t srw;
 	} data;
 } blk_rx_pkt_t;
 
