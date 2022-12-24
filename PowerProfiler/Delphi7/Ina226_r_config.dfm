@@ -38,7 +38,7 @@ object Form226Config: TForm226Config
   end
   object LabelIz: TLabel
     Left = 224
-    Top = 260
+    Top = 268
     Width = 32
     Height = 13
     Caption = 'I offset'
@@ -70,6 +70,20 @@ object Form226Config: TForm226Config
     Width = 44
     Height = 13
     Caption = 'AlertData'
+  end
+  object Label7: TLabel
+    Left = 224
+    Top = 244
+    Width = 32
+    Height = 13
+    Caption = 'U koef'
+  end
+  object LabelIk: TLabel
+    Left = 232
+    Top = 292
+    Width = 27
+    Height = 13
+    Caption = 'I koef'
   end
   object GroupBox1: TGroupBox
     Left = 8
@@ -110,8 +124,8 @@ object Form226Config: TForm226Config
     OnEnter = ChargeReg
   end
   object ButtonOk: TButton
-    Left = 240
-    Top = 312
+    Left = 272
+    Top = 320
     Width = 75
     Height = 25
     Caption = 'Ok'
@@ -119,8 +133,8 @@ object Form226Config: TForm226Config
     OnClick = ButtonOkClick
   end
   object ButtonCancel: TButton
-    Left = 344
-    Top = 312
+    Left = 368
+    Top = 320
     Width = 75
     Height = 25
     Caption = 'Cancel'
@@ -197,6 +211,7 @@ object Form226Config: TForm226Config
     MinValue = 400
     TabOrder = 7
     Value = 1000
+    OnChange = SpinEditCLkKHzChange
   end
   object EditUz: TEdit
     Left = 272
@@ -211,7 +226,7 @@ object Form226Config: TForm226Config
   end
   object EditIz: TEdit
     Left = 272
-    Top = 258
+    Top = 266
     Width = 89
     Height = 21
     Hint = #1057#1084#1077#1097#1077#1085#1080#1077' '#1076#1083#1103' I'
@@ -275,11 +290,33 @@ object Form226Config: TForm226Config
   end
   object ButtonCopyIz: TButton
     Left = 368
-    Top = 256
+    Top = 264
     Width = 89
     Height = 25
     Caption = 'Copy Is to Iz'
     TabOrder = 15
     OnClick = ButtonCopyIzClick
+  end
+  object EditUk: TEdit
+    Left = 272
+    Top = 242
+    Width = 89
+    Height = 21
+    Hint = #1050#1086#1101#1092'. '#1076#1083#1103' U'
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 16
+    Text = '?.?'
+  end
+  object EditIk: TEdit
+    Left = 272
+    Top = 290
+    Width = 89
+    Height = 21
+    Hint = #1057#1084#1077#1097#1077#1085#1080#1077' '#1076#1083#1103' I'
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 17
+    Text = '?.?'
   end
 end

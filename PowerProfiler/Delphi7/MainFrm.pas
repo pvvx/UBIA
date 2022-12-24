@@ -14,10 +14,20 @@ const
     I2C_DEVICE_ID = $16;
     ADC_DEVICE_ID = $21;
     HI_DEVICE_TYPE = $10;
-    INA226_MID_REG = $fe;
-    INA226_DID_REG = $ff;
-    INA226_MID = $4954;
+
+    INAxxx_MID_REG = $fe;
+    INAxxx_DID_REG = $ff;
+    INAxxx_MID = $4954;
+
+    NO_I2C_DID = $0000;
+    INA219_DID = $0001;
     INA226_DID = $6022;
+    INA3221_DID = $2032;
+
+    INA219_MAX_R = 5;
+    INA226_MAX_R = 7;
+    INA3221_MAX_R = 18;
+
     SMBus_Speed_kHz = 1000; // default
 
     SMP_BUF_CNT = $3fff;
@@ -74,7 +84,7 @@ const
     DEF_ADC_SPS = 10000;
     DEF_ADC_CHNL = 9;
 type
-  xName = (xByte, xWord, xData);
+  xName = (xByte, xWord, xData, xIna2Data, xIna3Data);
 
  Tcfg_ini = packed record
    none   : dword;
@@ -84,16 +94,69 @@ type
 type
   ina2xx_regs_t = packed record
    case xName of
+    xWord: ( w : array[0..255] of word);
+    xData: (
+      config      : word;		// Configuration Register
+    );
+    xIna2Data: (
+      ina2_config      : word;		// Configuration Register
+      ina2_shunt       : Smallint;		// Shunt Voltage Register
+      ina2_bus         : Smallint;		// Bus Voltage Register
+      ina2_power       : word; 	// Power Register
+      ina2_current     : word; 	// Current Register
+      ina2_calibration : word; 	// Calibration Register
+      ina2_mask_enable : word; 	// INA226: Mask/Enable Register, INA219: =0000
+      ina2_alert_data  : word; 	// INA226: Alert Limit Register, INA219: =7E0A
+//      mid       : word;   // addr 0xfe: Manufacturer ID Register. INA226: =5449
+//      did       : word;   // addr 0xff: Die ID Register. INA226: =2260
+
+    );
+    xIna3Data: (
+      ina3_config      : word;		// Configuration Register
+      ina3_shunt1      : Smallint;		// Shunt1 Voltage Register
+      ina3_bus1        : Smallint;		// Bus1 Voltage Register
+      ina3_shunt2      : Smallint;		// Shunt2 Voltage Register
+      ina3_bus2        : Smallint;		// Bus2 Voltage Register
+      ina3_shunt3      : Smallint;		// Shunt3 Voltage Register
+      ina3_bus3        : Smallint;		// Bus3 Voltage Register
+      ina3_cralrl1     : word; 	// Channel-1 Critical-Alert Limit
+      ina3_wralrl1     : word; 	// Channel-1 Warning-Alert Limit
+      ina3_cralrl2     : word; 	// Channel-2 Critical-Alert Limit
+      ina3_wralrl2     : word; 	// Channel-2 Warning-Alert Limit
+      ina3_cralrl3     : word; 	// Channel-3 Critical-Alert Limit
+      ina3_wralrl3     : word; 	// Channel-3 Warning-Alert Limit
+      ina3_shvsum      : word; 	// Shunt-Voltage Sum
+      ina3_shvsuml     : word; 	// Shunt-Voltage Sum Limit
+      ina3_mskena      : word;   // Mask/Enable
+      ina3_pwrupl      : word;   // Power-Valid Upper Limit
+      ina3_pwrlwl      : word;   // Power-Valid Lower Limit
+//      ina3_mid       : word;   // addr 0xfe: Manufacturer ID Register. INA226: =5449
+//      ina3_did       : word;   // addr 0xff: Die ID Register. INA226: =2260
+    );
+  end;
+
+  ina32xx_regs_t = packed record
+   case xName of
     xWord: ( w : array[0..9] of word);
     xData: (
       config      : word;		// Configuration Register
-      shunt       : Smallint;		// Shunt Voltage Register
-      bus         : Smallint;		// Bus Voltage Register
-      power       : word; 	// Power Register
-      current     : word; 	// Current Register
-      calibration : word; 	// Calibration Register
-      mask_enable : word; 	// INA226: Mask/Enable Register, INA219: =0000
-      alert_data  : word; 	// INA226: Alert Limit Register, INA219: =7E0A
+      shunt1      : Smallint;		// Shunt1 Voltage Register
+      bus1        : Smallint;		// Bus1 Voltage Register
+      shunt2      : Smallint;		// Shunt2 Voltage Register
+      bus2        : Smallint;		// Bus2 Voltage Register
+      shunt3      : Smallint;		// Shunt3 Voltage Register
+      bus3        : Smallint;		// Bus3 Voltage Register
+      cralrl1     : word; 	// Channel-1 Critical-Alert Limit
+      wralrl1     : word; 	// Channel-1 Warning-Alert Limit
+      cralrl2     : word; 	// Channel-2 Critical-Alert Limit
+      wralrl2     : word; 	// Channel-2 Warning-Alert Limit
+      cralrl3     : word; 	// Channel-3 Critical-Alert Limit
+      wralrl3     : word; 	// Channel-3 Warning-Alert Limit
+      shvsum      : word; 	// Shunt-Voltage Sum
+      shvsuml     : word; 	// Shunt-Voltage Sum Limit
+      mskena      : word;   // Mask/Enable
+      pwrupl      : word;   // Power-Valid Upper Limit
+      pwrlwl      : word;   // Power-Valid Lower Limit
       mid       : word;   // addr 0xfe: Manufacturer ID Register. INA226: =5449
       did       : word;   // addr 0xff: Die ID Register. INA226: =2260
     );
@@ -161,8 +224,6 @@ type
     Series2: TFastLineSeries;
     Series1: TFastLineSeries;
     EditSizeGrf: TEdit;
-    EditUk: TEdit;
-    EditIk: TEdit;
     EditTriggerI: TEdit;
     CheckBoxTrigerRiseI: TCheckBox;
     LabelMXI: TLabel;
@@ -172,6 +233,7 @@ type
     ButtonStartADC: TButton;
     ButtonADCcfg: TButton;
     ButtonSaveWav: TButton;
+    Label1: TLabel;
     procedure btnReScanComDevices(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure ReScanComDevices;
@@ -201,8 +263,6 @@ type
     procedure WriteIni;
     procedure GetScrParms;
     procedure ShowScrParms;
-    procedure GetUIkParms;
-    procedure ShowUIkParms;
     procedure ShowLabelsMX;
     procedure ShowSmps;
     procedure SetGrfMarging;
@@ -212,6 +272,7 @@ type
     function SendBlk(data_count : byte) : boolean;
     function ReadStatus : boolean;
     function ReadRegister(regnum : integer) : boolean;
+    function WriteRegister(regnum : integer; val : word) : boolean;
     function ResetIna2xx : boolean;
     function RdAllRegs : boolean;
     function GetDevIniCfg : boolean;
@@ -232,8 +293,8 @@ type
   private
     flgValueChg : boolean;
     Ini_Cfg : Tcfg_ini;
-    dev_ina226 : boolean;
-    no_i2c_dev : boolean;
+    dev_i2c_id : word;
+    ina_max_regs : integer;
     DeviceTypeRecognized : boolean;
 
     TriggerI : Double;
@@ -262,12 +323,12 @@ type
 var
   frmMain: TfrmMain;
   CommThread: TCommThread;
-  ina2xx_reg : ina2xx_regs_t;
+  ina_reg : ina2xx_regs_t;
   blk_cfg : ina2xx_cfg_t;
 
   dev_type : byte;
   dev_id : byte;
-  dev_ver: word;
+  dev_ver: word; // BCD 0x1234 - > 1.2.3.4
 
   BuildInfoString: string;
 
@@ -309,7 +370,8 @@ var
 implementation
 
 uses
-  StrUtils, ComPort, HexUtils, Ina219_r_config, Ina226_r_config, adc_jdy10_config, WaveStorage;
+  StrUtils, ComPort, HexUtils, Ina219_r_config, Ina226_r_config, adc_jdy10_config, WaveStorage,
+  Ina3221_r_config;
 
 {$R *.dfm}
 
@@ -541,6 +603,115 @@ begin
      result := false;
 end;
 
+function TfrmMain.ReadStatus : boolean;
+var
+ ft : boolean;
+begin
+   ft := Timer1.Enabled;
+   Timer1.Enabled := False;
+   result := true;
+   buftx[1] := CMD_DEV_STA; // Cmd: Get Status
+   if SendBlk(0) then begin
+     if ReadBlk(buftx[1]) and (lenrx = 8) then begin
+        dev_all_send_count :=  bufrx[0] or (bufrx[1] shl 8) or (bufrx[2] shl 16) or (bufrx[3] shl 24);
+        dev_not_send_count :=  bufrx[4] or (bufrx[5] shl 8) or (bufrx[6] shl 16) or (bufrx[7] shl 24);
+     end
+     else begin
+      StatusBar.Panels[2].Text:='Ошибки при чении статуса устройства на '+ sComNane+'!';
+      result := false;
+     end;
+   end
+   else begin
+      StatusBar.Panels[2].Text:='Ошибки при чении статуса устройства на '+ sComNane+'!';
+      result := false;
+   end;
+   Timer1.Enabled := ft;
+end;
+
+function TfrmMain.RdAllRegs : boolean;
+var
+ i: integer;
+ ft : boolean;
+ fs : boolean;
+
+begin
+    ft := Timer1.Enabled;
+    fs := SamplesEna;
+    Timer1.Enabled := False;
+    result := true;
+
+    case dev_i2c_id of
+      INA219_DID : begin
+        ina_max_regs := INA219_MAX_R;
+      end;
+      INA226_DID : begin
+        ina_max_regs := INA226_MAX_R;
+      end;
+      INA3221_DID : begin
+        ina_max_regs := INA3221_MAX_R;
+      end;
+      else begin
+        ina_max_regs := INA3221_MAX_R;
+      end;
+    end;
+    buftx[1] := CMD_DEV_GRG; // Cmd: Get word
+    buftx[2] := INA2XX_I2C_ADDR;
+    for i := 0 to ina_max_regs do begin
+      buftx[3] := i;
+      if SendBlk(2) and ReadBlk(buftx[1]) and (lenrx = 4) then begin
+        ina_reg.w[i] := bufrx[2] or (bufrx[3] shl 8);
+      end
+      else begin
+       StatusBar.Panels[2].Text:='Ошибки при чении регистров INAXXX в устройстве на '+ sComNane+'!';
+       result := false;
+       break;
+      end;
+    end;
+//   if result then begin
+//     I_zero := I_219_zero_tab[(ina2xx_reg.config and ControlGainMsk) shr ControlGainShl];
+//   end;
+     Timer1.Enabled := ft;
+     SamplesEna := fs;
+end;
+
+function TfrmMain.WriteRegister(regnum : integer; val : word) : boolean;
+var
+ ft : boolean;
+ fs : boolean;
+begin
+    ft := Timer1.Enabled;
+    fs := SamplesEna;
+    Timer1.Enabled := False;
+    result := true;
+    buftx[1] := CMD_DEV_SRG; // Cmd: SMBUS Write reg
+    buftx[2] := INA2XX_I2C_ADDR;
+    buftx[3] := regnum;
+    buftx[4] := val;
+    buftx[5] := val shr 8;
+    if SendBlk(4) then
+       result := false;
+    Timer1.Enabled := ft;
+    SamplesEna := fs;
+end;
+
+
+procedure TfrmMain.ShowAllRegs;
+var
+i : integer;
+s : string;
+begin
+
+   s := '';
+   for i := 0 to ina_max_regs do begin
+      if i < ina_max_regs then
+        s := s + IntToHex(ina_reg.w[i],4) + ', '
+     else
+        s := s + IntToHex(ina_reg.w[i],4);
+   end;
+   EditRegs.Text := s;
+//   StatusBar.Panels[2].Text:='REGS: ' + EditRegs.Text;
+end;
+
 // Чтение переменных из .ini
 procedure TfrmMain.ReadIni;
 begin
@@ -564,14 +735,37 @@ begin
      IniFile.WriteFloat('INA219','Iz80mV',I_219_zero_tab[1]);
      IniFile.WriteFloat('INA219','Iz160mV',I_219_zero_tab[2]);
      IniFile.WriteFloat('INA219','Iz320mV',I_219_zero_tab[3]);
+     IniFile.WriteFloat('INA219','Ik40mV',Ik_219_tab[0]);
+     IniFile.WriteFloat('INA219','Ik80mV',Ik_219_tab[1]);
+     IniFile.WriteFloat('INA219','Ik160mV',Ik_219_tab[2]);
+     IniFile.WriteFloat('INA219','Ik320mV',Ik_219_tab[3]);
      IniFile.WriteFloat('INA219','Uz',U_219_zero);
-     IniFile.WriteFloat('INA219','Ik',Ik_219);
      IniFile.WriteFloat('INA219','Uk',Uk_219);
+     IniFile.WriteFloat('INA219','I2C_CLK',clk_219);
 
      IniFile.WriteFloat('INA226','Iz',I_226_zero);
-     IniFile.WriteFloat('INA226','Uz',U_226_zero);
      IniFile.WriteFloat('INA226','Ik',Ik_226);
+     IniFile.WriteFloat('INA226','Uz',U_226_zero);
      IniFile.WriteFloat('INA226','Uk',Uk_226);
+     IniFile.WriteFloat('INA226','I2C_CLK',clk_226);
+     IniFile.WriteInteger('INA226','reg_calibration',reg_226_calibration);
+     IniFile.WriteInteger('INA226','reg_mask_enable',reg_226_mask_enable);
+     IniFile.WriteInteger('INA226','reg_alert_limit',reg_226_alert_limit);
+
+     IniFile.WriteFloat('INA3221','Iz1ch',I_3221_zero_ch[0]);
+     IniFile.WriteFloat('INA3221','Iz2ch',I_3221_zero_ch[1]);
+     IniFile.WriteFloat('INA3221','Iz3ch',I_3221_zero_ch[2]);
+     IniFile.WriteFloat('INA3221','Ik1ch',Ik_3221_ch[0]);
+     IniFile.WriteFloat('INA3221','Ik2ch',Ik_3221_ch[1]);
+     IniFile.WriteFloat('INA3221','Ik3ch',Ik_3221_ch[2]);
+     IniFile.WriteFloat('INA3221','Uz1ch',U_3221_zero_ch[0]);
+     IniFile.WriteFloat('INA3221','Uz2ch',U_3221_zero_ch[1]);
+     IniFile.WriteFloat('INA3221','Uz3ch',U_3221_zero_ch[2]);
+     IniFile.WriteFloat('INA3221','Uk1ch',Uk_3221_ch[0]);
+     IniFile.WriteFloat('INA3221','Uk2ch',Uk_3221_ch[1]);
+     IniFile.WriteFloat('INA3221','Uk3ch',Uk_3221_ch[2]);
+     IniFile.WriteFloat('INA3221','I2C_CLK',clk_3221);
+
 
      IniFile.WriteInteger('ADC','Smps', ADC_smps);
      IniFile.WriteInteger('ADC','Chnl', ADC_channel);
@@ -601,18 +795,43 @@ begin
      SetColorI.Color := IniFile.ReadInteger('System', 'ChIColor', SetColorI.Color);
      SetColorU.Color := IniFile.ReadInteger('System', 'ChUColor', SetColorU.Color);
 
-     I_219_zero_tab[0]:= IniFile.ReadFloat('INA219','Z_40mV',I_219_zero_tab[0]);
-     I_219_zero_tab[1]:= IniFile.ReadFloat('INA219','Z_80mV',I_219_zero_tab[1]);
-     I_219_zero_tab[2]:= IniFile.ReadFloat('INA219','Z_160mV',I_219_zero_tab[2]);
-     I_219_zero_tab[3]:= IniFile.ReadFloat('INA219','Z_320mV',I_219_zero_tab[3]);
+     I_219_zero_tab[0]:= IniFile.ReadFloat('INA219','Iz40mV',I_219_zero_tab[0]);
+     I_219_zero_tab[1]:= IniFile.ReadFloat('INA219','Iz80mV',I_219_zero_tab[1]);
+     I_219_zero_tab[2]:= IniFile.ReadFloat('INA219','Iz160mV',I_219_zero_tab[2]);
+     I_219_zero_tab[3]:= IniFile.ReadFloat('INA219','Iz320mV',I_219_zero_tab[3]);
+     Ik_219_tab[0]:= IniFile.ReadFloat('INA219','Ik40mV',I_219_zero_tab[0]);
+     Ik_219_tab[1]:= IniFile.ReadFloat('INA219','Ik80mV',I_219_zero_tab[1]);
+     Ik_219_tab[2]:= IniFile.ReadFloat('INA219','Ik160mV',I_219_zero_tab[2]);
+     Ik_219_tab[3]:= IniFile.ReadFloat('INA219','Ik320mV',I_219_zero_tab[3]);
      U_219_zero := IniFile.ReadFloat('INA219','Uz',U_219_zero);
-     Ik_219 := IniFile.ReadFloat('INA219','Ik',Ik_219);
      Uk_219 := IniFile.ReadFloat('INA219','Uk',Uk_219);
+     clk_219 := IniFile.ReadInteger('INA219','I2C_CLK',clk_219);
 
      I_226_zero := IniFile.ReadFloat('INA226','Iz',I_226_zero);
      U_226_zero := IniFile.ReadFloat('INA226','Uz',I_226_zero);
      Ik_226 := IniFile.ReadFloat('INA226','Ik',Ik_226);
      Uk_226 := IniFile.ReadFloat('INA226','Uk',Uk_226);
+     clk_226 := IniFile.ReadInteger('INA226','I2C_CLK',clk_226);
+
+     reg_226_calibration := IniFile.ReadInteger('INA226','reg_calibration',reg_226_calibration);
+     reg_226_mask_enable := IniFile.ReadInteger('INA226','reg_mask_enable',reg_226_mask_enable);
+     reg_226_alert_limit := IniFile.ReadInteger('INA226','reg_alert_limit',reg_226_alert_limit);
+
+
+     I_3221_zero_ch[0] := IniFile.ReadFloat('INA3221','Iz1ch',I_3221_zero_ch[0]);
+     I_3221_zero_ch[1] := IniFile.ReadFloat('INA3221','Iz2ch',I_3221_zero_ch[1]);
+     I_3221_zero_ch[2] := IniFile.ReadFloat('INA3221','Iz3ch',I_3221_zero_ch[2]);
+     Ik_3221_ch[0] := IniFile.ReadFloat('INA3221','Ik1ch',Ik_3221_ch[0]);
+     Ik_3221_ch[1] := IniFile.ReadFloat('INA3221','Ik2ch',Ik_3221_ch[1]);
+     Ik_3221_ch[2] := IniFile.ReadFloat('INA3221','Ik3ch',Ik_3221_ch[2]);
+     U_3221_zero_ch[0] := IniFile.ReadFloat('INA3221','Uz1ch',I_3221_zero_ch[0]);
+     U_3221_zero_ch[1] := IniFile.ReadFloat('INA3221','Uz2ch',I_3221_zero_ch[1]);
+     U_3221_zero_ch[2] := IniFile.ReadFloat('INA3221','Uz3ch',I_3221_zero_ch[2]);
+     Uk_3221_ch[0] := IniFile.ReadFloat('INA3221','Uk1ch',Uk_3221_ch[0]);
+     Uk_3221_ch[1] := IniFile.ReadFloat('INA3221','Uk2ch',Uk_3221_ch[1]);
+     Uk_3221_ch[2] := IniFile.ReadFloat('INA3221','Uk3ch',Uk_3221_ch[2]);
+     clk_3221 := IniFile.ReadInteger('INA3221','I2C_CLK',clk_3221);
+
 
      ADC_smps := IniFile.ReadInteger('ADC','Smps', ADC_smps);
      ADC_channel := IniFile.ReadInteger('ADC','Chnl', ADC_channel);
@@ -646,22 +865,43 @@ begin
      IniFile.WriteInteger('Setup','Height',Height);
      IniFile.WriteString('Setup','ComPort',sComNane);
 
-    IniFile.WriteInteger('System', 'ChIColor', SetColorI.Color);
-    IniFile.WriteInteger('System', 'ChUColor', SetColorU.Color);
-
+     IniFile.WriteInteger('System', 'ChIColor', SetColorI.Color);
+     IniFile.WriteInteger('System', 'ChUColor', SetColorU.Color);
 
      IniFile.WriteFloat('INA219','Iz40mV',I_219_zero_tab[0]);
      IniFile.WriteFloat('INA219','Iz80mV',I_219_zero_tab[1]);
      IniFile.WriteFloat('INA219','Iz160mV',I_219_zero_tab[2]);
      IniFile.WriteFloat('INA219','Iz320mV',I_219_zero_tab[3]);
+     IniFile.WriteFloat('INA219','Ik40mV',Ik_219_tab[0]);
+     IniFile.WriteFloat('INA219','Ik80mV',Ik_219_tab[1]);
+     IniFile.WriteFloat('INA219','Ik160mV',Ik_219_tab[2]);
+     IniFile.WriteFloat('INA219','Ik320mV',Ik_219_tab[3]);
      IniFile.WriteFloat('INA219','Uz',U_219_zero);
-     IniFile.WriteFloat('INA219','Ik',Ik_219);
      IniFile.WriteFloat('INA219','Uk',Uk_219);
+     IniFile.WriteFloat('INA219','I2C_CLK',clk_219);
 
      IniFile.WriteFloat('INA226','Iz',I_226_zero);
      IniFile.WriteFloat('INA226','Uz',U_226_zero);
      IniFile.WriteFloat('INA226','Ik',Ik_226);
      IniFile.WriteFloat('INA226','Uk',Uk_226);
+     IniFile.WriteFloat('INA226','I2C_CLK',clk_226);
+     IniFile.WriteInteger('INA226','reg_calibration',reg_226_calibration);
+     IniFile.WriteInteger('INA226','reg_mask_enable',reg_226_mask_enable);
+     IniFile.WriteInteger('INA226','reg_alert_limit',reg_226_alert_limit);
+
+     IniFile.WriteFloat('INA3221','Iz1ch',I_3221_zero_ch[0]);
+     IniFile.WriteFloat('INA3221','Iz2ch',I_3221_zero_ch[1]);
+     IniFile.WriteFloat('INA3221','Iz3ch',I_3221_zero_ch[2]);
+     IniFile.WriteFloat('INA3221','Uz1ch',U_3221_zero_ch[0]);
+     IniFile.WriteFloat('INA3221','Uz2ch',U_3221_zero_ch[1]);
+     IniFile.WriteFloat('INA3221','Uz3ch',U_3221_zero_ch[2]);
+     IniFile.WriteFloat('INA3221','Ik1ch',Ik_3221_ch[0]);
+     IniFile.WriteFloat('INA3221','Ik2ch',Ik_3221_ch[1]);
+     IniFile.WriteFloat('INA3221','Ik3ch',Ik_3221_ch[2]);
+     IniFile.WriteFloat('INA3221','Uk1ch',Uk_3221_ch[0]);
+     IniFile.WriteFloat('INA3221','Uk2ch',Uk_3221_ch[1]);
+     IniFile.WriteFloat('INA3221','Uk3ch',Uk_3221_ch[2]);
+     IniFile.WriteFloat('INA3221','I2C_CLK',clk_3221);
 
      IniFile.WriteInteger('ADC','Smps', ADC_smps);
      IniFile.WriteInteger('ADC','Chnl', ADC_channel);
@@ -869,20 +1109,6 @@ begin
   SetComName;
 end;
 
-procedure TfrmMain.GetUIkParms;
-begin
-    DecimalSeparator := '.';
-    Ik := StrToFloat(EditIk.Text);
-    Uk := StrToFloat(EditUk.Text);
-end;
-
-procedure TfrmMain.ShowUIkParms;
-begin
-    DecimalSeparator := '.';
-    EditIk.Text:=FormatFloat('0.00000000', Ik);
-    EditUk.Text:=FormatFloat('0.00000000', Uk);
-end;
-
 procedure TfrmMain.GetScrParms;
 begin
     DecimalSeparator := '.';
@@ -940,7 +1166,7 @@ begin
   DecimalSeparator := '.';
   flgValueChg := False;
   work_adc := False;
-  no_i2c_dev := False;
+  dev_i2c_id := NO_I2C_DID;
 
   DeviceTypeRecognized := False;
 
@@ -996,7 +1222,8 @@ begin
         ClearGrf;
         ChartEnables := 0;
         StartComThread;
-        if not GetDevVersion and not no_i2c_dev then begin
+        dev_i2c_id := NO_I2C_DID;
+        if not GetDevVersion and (dev_i2c_id <> NO_I2C_DID) then begin
           CloseComThread;
           CloseCom;
           if (dev_id <> I2C_DEVICE_ID) and
@@ -1013,7 +1240,7 @@ begin
           ButtonOpen.Caption := 'Close';
           ButtonStop.Enabled := True;
           purge_com := 1;
-          if not no_i2c_dev then begin
+          if dev_i2c_id <> NO_I2C_DID then begin
             if RdAllRegs then begin
               ShowAllRegs;
               ButtonRdAllRegs.Enabled := True;
@@ -1036,24 +1263,52 @@ begin
           purge_com := 1;
           ClearGrf;
           ConnectStartTime := GetTime;
-          if no_i2c_dev then begin
-             Caption := Application.Title + ' ver ' + BuildInfoString + ' (ADC)';
-             FormAdcConfig.GetParams;
-          end else
-          if dev_ina226 then begin
-            if dev_id = ADC_DEVICE_ID then
-             Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA226 + ADC)'
-            else
-             Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA226)';
-            Form226Config.GetParams;
-          end else begin
-            if dev_id = ADC_DEVICE_ID then
-             Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA219 + ADC)'
-            else
-             Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA219)';
-            Form219Config.GetParams;
+          if (dev_type = HI_DEVICE_TYPE) then begin
+            Form219Config.SpinEditCLkKHz.MaxValue := 2000;
+            Form226Config.SpinEditCLkKHz.MaxValue := 2000;
+            Form3221Config.SpinEditCLkKHz.MaxValue := 2000;
+          end
+          else begin
+            Form219Config.SpinEditCLkKHz.MaxValue := 1000;
+            Form226Config.SpinEditCLkKHz.MaxValue := 1000;
+            Form3221Config.SpinEditCLkKHz.MaxValue := 1000;
           end;
-          ShowUIkParms;
+          case dev_i2c_id of
+            INA219_DID : begin
+              if dev_id = ADC_DEVICE_ID then
+                Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA219 + ADC)'
+              else
+                Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA219)';
+              Form219Config.ShowAll;
+              Form219Config.GetParams;
+            end;
+            INA226_DID : begin
+              if dev_id = ADC_DEVICE_ID then
+                Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA226 + ADC)'
+              else
+                Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA226)';
+              Form226Config.ShowAll;
+              Form226Config.GetParams;
+              Form226Config.SetRegs;
+              if RdAllRegs then
+                ShowAllRegs;
+            end;
+            INA3221_DID : begin
+              if dev_id = ADC_DEVICE_ID then
+                Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA3221 + ADC)'
+              else
+                Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA3221)';
+              Form3221Config.ShowAll;
+              Form3221Config.GetParams;
+            end;
+            else begin
+                if dev_id = ADC_DEVICE_ID then begin
+                  Caption := Application.Title + ' ver ' + BuildInfoString + ' (ADC)';
+                  FormAdcConfig.GetParams;
+                end else
+                 Caption := Application.Title + ' ver ' + BuildInfoString + ' (?)';
+            end;
+          end;
           DeviceTypeRecognized := True;
 //            SamplesEna := True;
 //            Timer1.Enabled := True;
@@ -1089,11 +1344,18 @@ function TfrmMain.SetDevIniCfg(mode : integer) : boolean;
 begin
    result := False;
    Timer1.Enabled := False;
-   if dev_ina226 then begin
-     ChartEnables := Form226Config.DevIniCfg(mode);
-   end
-   else begin
-     ChartEnables := Form219Config.DevIniCfg(mode);
+   case dev_i2c_id of
+     INA219_DID : begin
+       ChartEnables := Form219Config.DevIniCfg(mode);
+     end;
+     INA226_DID : begin
+       ChartEnables := Form226Config.DevIniCfg(mode);
+     end;
+     INA3221_DID : begin
+       ChartEnables := Form3221Config.DevIniCfg(mode);
+     end;
+     else
+       exit;
    end;
    buftx[1] := CMD_DEV_CFG;
    move(blk_cfg, buftx[2], SizeOf(blk_cfg));
@@ -1163,7 +1425,7 @@ begin
    SamplesEna := False;
    Timer1.Enabled := False;
    if ReadStatus then begin
-      if not no_i2c_dev then
+      if dev_i2c_id <> NO_I2C_DID then
         if not StopReadDevice then
           exit;
       if dev_id = ADC_DEVICE_ID then begin
@@ -1182,23 +1444,24 @@ end;
 procedure TfrmMain.ButtonConfigRegClick(Sender: TObject);
 begin
   if RdAllRegs then begin
-    if (dev_type = HI_DEVICE_TYPE) then begin
-      Form219Config.SpinEditCLkKHz.MaxValue := 2000;
-      Form226Config.SpinEditCLkKHz.MaxValue := 2000;
-    end
-    else begin
-      Form219Config.SpinEditCLkKHz.MaxValue := 1000;
-      Form226Config.SpinEditCLkKHz.MaxValue := 1000;
-    end;
-    if dev_ina226 then begin
-      Form226Config.Left := Left + (Width div 2) - Form226Config.Width div 2;
-      Form226Config.Top := Top + (Height div 2) - Form226Config.Height div 2;
-      FormConfigOk := Form226Config.ShowModal;
-    end
-    else  begin
-      Form219Config.Left := Left + (Width div 2) - Form219Config.Width div 2;
-      Form219Config.Top := Top + (Height div 2) - Form219Config.Height div 2;
-      FormConfigOk := Form219Config.ShowModal;
+    case dev_i2c_id of
+      INA219_DID : begin
+        Form219Config.Left := Left + (Width div 2) - Form219Config.Width div 2;
+        Form219Config.Top := Top + (Height div 2) - Form219Config.Height div 2;
+        FormConfigOk := Form219Config.ShowModal;
+      end;
+      INA226_DID : begin
+        Form226Config.Left := Left + (Width div 2) - Form226Config.Width div 2;
+        Form226Config.Top := Top + (Height div 2) - Form226Config.Height div 2;
+        FormConfigOk := Form226Config.ShowModal;
+      end;
+      INA3221_DID : begin
+        Form3221Config.Left := Left + (Width div 2) - Form3221Config.Width div 2;
+        Form3221Config.Top := Top + (Height div 2) - Form3221Config.Height div 2;
+        FormConfigOk := Form3221Config.ShowModal;
+      end
+      else
+        exit;
     end;
     if FormConfigOk = mrOk then begin
       Timer1.Enabled := False;
@@ -1207,8 +1470,8 @@ begin
 
       buftx[2]:=INA2XX_I2C_ADDR;
       buftx[3]:=0;
-      buftx[4]:= ina2xx_reg.config;
-      buftx[5]:= ina2xx_reg.config  shr 8;
+      buftx[4]:= ina_reg.config;
+      buftx[5]:= ina_reg.config  shr 8;
 
       if SendBlk(4) then begin
         if not ReadBlk(buftx[1]) or (lenrx <> 4) then begin
@@ -1276,7 +1539,7 @@ var
  i : integer;
 begin
   result := False;
-  no_i2c_dev := False;
+  dev_i2c_id := NO_I2C_DID;
   for i:=0 to 5 do begin
     purge_com := 1;
     buftx[1]:= CMD_DEV_VER; // Get Version
@@ -1288,18 +1551,28 @@ begin
         StatusBar.Panels[2].Text:='Устройство ID:' + IntToHex(dev_type, 2) + '-' + IntToHex(dev_id, 2) +' версии '+IntToStr((dev_ver shr 12) and $0f) +'.'+IntToStr((dev_ver shr 8) and $0f)+'.'+IntToStr((dev_ver shr 4) and $0f)+'.'+IntToStr(dev_ver and $0f)+' подключено на '+ sComNane +'.';
         if (dev_id = I2C_DEVICE_ID) or (dev_id = ADC_DEVICE_ID)  then begin
           if StopReadDevice
-            and ReadRegister(INA226_MID_REG)
-            and ReadRegister(INA226_DID_REG) then begin
-              if (ina2xx_reg.mid = INA226_MID)
-              and (ina2xx_reg.did = INA226_DID) then
-                dev_ina226 := True
-              else
-                dev_ina226 := False;
-            result := True;
-            exit;
+            and ReadRegister(INAxxx_MID_REG)
+            and ReadRegister(INAxxx_DID_REG) then begin
+              if (ina_reg.w[INAxxx_MID_REG] = INAxxx_MID) then begin
+                case ina_reg.w[INAxxx_DID_REG] of
+                  INA226_DID : begin
+                    dev_i2c_id := INA226_DID;
+                  end;
+                  INA3221_DID : begin
+                    dev_i2c_id := INA3221_DID;
+                  end
+                  else
+                    dev_i2c_id := INA219_DID;
+                end;
+              end
+              else begin
+                    dev_i2c_id := INA219_DID;
+              end;
+              result := True;
+              exit;
           end else
             if dev_id = ADC_DEVICE_ID then begin
-              no_i2c_dev := True;
+              dev_i2c_id := NO_I2C_DID;
               result := True;
               exit;
             end;
@@ -1339,12 +1612,7 @@ begin
    ft := Timer1.Enabled;
    fs := SamplesEna;
    Timer1.Enabled := False;
-   if regnum = INA226_MID_REG then
-        i := 8
-   else if regnum = INA226_DID_REG then
-        i := 9
-   else
-     i := regnum and 7;
+   i := regnum and $ff;
    result := true;
    buftx[1]:=CMD_DEV_GRG; // Cmd: Get word
 //   buftx[3]:=2;
@@ -1352,7 +1620,7 @@ begin
    buftx[3]:= regnum;
    if SendBlk(2) then begin
      if ReadBlk(buftx[1]) and (lenrx = 4) then begin
-        ina2xx_reg.w[i] := bufrx[3] or (bufrx[2] shl 8);
+        ina_reg.w[i] := bufrx[3] or (bufrx[2] shl 8);
      end else begin
       result := false;
      end;
@@ -1361,76 +1629,6 @@ begin
    end;
    Timer1.Enabled := ft;
    SamplesEna := fs;
-end;
-
-function TfrmMain.ReadStatus : boolean;
-var
- ft : boolean;
-begin
-   ft := Timer1.Enabled;
-   Timer1.Enabled := False;
-   result := true;
-   buftx[1]:=CMD_DEV_STA; // Cmd: Get Status
-   if SendBlk(0) then begin
-     if ReadBlk(buftx[1]) and (lenrx = 8) then begin
-        dev_all_send_count :=  bufrx[0] or (bufrx[1] shl 8) or (bufrx[2] shl 16) or (bufrx[3] shl 24);
-        dev_not_send_count :=  bufrx[4] or (bufrx[5] shl 8) or (bufrx[6] shl 16) or (bufrx[7] shl 24);
-     end
-     else begin
-      StatusBar.Panels[2].Text:='Ошибки при чении статуса устройства на '+ sComNane+'!';
-      result := false;
-     end;
-   end
-   else begin
-      StatusBar.Panels[2].Text:='Ошибки при чении статуса устройства на '+ sComNane+'!';
-      result := false;
-   end;
-   Timer1.Enabled := ft;
-end;
-
-function TfrmMain.RdAllRegs : boolean;
-var
- i: integer;
- ft : boolean;
- fs : boolean;
-begin
-   ft := Timer1.Enabled;
-   fs := SamplesEna;
-   Timer1.Enabled := False;
-   result := true;
-   buftx[1]:=CMD_DEV_GRG; // Cmd: Get word
-
-   buftx[2]:=INA2XX_I2C_ADDR;
-   for i:=0 to 7 do begin
-     buftx[3] := i;
-     if SendBlk(2) and ReadBlk(buftx[1]) and (lenrx = 4) then begin
-       ina2xx_reg.w[i] := bufrx[2] or (bufrx[3] shl 8);
-     end
-     else begin
-      StatusBar.Panels[2].Text:='Ошибки при чении регистров INA2XX в устройстве на '+ sComNane+'!';
-      result := false;
-      break;
-     end;
-   end;
-//   if result then begin
-//     I_zero := I_219_zero_tab[(ina2xx_reg.config and ControlGainMsk) shr ControlGainShl];
-//   end;
-   Timer1.Enabled := ft;
-   SamplesEna := fs;
-end;
-
-procedure TfrmMain.ShowAllRegs;
-begin
-   EditRegs.Text :=
-     IntToHex(ina2xx_reg.w[0],4) + ', '
-   + IntToHex(ina2xx_reg.w[1],4) + ', '
-   + IntToHex(ina2xx_reg.w[2],4) + ', '
-   + IntToHex(ina2xx_reg.w[3],4) + ', '
-   + IntToHex(ina2xx_reg.w[4],4) + ', '
-   + IntToHex(ina2xx_reg.w[5],4) + ', '
-   + IntToHex(ina2xx_reg.w[6],4) + ', '
-   + IntToHex(ina2xx_reg.w[7],4);
-//   StatusBar.Panels[2].Text:='REGS: ' + EditRegs.Text;
 end;
 
 
@@ -1804,15 +2002,21 @@ begin
           exit;
         end;
 
-        GetUIkParms;
-        ShowUIkParms;
-        if dev_ina226 then begin
-          Form226Config.GetParamIz;
-          Form226Config.SetParamIU(Ik, Uk);
-        end
-        else begin
-          Form219Config.GetParamIz;
-          Form219Config.SetParamIU(Ik, Uk);
+        case dev_i2c_id of
+          INA226_DID : begin
+            Form226Config.GetParams;
+//            Form226Config.SetParamIU(Ik, Uk);
+          end;
+          INA3221_DID : begin
+            Form3221Config.GetParams;
+//            Form3221Config.SetParamIU(Ik, Uk);
+          end;
+          INA219_DID : begin
+            Form219Config.GetParams;
+//            Form219Config.SetParamIU(Ik, Uk);
+          end;
+          else
+            exit;
         end;
 end;
 

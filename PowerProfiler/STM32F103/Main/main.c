@@ -64,7 +64,7 @@ typedef __packed struct {
 	uint8_t pktcnt;  	// кол-во передаваемых значений из регистров в одном пакете передачи 
 	uint8_t multiplier; // множитель периода опроса, time << multiplier
 	uint16_t time; 		// период опроса регистров чтения в us 
-	uint16_t clk_khz; 	// частота i2c шины
+	uint16_t clk_khz; 	// bit0..12: частота i2c шины в кГц 
 	reg_wr_t init[MAX_INIT_REGS];
 	reg_rd_t rd[MAX_READ_REGS];
 	reg_wr_t slp[2];
@@ -314,6 +314,7 @@ uint8_t InitExtDevice(void) {
 	int i;
 	if(cfg_i2c.pktcnt > sizeof(send_pkt.data.ui)) 
 		cfg_i2c.pktcnt = sizeof(send_pkt.data.ui);
+	cfg_i2c.clk_khz &= 0x1fff; 
 	if(cfg_i2c.clk_khz < 100 || cfg_i2c.clk_khz > 1200) 
 		cfg_i2c.clk_khz = SMBus_Speed/1000;
 	SMBusInit(cfg_i2c.clk_khz * 1000);

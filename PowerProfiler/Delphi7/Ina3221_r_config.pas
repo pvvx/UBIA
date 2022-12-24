@@ -1,4 +1,4 @@
-unit Ina226_r_config;
+unit Ina3221_r_config;
 
 interface
 
@@ -24,6 +24,11 @@ const
   AveragingModeShl = 9;
   AveragingModeMsk = $0e00;
   AveragingModeCnt = 8;
+
+  ChannelEnableShl = 12;
+  ChannelEnableMsk = $7000;
+  ChannelEnableCnt = 3;
+
 
   ConfigResetMsk = $8000;
 
@@ -54,52 +59,46 @@ const
   AlertLatchEnableMsk = $0001;
 
   //
-  SMBus_226_Speed_Max_kHz = 2500; // Chip Max 2940 kHz
-  SMBus_226_Speed_kHz = 1000; // default
-  SMBus_226_Speed_Min_kHz = 100;
+  SMBus_3221_Speed_Max_kHz = 2440; // Chip Max 2440 kHz
+  SMBus_3221_Speed_kHz = 1000; // default
+  SMBus_3221_Speed_Min_kHz = 100;
 
 type
-  TForm226Config = class(TForm)
-    GroupBox1: TGroupBox;
-    CheckBoxReset: TCheckBox;
-    RadioGroupMode: TRadioGroup;
+  TForm3221Config = class(TForm)
     ButtonOk: TButton;
     ButtonCancel: TButton;
+    GroupBox1: TGroupBox;
+    CheckBoxReset: TCheckBox;
     RadioGroupBusCTime: TRadioGroup;
     RadioGroupShuntCTime: TRadioGroup;
+    RadioGroupMode: TRadioGroup;
     RadioGroupAverageMode: TRadioGroup;
-    SpinEditCLkKHz: TSpinEdit;
-    Label2: TLabel;
     Label1: TLabel;
+    Label3: TLabel;
+    EditRegConfig: TEdit;
+    SpinEditCLkKHz: TSpinEdit;
     EditUz: TEdit;
+    ButtonCopyUz: TButton;
+    ButtonCopyIz: TButton;
     EditIz: TEdit;
     LabelUz: TLabel;
     LabelIz: TLabel;
-    EditRegConfig: TEdit;
-    EditRegCalibration: TEdit;
-    EditRegMaskEnable: TEdit;
-    EditRegAlertData: TEdit;
-    Label3: TLabel;
-    Label4: TLabel;
-    Label5: TLabel;
-    Label6: TLabel;
-    ButtonCopyUz: TButton;
-    ButtonCopyIz: TButton;
-    EditUk: TEdit;
-    Label7: TLabel;
-    LabelIk: TLabel;
+    RadioGroupChannels: TRadioGroup;
     EditIk: TEdit;
-    procedure ChargeReg(Sender: TObject);
-    procedure ButtonOkClick(Sender: TObject);
+    LabelIk: TLabel;
+    EditUk: TEdit;
+    Label4: TLabel;
     procedure ShowAll;
     procedure GetParams;
     procedure GetScrParms;
     procedure ShowScrParms;
-    procedure SetRegs;
     function DevIniCfg(mode : integer) : byte;
-    procedure FormActivate(Sender: TObject);
     procedure ButtonCopyUzClick(Sender: TObject);
     procedure ButtonCopyIzClick(Sender: TObject);
+    procedure ButtonOkClick(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure ChargeReg(Sender: TObject);
+    procedure RadioGroupChannelsClick(Sender: TObject);
     procedure SpinEditCLkKHzChange(Sender: TObject);
   private
     { Private declarations }
@@ -108,10 +107,13 @@ type
   public
     { Public declarations }
     reg_config : word;
+//    reg_calibration : word;
+//    reg_mask_enable : word;
+//    reg_alert_limit : word;
   end;
 
 var
-  Form226Config: TForm226Config;
+  Form3221Config: TForm3221Config;
 
   TabBusClkTiming : array [0..ShuntCTimeCnt-1] of word =
    (1000, 800, 800, 800,
@@ -121,15 +123,19 @@ var
    (140, 204, 332, 588,
     1100, 2116, 4156, 8244);
 
-  Ik_226 : double = 0.02314; // 2.5 uV/bit
-  Uk_226 : double = 0.00125000; // 1.25 mV/bit
-  I_226_zero : double = 0.0;
-  U_226_zero : double = 0.0;
-  Clk_226 : integer = SMBus_226_Speed_kHz;
-  reg_226_calibration : word;
-  reg_226_mask_enable : word;
-  reg_226_alert_limit : word;
+  // Voltage: Full-scale range = 32.76 V, (decimal = 7FF8); LSB: 1 мV, step 8 mV
+  // Shunt: Full-scale range = 163.8 mV, (decimal = 7FF8); LSB: 5 uV, step 40 uV
 
+  chl_3221 : integer = 2; // 0,1,2 -> channel 1,2,3
+  Ik_3221_ch : array [0..2] of double =
+    ( 0.005, 0.005, 0.005 ); // 5 uV/bit
+  Uk_3221_ch : array [0..2] of  double =
+    ( 0.001, 0.001, 0.001 ); // 1 mV/bit
+  I_3221_zero_ch : array [0..2] of double =
+    ( 0.0, 0.0, 0.0 );
+  U_3221_zero_ch : array [0..2] of double =
+    ( 0.0, 0.0, 0.0 );
+  Clk_3221 : integer = SMBus_3221_Speed_kHz;
 
 implementation
 
@@ -163,90 +169,19 @@ begin
     else result := StrToIntDef(o,0)
 end;
 
-procedure TForm226Config.GetScrParms;
+procedure TForm3221Config.ButtonCopyUzClick(Sender: TObject);
 begin
-    DecimalSeparator := '.';
-    U_226_zero := StrToFloat(EditUz.Text);
-    I_226_zero := StrToFloat(EditIz.Text);
-    Uk_226 := StrToFloat(EditUk.Text);
-    Ik_226 := StrToFloat(EditIk.Text);
+    EditUz.Text:=FormatFloat('0.00000000', -OldsU);
+    U_zero := -OldsU;
 end;
 
-procedure TForm226Config.ShowScrParms;
+procedure TForm3221Config.ButtonCopyIzClick(Sender: TObject);
 begin
-    DecimalSeparator := '.';
-    EditUz.Text := FormatFloat('0.00000000', U_226_zero);
-    EditIz.Text := FormatFloat('0.00000000', I_226_zero);
-    EditUk.Text := FormatFloat('0.00000000', Uk_226);
-    EditIk.Text := FormatFloat('0.00000000', Ik_226);
-end;
-procedure TForm226Config.ShowAll;
-begin
-     ChgEna := False;
-     reg_config := ina_reg.config;
-     if (reg_config and ConfigResetMsk) <> 0 then
-        CheckBoxReset.Checked := True
-     else
-       CheckBoxReset.Checked := False;
-
-     RadioGroupBusCTime.ItemIndex := (reg_config and BusCTimeMsk) shr BusCTimeShl;
-     RadioGroupShuntCTime.ItemIndex := (reg_config and ShuntCTimeMsk) shr ShuntCTimeShl;
-     RadioGroupAverageMode.ItemIndex := (reg_config and AveragingModeMsk) shr AveragingModeShl;
-
-     RadioGroupMode.ItemIndex := reg_config and ConfigModeMsk;
-     ShowScrParms;
-
-     EditRegConfig.Text := '0x' + IntToHex(reg_config, 4);
-     EditRegCalibration.Text := '0x' + IntToHex(ina_reg.ina2_calibration, 4);
-     EditRegMaskEnable.Text := '0x' + IntToHex(ina_reg.ina2_mask_enable, 4);
-     EditRegAlertData.Text := '0x' + IntToHex(ina_reg.ina2_alert_data, 4);
-
-     if Clk_226 > SpinEditCLkKHz.MaxValue then
-       SpinEditCLkKHz.Value := SpinEditCLkKHz.MaxValue
-     else
-       SpinEditCLkKHz.Value := Clk_226;
-
-     ChgEna := True;
+    EditIz.Text:=FormatFloat('0.00000000', -OldsI);
+    I_zero := -OldsI;
 end;
 
-procedure TForm226Config.FormActivate(Sender: TObject);
-begin
-    if (dev_type = HI_DEVICE_TYPE) then begin
-      SpinEditCLkKHz.MaxValue := 2000;
-    end
-    else begin
-       SpinEditCLkKHz.MaxValue := 1000;
-    end;
-    ShowAll;
-end;
-
-procedure TForm226Config.CheckRegValue;
-begin
-     reg_config := (RadioGroupMode.ItemIndex shl ConfigModeShl) and ConfigModeMsk;
-     reg_config := reg_config or ((RadioGroupBusCTime.ItemIndex shl BusCTimeShl) and BusCTimeMsk);
-     reg_config := reg_config or ((RadioGroupShuntCTime.ItemIndex shl ShuntCTimeShl) and ShuntCTimeMsk);
-     reg_config := reg_config or ((RadioGroupAverageMode.ItemIndex shl AveragingModeShl) and AveragingModeMsk);
-     if CheckBoxReset.Checked then reg_config := reg_config or ConfigResetMsk;
-     EditRegConfig.Text := '0x' + IntToHex(reg_config, 4);
-     reg_226_calibration := Str2dword(EditRegCalibration.Text);
-     reg_226_mask_enable := Str2dword(EditRegMaskEnable.Text);
-     reg_226_alert_limit := Str2dword(EditRegAlertData.Text);
-end;
-
-procedure TForm226Config.ChargeReg(Sender: TObject);
-begin
-    if ChgEna then CheckRegValue;
-end;
-
-
-procedure TForm226Config.SetRegs;
-begin
-    frmMain.WriteRegister(5, reg_226_calibration);
-    frmMain.WriteRegister(6, reg_226_mask_enable);
-    frmMain.WriteRegister(7, reg_226_alert_limit);
-end;
-
-procedure TForm226Config.ButtonOkClick(Sender: TObject);
+procedure TForm3221Config.ButtonOkClick(Sender: TObject);
 var
  clk_khz : integer;
 begin
@@ -264,12 +199,13 @@ begin
         Exit;
     end;
 
-//    I_zero := I_zero_tab[RadioGroupGain.ItemIndex];
 
-//    blk_cfg.clk_khz := 1000;
+    blk_cfg.clk_khz := 1000;
 
-    SetRegs;
     ina_reg.config := reg_config;
+//    ina_reg.ina2_calibration := reg_calibration;
+//    ina_reg.ina2_mask_enable := reg_mask_enable;
+//    ina_reg.ina2_alert_data := reg_alert_limit;
 
     GetScrParms;
     ShowScrParms;
@@ -278,34 +214,101 @@ begin
     Exit;
 end;
 
-procedure TForm226Config.GetParams;
+procedure TForm3221Config.GetScrParms;
 begin
-  I_zero := I_226_zero;
-  U_zero := U_226_zero;
-  Uk := Uk_226;
-  Ik := Ik_226;
+    DecimalSeparator := '.';
+    U_3221_zero_ch[chl_3221] := StrToFloat(EditUz.Text);
+    I_3221_zero_ch[chl_3221] := StrToFloat(EditIz.Text);
+    Uk_3221_ch[chl_3221] := StrToFloat(EditUk.Text);
+    Ik_3221_ch[chl_3221] := StrToFloat(EditIk.Text);
 end;
 
-function TForm226Config.DevIniCfg(mode : integer) : byte;
+procedure TForm3221Config.ShowScrParms;
+begin
+    DecimalSeparator := '.';
+    EditUz.Text := FormatFloat('0.00000000', U_3221_zero_ch[chl_3221]);
+    EditIz.Text := FormatFloat('0.00000000', I_3221_zero_ch[chl_3221]);
+    EditUk.Text := FormatFloat('0.00000000', Uk_3221_ch[chl_3221]);
+    EditIk.Text := FormatFloat('0.00000000', Ik_3221_ch[chl_3221]);
+end;
+
+
+procedure TForm3221Config.ShowAll;
+var
+x : dword;
+begin
+     reg_config := ina_reg.config;
+     ChgEna := False;
+     if (reg_config and ConfigResetMsk) <> 0 then
+        CheckBoxReset.Checked := True
+     else
+       CheckBoxReset.Checked := False;
+
+     RadioGroupBusCTime.ItemIndex := (reg_config and BusCTimeMsk) shr BusCTimeShl;
+     RadioGroupShuntCTime.ItemIndex := (reg_config and ShuntCTimeMsk) shr ShuntCTimeShl;
+     RadioGroupAverageMode.ItemIndex := (reg_config and AveragingModeMsk) shr AveragingModeShl;
+     x := (reg_config and ChannelEnableMsk) shr  ChannelEnableShl;
+     if x > 3 then
+       chl_3221 := 0
+     else if x > 1 then
+       chl_3221 := 1
+     else
+       chl_3221 := 2;
+     RadioGroupChannels.ItemIndex := chl_3221;
+     RadioGroupMode.ItemIndex := reg_config and ConfigModeMsk;
+     ShowScrParms;
+     EditRegConfig.Text := '0x' + IntToHex(reg_config, 4);
+     if Clk_3221 > SpinEditCLkKHz.MaxValue then
+       SpinEditCLkKHz.Value := SpinEditCLkKHz.MaxValue
+     else
+       SpinEditCLkKHz.Value := Clk_3221;
+     ChgEna := True;
+end;
+
+procedure TForm3221Config.FormActivate(Sender: TObject);
+begin
+    if (dev_type = HI_DEVICE_TYPE) then begin
+      SpinEditCLkKHz.MaxValue := 2000;
+    end
+    else begin
+       SpinEditCLkKHz.MaxValue := 1000;
+    end;
+    ShowAll;
+end;
+
+procedure TForm3221Config.CheckRegValue;
+begin
+     chl_3221 := RadioGroupChannels.ItemIndex;
+     reg_config := (RadioGroupMode.ItemIndex shl ConfigModeShl) and ConfigModeMsk;
+     reg_config := reg_config or ((RadioGroupBusCTime.ItemIndex shl BusCTimeShl) and BusCTimeMsk);
+     reg_config := reg_config or ((RadioGroupShuntCTime.ItemIndex shl ShuntCTimeShl) and ShuntCTimeMsk);
+     reg_config := reg_config or ((RadioGroupAverageMode.ItemIndex shl AveragingModeShl) and AveragingModeMsk);
+     reg_config := reg_config or ((($04 shl ChannelEnableShl) shr RadioGroupChannels.ItemIndex) and ChannelEnableMsk);
+     if CheckBoxReset.Checked then reg_config := reg_config or ConfigResetMsk;
+     EditRegConfig.Text := '0x' + IntToHex(reg_config, 4);
+     GetScrParms;
+end;
+
+procedure TForm3221Config.GetParams;
+begin
+  I_zero := I_3221_zero_ch[chl_3221];
+  U_zero := U_3221_zero_ch[chl_3221];
+  Uk := Uk_3221_ch[chl_3221];
+  Ik := Ik_3221_ch[chl_3221];
+end;
+
+function TForm3221Config.DevIniCfg(mode : integer) : byte;
 var
   mask : word;
-  u, i, x : dword;
+  chlx2, u, i, x : dword;
 begin
      // инициализировать в INA219 регистры:
      // записать config регистр:
      blk_cfg.init[0].dev_addr := INA2XX_I2C_ADDR;
      blk_cfg.init[0].reg_addr := 0;
      blk_cfg.init[0].data := ina_reg.config;
-     // записать другие регистры:
-     blk_cfg.init[1].dev_addr := INA2XX_I2C_ADDR;
-     blk_cfg.init[1].reg_addr := 7;
-     blk_cfg.init[1].data := reg_226_alert_limit;
-     blk_cfg.init[2].dev_addr := INA2XX_I2C_ADDR;
-     blk_cfg.init[2].reg_addr := 6;
-     blk_cfg.init[2].data := reg_226_mask_enable;
-     blk_cfg.init[3].dev_addr := INA2XX_I2C_ADDR;
-     blk_cfg.init[3].reg_addr := 5;
-     blk_cfg.init[3].data := reg_226_calibration;
+     // записать другие регистры ?:
+     blk_cfg.init[1].dev_addr := 0;
 
      // min 140, max 8244*1024 = 8441856 us
      u := (ina_reg.config and BusCTimeMsk) shr BusCTimeShl;
@@ -314,13 +317,20 @@ begin
      i := TabTimerCTime[i];
      x := (ina_reg.config and AveragingModeMsk) shr AveragingModeShl;
      mask := ina_reg.config and ConfigModeMsk;
+     chlx2 := (ina_reg.config and ChannelEnableMsk) shr ChannelEnableShl;
+     if chlx2 > 3 then
+        chlx2 := 0*2
+     else if chlx2 > 1 then
+        chlx2 := 1*2
+     else
+        chlx2 := 2*2;
      // задать адреса регистров чтения
      case mask of
          5 : begin // Shunt
              result := CHART_I_MASK;
              // задать адреса устройства чтения
              blk_cfg.data[0].dev_addr := INA2XX_I2C_ADDR;
-             blk_cfg.data[0].reg_addr := 1;
+             blk_cfg.data[0].reg_addr := 1 + chlx2;
              blk_cfg.data[1].dev_addr := 0; // stop rd
              blk_cfg.time_us := i;
              blk_cfg.multiplier := x;
@@ -329,7 +339,7 @@ begin
              result := CHART_U_MASK;
              // задать адреса устройства чтения
              blk_cfg.data[0].dev_addr := INA2XX_I2C_ADDR;
-             blk_cfg.data[0].reg_addr := 2;
+             blk_cfg.data[0].reg_addr := 2 + chlx2;
              blk_cfg.data[1].dev_addr := 0; // stop rd
              blk_cfg.time_us := u;
              blk_cfg.multiplier := x;
@@ -338,9 +348,9 @@ begin
              result := CHART_UI_MASK;
              // задать адреса устройства чтения
              blk_cfg.data[0].dev_addr := INA2XX_I2C_ADDR;
-             blk_cfg.data[0].reg_addr := 1;
+             blk_cfg.data[0].reg_addr := 1 + chlx2;
              blk_cfg.data[1].dev_addr := INA2XX_I2C_ADDR;
-             blk_cfg.data[1].reg_addr := 2;
+             blk_cfg.data[1].reg_addr := 2 + chlx2;
              blk_cfg.data[2].dev_addr := 0;  // stop rd
              blk_cfg.time_us := (i + u) shr 1;
              blk_cfg.multiplier := x;
@@ -367,21 +377,24 @@ begin
         blk_cfg.clk_khz := blk_cfg.clk_khz or $8000; // Enable clock stretching
 end;
 
-procedure TForm226Config.ButtonCopyUzClick(Sender: TObject);
+procedure TForm3221Config.ChargeReg(Sender: TObject);
 begin
-    EditUz.Text := FormatFloat('0.00000000', -OldsU);
-    U_zero := -OldsU;
+    if ChgEna then CheckRegValue;
 end;
 
-procedure TForm226Config.ButtonCopyIzClick(Sender: TObject);
+procedure TForm3221Config.RadioGroupChannelsClick(Sender: TObject);
 begin
-    EditIz.Text := FormatFloat('0.00000000', -OldsI);
-    I_zero := -OldsI;
+   if ChgEna then begin
+    GetScrParms;
+    chl_3221 := RadioGroupChannels.ItemIndex;
+    ShowScrParms;
+    CheckRegValue;
+   end;
 end;
 
-procedure TForm226Config.SpinEditCLkKHzChange(Sender: TObject);
+procedure TForm3221Config.SpinEditCLkKHzChange(Sender: TObject);
 begin
-     clk_226 := SpinEditCLkKHz.Value;
+     clk_3221 := SpinEditCLkKHz.Value;
 end;
 
 end.

@@ -1,6 +1,6 @@
 object frmMain: TfrmMain
-  Left = 1614
-  Top = 360
+  Left = 359
+  Top = 700
   Width = 1141
   Height = 648
   Color = clBtnFace
@@ -145,7 +145,7 @@ object frmMain: TfrmMain
       Top = 8
       Width = 65
       Height = 21
-      Hint = #1057#1095#1080#1090#1072#1090#1100' '#1074#1089#1077' 8-'#1084#1100' '#1088#1077#1075#1080#1089#1090#1088#1086#1074' INA2xx'
+      Hint = #1057#1095#1080#1090#1072#1090#1100' '#1074#1089#1077' '#1088#1077#1075#1080#1089#1090#1088#1099' INAxxx'
       Caption = 'Read Regs'
       Enabled = False
       ParentShowHint = False
@@ -248,6 +248,16 @@ object frmMain: TfrmMain
       ShowHint = True
       OnMouseDown = SetColorUMouseDown
     end
+    object Label1: TLabel
+      Left = 656
+      Top = 10
+      Width = 31
+      Height = 13
+      Hint = #1057#1088#1077#1076#1085#1077#1077' '#1053#1072#1087#1088#1103#1078#1077#1085#1080#1077
+      Caption = 'T(ms):'
+      ParentShowHint = False
+      ShowHint = True
+    end
     object ButtonClrGrf: TButton
       Left = 288
       Top = 8
@@ -261,7 +271,7 @@ object frmMain: TfrmMain
       OnClick = ButtonClrGrfClick
     end
     object ButtonSaveGRF: TButton
-      Left = 664
+      Left = 752
       Top = 8
       Width = 65
       Height = 21
@@ -273,7 +283,7 @@ object frmMain: TfrmMain
       OnClick = ButtonSaveGRFClick
     end
     object ButtonPrtGrf: TButton
-      Left = 808
+      Left = 896
       Top = 8
       Width = 65
       Height = 21
@@ -334,37 +344,15 @@ object frmMain: TfrmMain
       OnClick = CheckBoxOpenGLClick
     end
     object EditSizeGrf: TEdit
-      Left = 1024
-      Top = 8
-      Width = 73
+      Left = 688
+      Top = 6
+      Width = 57
       Height = 21
-      Hint = #1052#1072#1082#1089#1080#1084#1072#1083#1100#1085#1086#1077' '#1082#1086#1083'-'#1074#1086' '#1090#1086#1095#1077#1082' '#1085#1072' '#1075#1088#1072#1092#1080#1082#1077' '#1076#1086' '#1086#1089#1090#1072#1085#1086#1074#1072
+      Hint = #1052#1072#1082#1089#1080#1084#1072#1083#1100#1085#1086#1077' '#1074#1088#1077#1084#1103' '#1075#1072' '#1075#1088#1072#1092#1080#1082#1077' '#1076#1086' '#1086#1089#1090#1072#1085#1086#1074#1072
       ParentShowHint = False
       ShowHint = True
       TabOrder = 7
       Text = '600000'
-    end
-    object EditUk: TEdit
-      Left = 880
-      Top = 8
-      Width = 65
-      Height = 21
-      Hint = #1050#1086#1101#1092'. '#1076#1083#1103' U'
-      ParentShowHint = False
-      ShowHint = True
-      TabOrder = 8
-      Text = '?.?'
-    end
-    object EditIk: TEdit
-      Left = 952
-      Top = 8
-      Width = 65
-      Height = 21
-      Hint = #1050#1086#1101#1092'. '#1076#1083#1103' I'
-      ParentShowHint = False
-      ShowHint = True
-      TabOrder = 9
-      Text = '?.?'
     end
     object EditTriggerI: TEdit
       Left = 448
@@ -374,7 +362,7 @@ object frmMain: TfrmMain
       Hint = #1058#1080#1088#1075#1077#1088': '#1058#1086#1082' (mA)'
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 10
+      TabOrder = 8
       Text = '1.0'
       OnExit = CheckBoxTrigerClick
     end
@@ -387,19 +375,19 @@ object frmMain: TfrmMain
       Caption = #1058#1088#1080#1075#1077#1088' I^'
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 11
+      TabOrder = 9
       OnClick = CheckBoxTrigerClick
     end
     object CheckBoxTrigerRiseU: TCheckBox
       Left = 512
       Top = 8
-      Width = 81
+      Width = 80
       Height = 17
       Hint = #1058#1088#1080#1075#1075#1077#1088' '#1089#1090#1072#1088#1090#1072' '#1087#1086' '#1087#1077#1088#1077#1087#1072#1076#1091' '#1085#1072#1087#1088#1103#1078#1077#1085#1080#1103' '#1074#1074#1077#1088#1093
       Caption = #1058#1088#1080#1075#1077#1088' U^'
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 12
+      TabOrder = 10
       OnClick = CheckBoxTrigerClick
     end
     object EditTriggerU: TEdit
@@ -410,12 +398,12 @@ object frmMain: TfrmMain
       Hint = #1058#1080#1088#1075#1077#1088': '#1053#1072#1087#1088#1103#1078#1077#1085#1080#1077' (V)'
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 13
+      TabOrder = 11
       Text = '1.0'
       OnExit = CheckBoxTrigerClick
     end
     object ButtonSaveWav: TButton
-      Left = 736
+      Left = 824
       Top = 8
       Width = 65
       Height = 21
@@ -423,7 +411,7 @@ object frmMain: TfrmMain
       Caption = 'Save wav'
       ParentShowHint = False
       ShowHint = True
-      TabOrder = 14
+      TabOrder = 12
       OnClick = ButtonSaveWavClick
     end
   end
@@ -443,10 +431,19 @@ object frmMain: TfrmMain
     Title.Text.Strings = (
       'TChart')
     Title.Visible = False
+    BottomAxis.Title.Caption = 'ms'
     Chart3DPercent = 50
+    LeftAxis.AxisValuesFormat = '#,##0.### ###'
+    LeftAxis.Title.Angle = 0
+    LeftAxis.Title.Caption = 'mA '
+    LeftAxis.ZPosition = 1.000000000000000000
+    RightAxis.AxisValuesFormat = '#,##0.### ###'
+    RightAxis.Title.Angle = 0
+    RightAxis.Title.Caption = 'V '
     View3D = False
     View3DOptions.Elevation = 357
     View3DOptions.Zoom = 50
+    Zoom.Animated = True
     Align = alClient
     TabOrder = 3
     object Series1: TFastLineSeries

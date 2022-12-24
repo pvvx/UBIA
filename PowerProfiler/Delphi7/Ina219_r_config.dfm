@@ -3,8 +3,8 @@ object Form219Config: TForm219Config
   Top = 274
   BorderStyle = bsDialog
   Caption = 'INA219: Registor Config'
-  ClientHeight = 335
-  ClientWidth = 482
+  ClientHeight = 348
+  ClientWidth = 555
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -16,25 +16,53 @@ object Form219Config: TForm219Config
   PixelsPerInch = 96
   TextHeight = 13
   object LabelRegConfig: TLabel
-    Left = 352
-    Top = 192
+    Left = 312
+    Top = 188
     Width = 68
     Height = 13
     Caption = 'RegConfig = ?'
   end
   object Label1: TLabel
-    Left = 336
-    Top = 236
+    Left = 432
+    Top = 188
     Width = 20
     Height = 13
     Caption = 'CLK'
   end
   object Label2: TLabel
-    Left = 432
-    Top = 236
+    Left = 528
+    Top = 188
     Width = 20
     Height = 13
     Caption = 'KHz'
+  end
+  object LabelUz: TLabel
+    Left = 312
+    Top = 212
+    Width = 37
+    Height = 13
+    Caption = 'U offset'
+  end
+  object Label7: TLabel
+    Left = 312
+    Top = 236
+    Width = 32
+    Height = 13
+    Caption = 'U koef'
+  end
+  object LabelIz: TLabel
+    Left = 312
+    Top = 260
+    Width = 32
+    Height = 13
+    Caption = 'I offset'
+  end
+  object LabelIk: TLabel
+    Left = 320
+    Top = 284
+    Width = 27
+    Height = 13
+    Caption = 'I koef'
   end
   object RadioGroupBusRange: TRadioGroup
     Left = 8
@@ -63,8 +91,8 @@ object Form219Config: TForm219Config
       'Gain 4, 160mV Range'
       'Gain 8, 320mV Range')
     TabOrder = 1
-    OnClick = ChargeReg
-    OnEnter = ChargeReg
+    OnClick = RadioGroupGainClick
+    OnEnter = RadioGroupGainClick
   end
   object RadioGroupShuntADCRes: TRadioGroup
     Left = 160
@@ -111,8 +139,8 @@ object Form219Config: TForm219Config
     OnEnter = ChargeReg
   end
   object ButtonOk: TButton
-    Left = 312
-    Top = 304
+    Left = 360
+    Top = 312
     Width = 75
     Height = 25
     Caption = 'Ok'
@@ -120,8 +148,8 @@ object Form219Config: TForm219Config
     OnClick = ButtonOkClick
   end
   object ButtonCancel: TButton
-    Left = 400
-    Top = 304
+    Left = 464
+    Top = 312
     Width = 75
     Height = 25
     Caption = 'Cancel'
@@ -171,8 +199,8 @@ object Form219Config: TForm219Config
     end
   end
   object SpinEditCLkKHz: TSpinEdit
-    Left = 360
-    Top = 232
+    Left = 456
+    Top = 184
     Width = 65
     Height = 22
     Increment = 50
@@ -180,5 +208,68 @@ object Form219Config: TForm219Config
     MinValue = 50
     TabOrder = 8
     Value = 1000
+    OnChange = SpinEditCLkKHzChange
+  end
+  object EditIk: TEdit
+    Left = 360
+    Top = 282
+    Width = 89
+    Height = 21
+    Hint = #1057#1084#1077#1097#1077#1085#1080#1077' '#1076#1083#1103' I'
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 9
+    Text = '?.?'
+  end
+  object EditIz: TEdit
+    Left = 360
+    Top = 258
+    Width = 89
+    Height = 21
+    Hint = #1057#1084#1077#1097#1077#1085#1080#1077' '#1076#1083#1103' I'
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 10
+    Text = '?.?'
+  end
+  object EditUk: TEdit
+    Left = 360
+    Top = 234
+    Width = 89
+    Height = 21
+    Hint = #1050#1086#1101#1092'. '#1076#1083#1103' U'
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 11
+    Text = '?.?'
+  end
+  object EditUz: TEdit
+    Left = 360
+    Top = 210
+    Width = 89
+    Height = 21
+    Hint = #1057#1084#1077#1097#1077#1085#1080#1077' '#1076#1083#1103' U'
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 12
+    Text = '?.?'
+  end
+  object ButtonCopyUz: TButton
+    Left = 456
+    Top = 208
+    Width = 89
+    Height = 25
+    Caption = 'Copy Us to Uz'
+    TabOrder = 13
+    OnClick = ButtonCopyUzClick
+  end
+  object ButtonCopyIz: TButton
+    Left = 456
+    Top = 256
+    Width = 89
+    Height = 25
+    Caption = 'Copy Is to Iz'
+    TabOrder = 14
+    OnClick = ButtonCopyIzClick
   end
 end

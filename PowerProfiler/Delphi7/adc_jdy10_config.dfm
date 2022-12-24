@@ -1,6 +1,6 @@
 object FormAdcConfig: TFormAdcConfig
-  Left = 1619
-  Top = 309
+  Left = 535
+  Top = 651
   Width = 487
   Height = 280
   Caption = 'ADC Config'

@@ -44,13 +44,28 @@ type
     SpinEditCLkKHz: TSpinEdit;
     Label1: TLabel;
     Label2: TLabel;
+    LabelUz: TLabel;
+    Label7: TLabel;
+    LabelIz: TLabel;
+    LabelIk: TLabel;
+    EditIk: TEdit;
+    EditIz: TEdit;
+    EditUk: TEdit;
+    EditUz: TEdit;
+    ButtonCopyUz: TButton;
+    ButtonCopyIz: TButton;
     procedure FormActivate(Sender: TObject);
     procedure ButtonOkClick(Sender: TObject);
     procedure ChargeReg(Sender: TObject);
-    procedure GetParamIz;
+    procedure ShowAll;
     procedure GetParams;
-    procedure SetParamIU(i : double ; u : double);
+    procedure GetScrParms;
+    procedure ShowScrParms;
     function DevIniCfg(mode : integer) : byte;
+    procedure ButtonCopyUzClick(Sender: TObject);
+    procedure ButtonCopyIzClick(Sender: TObject);
+    procedure RadioGroupGainClick(Sender: TObject);
+    procedure SpinEditCLkKHzChange(Sender: TObject);
   private
     { Private declarations }
     ChgEna : boolean;
@@ -84,10 +99,9 @@ var
     800, 800, 800, 800);
 
   Uk_219 : double = 0.0005024; // 0.0005004
-  Ik_219 : double = 0.09475; // 0.09475
-  I_219_zero : double = 0.0;
   U_219_zero : double = 0.0;
 
+  i_219_gain : integer = 0;
 
   I_219_zero_tab : array [0..3] of double = (
    0.095, // 0.095  mA x 40 mV
@@ -95,20 +109,45 @@ var
    0.155, // 0.155 mA x 160 mV
    0.284 // 0.284 mA x 320 mV
   );
+  Ik_219_tab : array [0..3] of double = (
+   0.095, // 0.095  mA x 40 mV
+   0.19, // 0.19   mA x 80 mV
+   0.155, // 0.155 mA x 160 mV
+   0.284 // 0.284 mA x 320 mV
+  );
 
+  Clk_219 : integer = SMBus_219_Speed_kHz;
 
 implementation
 
 {$R *.dfm}
 Uses MainFrm;
 
-procedure TForm219Config.FormActivate(Sender: TObject);
+procedure TForm219Config.ShowScrParms;
+begin
+    DecimalSeparator := '.';
+    EditUz.Text:=FormatFloat('0.00000000', U_219_zero);
+    EditUk.Text:=FormatFloat('0.00000000', Uk_219);
+    EditIz.Text:=FormatFloat('0.00000000', I_219_zero_tab[i_219_gain]);
+    EditIk.Text:=FormatFloat('0.00000000', Ik_219_tab[i_219_gain]);
+end;
+
+procedure TForm219Config.GetScrParms;
+begin
+    DecimalSeparator := '.';
+    U_219_zero := StrToFloat(EditUz.Text);
+    Uk_219 := StrToFloat(EditUk.Text);
+    I_219_zero_tab[i_219_gain] := StrToFloat(EditIz.Text);
+    Ik_219_tab[i_219_gain] := StrToFloat(EditIk.Text);
+end;
+
+procedure TForm219Config.ShowAll;
 var
  i : integer;
  mask : word;
 begin
      ChgEna := False;
-     reg_config := ina2xx_reg.config;
+     reg_config := ina_reg.config;
      if (reg_config and ConfigResetMsk) <> 0 then
         CheckBoxReset.Checked := True
      else
@@ -116,7 +155,9 @@ begin
 
      RadioGroupBusRange.ItemIndex := (reg_config and BusVoltageRangeMsk) shr BusVoltageRangeShl;
 
-     RadioGroupGain.ItemIndex := (reg_config and ControlGainMsk) shr ControlGainShl;
+     i_219_gain := (reg_config and ControlGainMsk) shr ControlGainShl;
+     RadioGroupGain.ItemIndex := i_219_gain;
+     ShowScrParms;
 
 
      mask := reg_config and BusADCResolutionMsk;
@@ -133,13 +174,31 @@ begin
 
      RadioGroupMode.ItemIndex := reg_config and ConfigModeMsk;
      LabelRegConfig.Caption := 'RegControl = 0x' + IntToHex(reg_config, 4);
+     if Clk_219 > SpinEditCLkKHz.MaxValue then
+       SpinEditCLkKHz.Value := SpinEditCLkKHz.MaxValue
+     else
+       SpinEditCLkKHz.Value := Clk_219;
      ChgEna := True;
 end;
+
+
+procedure TForm219Config.FormActivate(Sender: TObject);
+begin
+    if (dev_type = HI_DEVICE_TYPE) then begin
+      SpinEditCLkKHz.MaxValue := 2000;
+    end
+    else begin
+       SpinEditCLkKHz.MaxValue := 1000;
+    end;
+    ShowAll;
+end;
+
 
 procedure TForm219Config.CheckRegValue;
 begin
      reg_config := (RadioGroupBusRange.ItemIndex shl BusVoltageRangeShl) and BusVoltageRangeMsk;
-     reg_config := reg_config or ((RadioGroupGain.ItemIndex shl ControlGainShl) and ControlGainMsk);
+     i_219_gain := RadioGroupGain.ItemIndex;
+     reg_config := reg_config or ((i_219_gain shl ControlGainShl) and ControlGainMsk);
      reg_config := reg_config or TabBusADCResolution[RadioGroupBusADCRes.ItemIndex and 15];
      reg_config := reg_config or TabShuntADCResolution[RadioGroupShuntADCRes.ItemIndex and 15];
      reg_config := reg_config or (RadioGroupMode.ItemIndex and ConfigModeMsk);
@@ -163,8 +222,10 @@ begin
         Exit;
      end;
 
-     I_219_zero := I_219_zero_tab[RadioGroupGain.ItemIndex];
-     ina2xx_reg.config := reg_config;
+     ina_reg.config := reg_config;
+
+     GetScrParms;
+     ShowScrParms;
 
      ModalResult := mrOk;
      Exit;
@@ -175,24 +236,12 @@ begin
   if ChgEna then CheckRegValue;
 end;
 
-procedure TForm219Config.GetParamIz;
-begin
-  I_zero := I_219_zero;
-  U_zero := U_219_zero;
-end;
-
 procedure TForm219Config.GetParams;
 begin
-  I_zero := I_219_zero;
+  I_zero := I_219_zero_tab[i_219_gain];
   U_zero := U_219_zero;
-  Ik := Ik_219;
+  Ik := Ik_219_tab[i_219_gain];
   Uk := Uk_219;
-end;
-
-procedure TForm219Config.SetParamIU(i : double ; u : double);
-begin
-  Ik_219 := i;
-  Uk_219 := u;
 end;
 
 function TForm219Config.DevIniCfg(mode : integer) : byte;
@@ -201,12 +250,12 @@ var
   u, i : word;
   t, x : dword;
 begin
-     mask := ina2xx_reg.config and BusADCResolutionMsk;
+     mask := ina_reg.config and BusADCResolutionMsk;
      for u:=0 to BusADCResolutionCnt do begin
        if mask = TabBusADCResolution[u] then break;
      end;
 
-     mask := ina2xx_reg.config and ShuntADCResolutionMsk;
+     mask := ina_reg.config and ShuntADCResolutionMsk;
      for i:=0 to ShuntADCResolutionCnt do begin
        if mask = TabShuntADCResolution[i] then break;
      end;
@@ -215,13 +264,13 @@ begin
      // записать 1 регистр:
      blk_cfg.init[0].dev_addr := INA2XX_I2C_ADDR;
      blk_cfg.init[0].reg_addr := 0;
-     blk_cfg.init[0].data := ina2xx_reg.config;
+     blk_cfg.init[0].data := ina_reg.config;
      // записать другие регистры ?:
      blk_cfg.init[1].dev_addr := 0;
 //   blk_cfg.init[1].reg_addr := 5;
-//   blk_cfg.init[1].data := ina2xx_reg.calibration;
+//   blk_cfg.init[1].data := ina_reg.calibration;
 
-     mask := ina2xx_reg.config and ConfigModeMsk;
+     mask := ina_reg.config and ConfigModeMsk;
      // задать адреса регистров чтения
      case mask of
          5 : begin // Shunt
@@ -252,7 +301,7 @@ begin
             blk_cfg.data[0].dev_addr := 0;
             t := 10000;
             end;
-      end;
+     end;
      if(mode <> 0) then begin
        if dev_id = ADC_DEVICE_ID then begin
          // задать максимум регистров в пакете
@@ -277,9 +326,38 @@ begin
      end;
      blk_cfg.time_us := t;
      blk_cfg.multiplier := x;
-     // задать максимум регистров в пакете
+     // задать частоту шины i2c в кГц
      blk_cfg.clk_khz := SpinEditCLkKHz.Value;
+     if (dev_type = HI_DEVICE_TYPE) and (dev_ver > 8) then
+        blk_cfg.clk_khz := blk_cfg.clk_khz or $8000; // Enable clock stretching
 end;
 
+
+procedure TForm219Config.ButtonCopyUzClick(Sender: TObject);
+begin
+    EditUz.Text := FormatFloat('0.00000000', -OldsU);
+    U_zero := -OldsU;
+end;
+
+procedure TForm219Config.ButtonCopyIzClick(Sender: TObject);
+begin
+    EditIz.Text := FormatFloat('0.00000000', -OldsI);
+    I_zero := -OldsI;
+end;
+
+procedure TForm219Config.RadioGroupGainClick(Sender: TObject);
+begin
+   if ChgEna then begin
+    GetScrParms;
+    i_219_gain := RadioGroupGain.ItemIndex;
+    ShowScrParms;
+    CheckRegValue;
+   end;
+end;
+
+procedure TForm219Config.SpinEditCLkKHzChange(Sender: TObject);
+begin
+     clk_219 := SpinEditCLkKHz.Value;
+end;
 
 end.
