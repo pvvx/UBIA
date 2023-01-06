@@ -1369,6 +1369,7 @@ begin
        StatusBar.Panels[2].Text:='Ошибка записи конфигурации в устройство на '+ sComNane+'!';
      end;
    end;
+   ShowAllRegs;
    if SamplesEna then Timer1.Enabled := True;
 end;
 
@@ -1550,15 +1551,21 @@ begin
         dev_ver := bufrx[2] or (bufrx[3] shl 8);
         StatusBar.Panels[2].Text:='Устройство ID:' + IntToHex(dev_type, 2) + '-' + IntToHex(dev_id, 2) +' версии '+IntToStr((dev_ver shr 12) and $0f) +'.'+IntToStr((dev_ver shr 8) and $0f)+'.'+IntToStr((dev_ver shr 4) and $0f)+'.'+IntToStr(dev_ver and $0f)+' подключено на '+ sComNane +'.';
         if (dev_id = I2C_DEVICE_ID) or (dev_id = ADC_DEVICE_ID)  then begin
-          if StopReadDevice
-            and ReadRegister(INAxxx_MID_REG)
+          if not StopReadDevice then begin
+              StatusBar.Panels[2].Text:=StatusBar.Panels[2].Text + ' Ошибка в команде останова!';
+              dev_i2c_id := NO_I2C_DID;
+              exit;
+          end;
+          if ReadRegister(INAxxx_MID_REG)
             and ReadRegister(INAxxx_DID_REG) then begin
               if (ina_reg.w[INAxxx_MID_REG] = INAxxx_MID) then begin
                 case ina_reg.w[INAxxx_DID_REG] of
                   INA226_DID : begin
+                    StatusBar.Panels[2].Text:=StatusBar.Panels[2].Text + ' Найдена INA226.';
                     dev_i2c_id := INA226_DID;
                   end;
                   INA3221_DID : begin
+                    StatusBar.Panels[2].Text:=StatusBar.Panels[2].Text + ' Найдена INA3221.';
                     dev_i2c_id := INA3221_DID;
                   end
                   else
@@ -1575,6 +1582,8 @@ begin
               dev_i2c_id := NO_I2C_DID;
               result := True;
               exit;
+            end else begin
+              StatusBar.Panels[2].Text:=StatusBar.Panels[2].Text + ' INAxxx не найдена!';
             end;
         end;
       end;
