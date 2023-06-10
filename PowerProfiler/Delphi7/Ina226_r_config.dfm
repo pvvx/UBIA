@@ -207,7 +207,7 @@ object Form226Config: TForm226Config
     Width = 65
     Height = 22
     Increment = 50
-    MaxValue = 1200
+    MaxValue = 2400
     MinValue = 400
     TabOrder = 7
     Value = 1000

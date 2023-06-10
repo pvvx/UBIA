@@ -212,7 +212,7 @@ end;
 procedure TForm226Config.FormActivate(Sender: TObject);
 begin
     if (dev_type = HI_DEVICE_TYPE) then begin
-      SpinEditCLkKHz.MaxValue := 2000;
+      SpinEditCLkKHz.MaxValue := 2400;
     end
     else begin
        SpinEditCLkKHz.MaxValue := 1000;

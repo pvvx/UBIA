@@ -12,7 +12,8 @@ uses
 const
     INA2XX_I2C_ADDR = $80;
     I2C_DEVICE_ID = $16;
-    ADC_DEVICE_ID = $21;
+    ADC1_DEVICE_ID = $21;
+    ADC2_DEVICE_ID = $22;
     HI_DEVICE_TYPE = $10;
 
     INAxxx_MID_REG = $fe;
@@ -30,7 +31,7 @@ const
 
     SMBus_Speed_kHz = 1000; // default
 
-    SMP_BUF_CNT = $3fff;
+    SMP_BUF_CNT = $3ffff;
     MAX_BLK_DEV1 = 30;
     MAX_BLK_DEV2 = 100;
     MAX_BLK_CNT = 116*2;
@@ -268,6 +269,7 @@ type
     procedure SetGrfMarging;
     procedure SetParStart;
     function SetAdcIniCfg(mode : integer) : boolean;
+    function SetAdc2IniCfg(mode : integer) : boolean;
     function ReadBlk(id : byte) : boolean;
     function SendBlk(data_count : byte) : boolean;
     function ReadStatus : boolean;
@@ -338,7 +340,7 @@ var
   U_zero : double;
   OldsI, OldsU: double;
 
-  old_sps : double;
+  current_smps : double;
 
    SamplesEna : boolean;
    bufsmp : array [0..SMP_BUF_CNT] of Smallint;
@@ -365,12 +367,12 @@ var
    work_adc : boolean;
 
   IniFile : TIniFile = nil;
-  IniFileName : string = '.\stm32ina2xx.ini';
+  IniFileName : string = '.\PowerProfiler.ini';
 
 implementation
 
 uses
-  StrUtils, ComPort, HexUtils, Ina219_r_config, Ina226_r_config, adc_jdy10_config, WaveStorage,
+  StrUtils, ComPort, HexUtils, Ina219_r_config, Ina226_r_config, adc_jdy10_config, adc_bl702_config, WaveStorage,
   Ina3221_r_config;
 
 {$R *.dfm}
@@ -465,7 +467,7 @@ begin
       while (bufcom[0] + 2 <= ByteReaded) do begin
         // что-то есть
         if ((bufcom[1] and $7F) = RES_OUT_REGS)
-          or ((work_adc) and ((bufcom[1] and $7F) = $0A)) then begin
+          or ((work_adc) and ((bufcom[1] and $7F) = CMD_DEV_ADC)) then begin
           // блок данных дл€ графиков
           if ((bufcom[1] and $80) = 0) then begin
             if SamplesEna then begin
@@ -776,6 +778,16 @@ begin
      IniFile.WriteFloat('ADC','Uz', Uz_adc);
      IniFile.WriteFloat('ADC','Ik', Ik_adc);
      IniFile.WriteFloat('ADC','Iz', Iz_adc);
+
+     IniFile.WriteInteger('ADC2','Smps', ADC2_smps);
+     IniFile.WriteInteger('ADC2','Chnl', ADC2_channel);
+     IniFile.WriteInteger('ADC2','UI', UI_adc2);
+     IniFile.WriteInteger('ADC2','PGA20db',PGA20dbA2);
+     IniFile.WriteInteger('ADC2','PGA2db5',PGA2db5A2);
+     IniFile.WriteFloat('ADC2','Uk', Uk_adc2);
+     IniFile.WriteFloat('ADC2','Uz', Uz_adc2);
+     IniFile.WriteFloat('ADC2','Ik', Ik_adc2);
+     IniFile.WriteFloat('ADC2','Iz', Iz_adc2);
    end
    else begin
      MaxSamples := IniFile.ReadInteger('System','MaxSamples', MaxSamples);
@@ -845,6 +857,19 @@ begin
      Ik_adc := IniFile.ReadFloat('ADC','Ik', Ik_adc);
      Iz_adc := IniFile.ReadFloat('ADC','Iz', Iz_adc);
 
+     ADC2_smps := FormAdc2Config.Checksmps(IniFile.ReadInteger('ADC2','Smps', ADC2_smps));
+     ADC2_channel := IniFile.ReadInteger('ADC2','Chnl', ADC2_channel);
+     UI_adc2 := IniFile.ReadInteger('ADC2','UI', UI_adc2);
+     PGA20dbA2 := IniFile.ReadInteger('ADC2','PGA20db',PGA20dbA2);
+     PGA2db5A2 := IniFile.ReadInteger('ADC2','PGA2db5',PGA2db5A2);
+
+     Uk_adc2 := IniFile.ReadFloat('ADC2','Uk', Uk_adc2);
+     Uz_adc2 := IniFile.ReadFloat('ADC2','Uz', Uz_adc2);
+
+     Ik_adc2 := IniFile.ReadFloat('ADC2','Ik', Ik_adc2);
+     Iz_adc2 := IniFile.ReadFloat('ADC2','Iz', Iz_adc2);
+
+
    end;
    IniFile.UpdateFile;
 end;
@@ -912,6 +937,16 @@ begin
      IniFile.WriteFloat('ADC','Uz', Uz_adc);
      IniFile.WriteFloat('ADC','Ik', Ik_adc);
      IniFile.WriteFloat('ADC','Iz', Iz_adc);
+
+     IniFile.WriteInteger('ADC2','Smps', ADC2_smps);
+     IniFile.WriteInteger('ADC2','Chnl', ADC2_channel);
+     IniFile.WriteInteger('ADC2','UI', UI_adc2);
+     IniFile.WriteInteger('ADC2','PGA20db',PGA20dbA2);
+     IniFile.WriteInteger('ADC2','PGA2db5',PGA2db5A2);
+     IniFile.WriteFloat('ADC2','Uk', Uk_adc2);
+     IniFile.WriteFloat('ADC2','Uz', Uz_adc2);
+     IniFile.WriteFloat('ADC2','Ik', Ik_adc2);
+     IniFile.WriteFloat('ADC2','Iz', Iz_adc2);
 
      IniFile.UpdateFile;
 end;
@@ -1129,16 +1164,16 @@ procedure TfrmMain.ShowLabelsMX;
 begin
         if ((ChartEnables and 2) <> 0)  and (SamplesCount <> 0) then begin
             OldsI := SumI/SamplesCount;
-            LabelMXI.Caption := 'I:' + FormatFloat('# ##0.000000', OldsI);
+            LabelMXI.Caption := 'I:' + FormatFloat('# ##0.000 000', OldsI);
         end
         else
-            LabelMXI.Caption := 'I#' + FormatFloat('# ##0.000000', OldCurI);
+            LabelMXI.Caption := 'I#' + FormatFloat('# ##0.000 000', OldCurI);
         if ((ChartEnables and 1) <> 0) and (SamplesCount <> 0) then begin
             OldsU := SumU/SamplesCount;
-            LabelMXU.Caption := 'U:' + FormatFloat('# ##0.000000', SumU/SamplesCount);
+            LabelMXU.Caption := 'U:' + FormatFloat('# ##0.000 000', SumU/SamplesCount);
         end
         else
-            LabelMXU.Caption := 'U#' + FormatFloat('# ##0.000000', OldCurU);
+            LabelMXU.Caption := 'U#' + FormatFloat('# ##0.000 000', OldCurU);
 end;
 
 procedure TfrmMain.ShowSmps;
@@ -1152,9 +1187,9 @@ begin
 //      k := 2000000.0/t;
 //    end
 //    else begin
-      old_sps := 1000000.0/t;
+      current_smps := 1000000.0/t;
 //    end;
-    StatusBar.Panels[1].Text := FormatFloat('# ##0.0', old_sps) + ' sps';
+    StatusBar.Panels[1].Text := FormatFloat('# ##0.0', current_smps) + ' sps';
   end;
 end;
 
@@ -1227,7 +1262,8 @@ begin
           CloseComThread;
           CloseCom;
           if (dev_id <> I2C_DEVICE_ID) and
-             (dev_id <> ADC_DEVICE_ID) then begin
+             (dev_id <> ADC1_DEVICE_ID) and
+             (dev_id <> ADC2_DEVICE_ID) then begin
             ShowMessage('Error device ID!'+#13#10+'Com closed.');
             StatusBar.Panels[2].Text:='Ќе тот ID у устройства на '+ sComNane+'!';
           end else begin
@@ -1253,7 +1289,7 @@ begin
               exit;
             end;
           end;
-          if dev_id = ADC_DEVICE_ID then begin
+          if (dev_id = ADC1_DEVICE_ID) or (dev_id = ADC2_DEVICE_ID) then begin
               ButtonStartADC.Enabled := True;
               ButtonStartADC.Visible := True;
               ButtonADCcfg.Enabled := True;
@@ -1264,9 +1300,9 @@ begin
           ClearGrf;
           ConnectStartTime := GetTime;
           if (dev_type = HI_DEVICE_TYPE) then begin
-            Form219Config.SpinEditCLkKHz.MaxValue := 2000;
-            Form226Config.SpinEditCLkKHz.MaxValue := 2000;
-            Form3221Config.SpinEditCLkKHz.MaxValue := 2000;
+            Form219Config.SpinEditCLkKHz.MaxValue := 3000;
+            Form226Config.SpinEditCLkKHz.MaxValue := 3000;
+            Form3221Config.SpinEditCLkKHz.MaxValue := 3000;
           end
           else begin
             Form219Config.SpinEditCLkKHz.MaxValue := 1000;
@@ -1275,7 +1311,7 @@ begin
           end;
           case dev_i2c_id of
             INA219_DID : begin
-              if dev_id = ADC_DEVICE_ID then
+              if (dev_id = ADC1_DEVICE_ID) or (dev_id = ADC2_DEVICE_ID) then
                 Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA219 + ADC)'
               else
                 Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA219)';
@@ -1283,7 +1319,7 @@ begin
               Form219Config.GetParams;
             end;
             INA226_DID : begin
-              if dev_id = ADC_DEVICE_ID then
+              if (dev_id = ADC1_DEVICE_ID) or (dev_id = ADC2_DEVICE_ID) then
                 Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA226 + ADC)'
               else
                 Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA226)';
@@ -1294,7 +1330,7 @@ begin
                 ShowAllRegs;
             end;
             INA3221_DID : begin
-              if dev_id = ADC_DEVICE_ID then
+              if (dev_id = ADC1_DEVICE_ID) or (dev_id = ADC2_DEVICE_ID) then
                 Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA3221 + ADC)'
               else
                 Caption := Application.Title + ' ver ' + BuildInfoString + ' (INA3221)';
@@ -1302,9 +1338,13 @@ begin
               Form3221Config.GetParams;
             end;
             else begin
-                if dev_id = ADC_DEVICE_ID then begin
+                if (dev_id = ADC1_DEVICE_ID) then begin
                   Caption := Application.Title + ' ver ' + BuildInfoString + ' (ADC)';
                   FormAdcConfig.GetParams;
+                end else
+                if (dev_id = ADC2_DEVICE_ID) then begin
+                  Caption := Application.Title + ' ver ' + BuildInfoString + ' (ADC BL702)';
+                  FormAdc2Config.GetParams;
                 end else
                  Caption := Application.Title + ' ver ' + BuildInfoString + ' (?)';
             end;
@@ -1390,12 +1430,13 @@ end;
 
 procedure TfrmMain.ButtonStartClick(Sender: TObject);
 var
-t : dword;
+t, maxs : dword;
 k : double;
 begin
     SamplesEna := False;
     Timer1.Enabled := False;
-    if dev_id = ADC_DEVICE_ID then SetAdcIniCfg(0);
+    //if (dev_id = ADC1_DEVICE_ID) then SetAdcIniCfg(0);
+    //if (dev_id = ADC2_DEVICE_ID) then SetAdc2IniCfg(0);
     if SetDevIniCfg(1) then begin
         ConnectStartTime := GetTime;
         StatusBar.Panels[2].Text:='«апущено непрерывное чтение INA2XX в устройстве на '+ sComNane+'.';
@@ -1403,10 +1444,11 @@ begin
         SetParStart;
         t := blk_cfg.time_us shl blk_cfg.multiplier; // t us
         if t <> 0 then begin
-          k := 1000.0/t; // smp per ms
-          if (k*MaxSamples) > 1000000.0 then
-            MaxSamples := Round(1000000.0/k);
-          EditSizeGrf.Text := IntToStr(MaxSamples);
+          maxs := 3000*t; // ms
+          if MaxSamples > maxs then begin
+            MaxSamples := maxs; // ms
+            EditSizeGrf.Text := IntToStr(MaxSamples); // ms
+          end;
         end;
         ShowSmps;
         if SamplesAutoStop then begin
@@ -1429,8 +1471,12 @@ begin
       if dev_i2c_id <> NO_I2C_DID then
         if not StopReadDevice then
           exit;
-      if dev_id = ADC_DEVICE_ID then begin
+      if (dev_id = ADC1_DEVICE_ID) then begin
         if not SetAdcIniCfg(0)then
+          exit;
+      end;
+      if (dev_id = ADC2_DEVICE_ID) then begin
+        if not SetAdc2IniCfg(0)then
           exit;
       end;
       StatusBar.Panels[2].Text:='Ќепрерывное чтение устройства на '+ sComNane+' остановлено. ѕропуск ' + IntToStr(dev_not_send_count) + ' блоков, счетчик: ' + IntToStr(dev_all_send_count) + '.'; // +    IntToStr(dev_send_smps);
@@ -1550,12 +1596,14 @@ begin
         dev_id := bufrx[0];
         dev_ver := bufrx[2] or (bufrx[3] shl 8);
         StatusBar.Panels[2].Text:='”стройство ID:' + IntToHex(dev_type, 2) + '-' + IntToHex(dev_id, 2) +' версии '+IntToStr((dev_ver shr 12) and $0f) +'.'+IntToStr((dev_ver shr 8) and $0f)+'.'+IntToStr((dev_ver shr 4) and $0f)+'.'+IntToStr(dev_ver and $0f)+' подключено на '+ sComNane +'.';
-        if (dev_id = I2C_DEVICE_ID) or (dev_id = ADC_DEVICE_ID)  then begin
+        if (dev_id = I2C_DEVICE_ID) or (dev_id = ADC1_DEVICE_ID) or (dev_id = ADC2_DEVICE_ID)  then begin
           if not StopReadDevice then begin
               StatusBar.Panels[2].Text:=StatusBar.Panels[2].Text + ' ќшибка в команде останова!';
-              dev_i2c_id := NO_I2C_DID;
-              exit;
+              ResetIna2xx;
+              //dev_i2c_id := NO_I2C_DID;
+              //exit;
           end;
+          if not ReadRegister(0) then ResetIna2xx;
           if ReadRegister(INAxxx_MID_REG)
             and ReadRegister(INAxxx_DID_REG) then begin
               if (ina_reg.w[INAxxx_MID_REG] = INAxxx_MID) then begin
@@ -1578,7 +1626,7 @@ begin
               result := True;
               exit;
           end else
-            if dev_id = ADC_DEVICE_ID then begin
+            if (dev_id = ADC1_DEVICE_ID) or (dev_id = ADC2_DEVICE_ID) then begin
               dev_i2c_id := NO_I2C_DID;
               result := True;
               exit;
@@ -1591,10 +1639,17 @@ begin
   end;
 end;
 
+
 function TfrmMain.ResetIna2xx : boolean;
+var
+ ft : boolean;
+ fs : boolean;
 begin
-   Timer1.Enabled := False;
    result := true;
+   ft := Timer1.Enabled;
+   fs := SamplesEna;
+   Timer1.Enabled := False;
+
    buftx[1]:=CMD_DEV_SRG; // Cmd: Set word
 
    buftx[2]:=INA2XX_I2C_ADDR;
@@ -1609,7 +1664,19 @@ begin
    end else begin
      result := false
    end;
-   if SamplesEna then Timer1.Enabled := True;
+
+   buftx[1]:=CMD_DEV_SRG; // Cmd: Set word
+
+   buftx[2]:=$18;
+   buftx[3] := $80;
+   buftx[4] := 0;
+   buftx[5] := 5;
+
+   SendBlk(4);
+   ReadBlk(buftx[1]);
+
+   Timer1.Enabled := ft;
+   SamplesEna := fs;
 end;
 
 function TfrmMain.ReadRegister(regnum : integer) : boolean;
@@ -1883,7 +1950,7 @@ begin
       Repaint;
       bfile := FileCreate(SaveDialog.FileName);
       if bfile<>INVALID_HANDLE_VALUE then begin
-        s:='X;Y;SPS '+FormatFloat('0.000',old_sps)+#13+#10;
+        s:='X;Y;SPS '+FormatFloat('0.000',current_smps)+#13+#10;
         FileWrite(bfile, s[1], Length(s));
         for i:=0 to data_cont -1  do begin
           if (ChartEnables and 1) <> 0 then begin
@@ -2007,7 +2074,10 @@ begin
 
         if not DeviceTypeRecognized then exit;
         if work_adc then begin
-          FormAdcConfig.GetParams;
+		      if (dev_id = ADC1_DEVICE_ID) then
+            FormAdcConfig.GetParams;
+    		  if (dev_id = ADC2_DEVICE_ID) then
+            FormAdc2Config.GetParams;
           exit;
         end;
 
@@ -2056,14 +2126,14 @@ end;
 
 function TfrmMain.SetAdcIniCfg(mode : integer) : boolean;
 const
-	ADC_DFIFO_CLK = 16000000;
-	SOFT_OUT_SCALE = 1;
+  ADC_DFIFO_CLK = 16000000;
+  SOFT_OUT_SCALE = 1;
   MAX_PERIOD_CH0 = 4095; // Max ADC auto channel 0 (Misc) period max (adc_period_chn0 * system clocks)
   MIN_PERIOD_CH0 = 77; 	// channel ADC period (adc_period_chn0 * system clocks)
   MAX_PERIOD_CH1 = 255; // ADC auto channel 1 (L)& 2 period max (adc_period_chn12 * 16 system clocks)
   MIN_PERIOD_CH1 = 15; // ADC auto channel 1 (L)& 2 period min (adc_period_chn12 * 16 system clocks)
 
-	MAX_OUT_SPS_D1 = ((ADC_DFIFO_CLK div (1*SOFT_OUT_SCALE)) div (MIN_PERIOD_CH0 + MIN_PERIOD_CH1*16));
+  MAX_OUT_SPS_D1 = ((ADC_DFIFO_CLK div (1*SOFT_OUT_SCALE)) div (MIN_PERIOD_CH0 + MIN_PERIOD_CH1*16));
   MIN_OUT_SPS = ((ADC_DFIFO_CLK div (8*SOFT_OUT_SCALE)) div (MAX_PERIOD_CH0 + MAX_PERIOD_CH1*16));
 var
   t_us : dword;
@@ -2098,7 +2168,7 @@ begin
    if mode = 0 then
      buftx[2] := 0 // pktcnt - кол-во передаваемых значений ADC в одном пакете передачи
    else begin
-//     if dev_id = ADC_DEVICE_ID then
+//     if dev_id = ADC1_DEVICE_ID then
 //       buftx[2] := 30 //MAX_BLK_DEV2 // pktcnt - кол-во передаваемых значений ADC в одном пакете передачи
 //     else
        buftx[2] := MAX_BLK_DEV1; // pktcnt - кол-во передаваемых значений ADC в одном пакете передачи
@@ -2120,50 +2190,117 @@ begin
    if SamplesEna then Timer1.Enabled := True;
 end;
 
+function TfrmMain.SetAdc2IniCfg(mode : integer) : boolean;
+var
+  t_us : dword;
+  smprate : dword;
+  channel : byte;
+begin
+   result := False;
+   Timer1.Enabled := False;
+   if mode <> 0 then
+     smprate := FormAdc2Config.Checksmps(ADC2_smps)
+   else begin
+     smprate := FormAdc2Config.Checksmps(1000);
+     // ADC2_smps := smprate;
+   end;
+   channel := ADC2_channel;
+
+   if mode <> 0 then begin
+     t_us := 1000000 div smprate;
+     blk_cfg.multiplier := 0;
+     while(t_us > $ffff) do begin
+      t_us := t_us shr 1;
+      Inc(blk_cfg.multiplier);
+     end;
+     blk_cfg.time_us := t_us;
+   end;
+
+   buftx[0] := 6;  // size
+   buftx[1] := 8;  // CMD_DEV_CAD  Get/Set CFG/ini ADC & Start measure
+   if mode = 0 then
+     buftx[2] := 0 // pktcnt - кол-во передаваемых значений ADC в одном пакете передачи
+   else begin
+     buftx[2] := 126; // pktcnt - кол-во передаваемых значений ADC в одном пакете передачи
+   end;
+   buftx[3] := channel; // channel
+   buftx[4] := smprate;  // период adc
+   buftx[5] := smprate shr 8; // период adc
+   buftx[6] := PGA20dbA2;
+   buftx[7] := PGA2db5A2;
+   if SendBlk(6) then begin
+     if ReadBlk(buftx[1]) and (lenrx >= 6) then begin
+       StatusBar.Panels[2].Text:=' онфигураци€ ADC передана в устройство на '+ sComNane+'.';
+       result := True;
+     end
+     else begin
+       StatusBar.Panels[2].Text:='ќшибка записи ADC конфигурации в устройство на '+ sComNane+'!';
+     end;
+   end;
+   if SamplesEna then Timer1.Enabled := True;
+end;
+
+
 procedure TfrmMain.ButtonStartADCClick(Sender: TObject);
 var
-t : dword;
-k : double;
+t, maxs: dword;
 begin
     SamplesEna := False;
     Timer1.Enabled := False;
     ButtonStartADC.Caption := 'Start ADC';
-    if SetAdcIniCfg(1) then begin
-        ConnectStartTime := GetTime;
-        StatusBar.Panels[2].Text:='«апущено непрерывное чтение ADC в устройстве на '+ sComNane+'.';
-        work_adc := True;
-        SetParStart;
-        if (UI_adc <> 0) then
-            ChartEnables := CHART_U_MASK
-        else
-            ChartEnables := CHART_I_MASK;
-        t := blk_cfg.time_us shl blk_cfg.multiplier; // t us
-        if t <> 0 then begin
-          k := 1000.0/t; // smp per ms
-          if (k*MaxSamples) > 1000000.0 then
-            MaxSamples := Round(1000000.0/k);
-          EditSizeGrf.Text := IntToStr(MaxSamples);
-        end;
-        ShowSmps;
-        if SamplesAutoStop then begin
-           SamplesAutoStop := False;
-           ClearGrf;
-        end;
-//        dev_send_smps := 0;
-        ismptx := 0;
-        ismprx := 0;
-        SamplesEna := True;
-        Timer1.Enabled := True;
-   end;
+    if (dev_id = ADC1_DEVICE_ID) then begin
+    	if not SetAdcIniCfg(1) then exit;
+    end;
+    if (dev_id = ADC2_DEVICE_ID) then begin
+    	if not SetAdc2IniCfg(1) then exit;
+    end;
+    ConnectStartTime := GetTime;
+    StatusBar.Panels[2].Text:='«апущено непрерывное чтение ADC в устройстве на '+ sComNane+'.';
+    work_adc := True;
+    SetParStart;
+    if (dev_id = ADC1_DEVICE_ID) then begin
+      if (UI_adc <> 0) then
+          ChartEnables := CHART_U_MASK
+      else
+          ChartEnables := CHART_I_MASK;
+    end else begin
+      if (UI_adc2 <> 0) then
+          ChartEnables := CHART_U_MASK
+      else
+          ChartEnables := CHART_I_MASK;
+    end;
+    t := blk_cfg.time_us shl blk_cfg.multiplier; // t us
+    if t <> 0 then begin
+      maxs := 3000*t; // ms
+      if MaxSamples > maxs then begin
+         MaxSamples := maxs; // ms
+         EditSizeGrf.Text := IntToStr(MaxSamples); // ms
+      end;
+    end;
+    ShowSmps;
+    if SamplesAutoStop then begin
+       SamplesAutoStop := False;
+       ClearGrf;
+    end;
+//      dev_send_smps := 0;
+    ismptx := 0;
+    ismprx := 0;
+    SamplesEna := True;
+    Timer1.Enabled := True;
 end;
 
 procedure TfrmMain.ButtonADCcfgClick(Sender: TObject);
 begin
+  if (dev_id = ADC1_DEVICE_ID) then begin
     FormAdcConfig.Left := Left + (Width div 2) - FormAdcConfig.Width div 2;
     FormAdcConfig.Top := Top + (Height div 2) - FormAdcConfig.Height div 2;
     FormConfigOk := FormAdcConfig.ShowModal;
 //    if FormConfigOk = mrOk then begin
-
+  end else begin
+    FormAdc2Config.Left := Left + (Width div 2) - FormAdc2Config.Width div 2;
+    FormAdc2Config.Top := Top + (Height div 2) - FormAdc2Config.Height div 2;
+    FormConfigOk := FormAdc2Config.ShowModal;
+  end
 end;
 
 procedure TfrmMain.ButtonSaveWavClick(Sender: TObject);
@@ -2173,7 +2310,9 @@ stereo : boolean;
 bfile : THandle;
 f,x,y : double;
 val : array [0..1] of short;
+resolution: integer;
 begin
+	resolution := 16; // 16 or 24 bits
     case ChartEnables of
      CHART_I_MASK : data_cont := Chart.Series[CHART_I_NUM].Count;
      CHART_U_MASK : data_cont := Chart.Series[CHART_U_NUM].Count;
@@ -2197,9 +2336,9 @@ begin
       Repaint;
       bfile := FileCreate(SaveDialog.FileName);
       if bfile<>INVALID_HANDLE_VALUE then begin
-        f := old_sps;
+        f := current_smps;
         if (not work_adc) and (ChartEnables = CHART_UI_MASK) then
-          f := old_sps/2;
+          f := current_smps/2;
         if f = 0.0 then
           f := 8000.0
         else if f < 100.0 then
@@ -2208,39 +2347,75 @@ begin
           stereo := True
         else
           stereo := False;
-        SetWavHeader(stereo, Round(f), data_cont, 16);
+        SetWavHeader(stereo, Round(f), data_cont, resolution);
         FileWrite(bfile, wav_header, sizeof(wav_header));
-        for i:=0 to data_cont -1  do begin
-          if (ChartEnables and CHART_U_MASK) <> 0 then begin
-            try
-             x := (Chart.Series[CHART_U_NUM].YValue[i]-U_zero)/Uk - 32768.0;
-            except
-             x := 0;
-            end;
-            if(x > 32767.0) then x := 32767.0
-            else if(x < -32768.0) then x := -32768.0;
-            val[0] := Round(x); //Trunc(x);
-          end else val[0] := 0;
 
-          if (ChartEnables and CHART_I_MASK) <> 0 then begin
-            try
-             y := (Chart.Series[CHART_I_NUM].YValue[i]-I_zero)/Ik;
-            except
-             y := 0;
-            end;
-            if work_adc then y := y - 32768.0;
-            if(y > 32767.0) then y := 32767.0
-            else if(y < -32768.0) then y := -32768.0;
-            val[1] := Round(y); // Trunc(y);
-          end else val[1] := 0;
-          case ChartEnables of
-           CHART_U_MASK : FileWrite(bfile, val[0] , sizeof(val[0]));
-           CHART_I_MASK : FileWrite(bfile, val[1] , sizeof(val[1]));
-           CHART_UI_MASK : FileWrite(bfile, val , sizeof(val));
-          end;
+		    if resolution = 24 then begin
+	        for i:=0 to data_cont -1  do begin
+	          if (ChartEnables and CHART_U_MASK) <> 0 then begin
+	            try
+	             x := (Chart.Series[CHART_U_NUM].YValue[i]-U_zero)/Uk - 8388608.0;
+	            except
+	             x := 0;
+	            end;
+	            if(x > 8388607.0) then x := 8388607.0
+            else if(x < -8388608.0) then x := -8388608.0;
+            val[0] := Round(x); //Trunc(x);
+	          end else val[0] := 0;
+
+	          if (ChartEnables and CHART_I_MASK) <> 0 then begin
+	            try
+	             y := (Chart.Series[CHART_I_NUM].YValue[i]-I_zero)/Ik;
+	            except
+	             y := 0;
+	            end;
+                if work_adc then y := y - 8388608.0;
+                if(y > 8388607.0) then y := 8388607.0
+	            else if(y < -8388608.0) then y := -8388608.0;
+	            val[1] := Round(y); // Trunc(y);
+	          end else val[1] := 0;
+	          case ChartEnables of
+               CHART_U_MASK : FileWrite(bfile, val[0] , 3); //sizeof(val[0]));
+	           CHART_I_MASK : FileWrite(bfile, val[1] , 3); //sizeof(val[1]));
+	           CHART_UI_MASK : begin
+	                 FileWrite(bfile, val[0] , 3); //sizeof(val[0]));
+	                 FileWrite(bfile, val[1] , 3); //sizeof(val[1]));
+	               end;
+	          end;
+	        end;
+		    end else if resolution = 16 then begin
+            for i:=0 to data_cont -1  do begin
+	          if (ChartEnables and CHART_U_MASK) <> 0 then begin
+	            try
+	             x := (Chart.Series[CHART_U_NUM].YValue[i]-U_zero)/Uk - 32768.0;
+	            except
+	             x := 0;
+	            end;
+	            if(x > 32767.0) then x := 32767.0
+	            else if(x < -32768.0) then x := -32768.0;
+                val[0] := Round(x); //Trunc(x);
+              end else val[0] := 0;
+
+	          if (ChartEnables and CHART_I_MASK) <> 0 then begin
+	            try
+	             y := (Chart.Series[CHART_I_NUM].YValue[i]-I_zero)/Ik;
+	            except
+	             y := 0;
+	            end;
+	            if work_adc then y := y - 32768.0;
+                if(y > 32767.0) then y := 32767.0
+                else if(y < -32768.0) then y := -32768.0;
+	            val[1] := Round(y); // Trunc(y);
+	          end else val[1] := 0;
+	          case ChartEnables of
+	           CHART_U_MASK : FileWrite(bfile, val[0] , sizeof(val[0]));
+	           CHART_I_MASK : FileWrite(bfile, val[1] , sizeof(val[1]));
+	           CHART_UI_MASK : FileWrite(bfile, val , sizeof(val));
+	          end;
+	        end;
         end;
+        FileClose(bfile);
       end;
-      FileClose(bfile);
      end;
     end;
 end;

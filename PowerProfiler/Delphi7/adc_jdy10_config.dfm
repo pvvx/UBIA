@@ -3,7 +3,7 @@ object FormAdcConfig: TFormAdcConfig
   Top = 651
   Width = 487
   Height = 280
-  Caption = 'ADC Config'
+  Caption = 'ADC TLSR8266 Config'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText

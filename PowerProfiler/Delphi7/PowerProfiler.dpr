@@ -9,6 +9,7 @@ uses
   Ina226_r_config in 'Ina226_r_config.pas' {Form226Config},
   Ina3221_r_config in 'Ina3221_r_config.pas' {Form3221Config},
   adc_jdy10_config in 'adc_jdy10_config.pas' {FormAdcConfig},
+  adc_bl702_config in 'adc_bl702_config.pas' {FormAdc2Config},
   WaveStorage in 'WaveStorage.pas';
 
 {$E exe}
@@ -23,5 +24,6 @@ begin
   Application.CreateForm(TForm226Config, Form226Config);
   Application.CreateForm(TFormAdcConfig, FormAdcConfig);
   Application.CreateForm(TForm3221Config, Form3221Config);
+  Application.CreateForm(TFormAdcConfig, FormAdcConfig);
   Application.Run;
 end.

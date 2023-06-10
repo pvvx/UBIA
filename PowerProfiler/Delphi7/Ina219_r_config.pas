@@ -185,7 +185,7 @@ end;
 procedure TForm219Config.FormActivate(Sender: TObject);
 begin
     if (dev_type = HI_DEVICE_TYPE) then begin
-      SpinEditCLkKHz.MaxValue := 2000;
+      SpinEditCLkKHz.MaxValue := 2400;
     end
     else begin
        SpinEditCLkKHz.MaxValue := 1000;
@@ -303,7 +303,7 @@ begin
             end;
      end;
      if(mode <> 0) then begin
-       if dev_id = ADC_DEVICE_ID then begin
+       if (dev_id = ADC1_DEVICE_ID) or (dev_id = ADC2_DEVICE_ID) then begin
          // задать максимум регистров в пакете
          x := t div (30000 div MAX_BLK_DEV2);
          if(x > (MAX_BLK_DEV2-1)) then x := (MAX_BLK_DEV2-12);

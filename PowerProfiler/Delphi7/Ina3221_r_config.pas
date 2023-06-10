@@ -183,24 +183,27 @@ end;
 
 procedure TForm3221Config.ButtonOkClick(Sender: TObject);
 var
- clk_khz : integer;
+ min_clk_khz, clk_khz : integer;
 begin
     CheckRegValue;
 
     if RadioGroupShuntCTime.ItemIndex < RadioGroupBusCTime.ItemIndex then
-      clk_khz := TabBusClkTiming[RadioGroupShuntCTime.ItemIndex]
+      min_clk_khz := TabBusClkTiming[RadioGroupShuntCTime.ItemIndex]
     else
-      clk_khz := TabBusClkTiming[RadioGroupBusCTime.ItemIndex];
-
-    if SpinEditCLkKHz.Value < clk_khz then begin
+      min_clk_khz := TabBusClkTiming[RadioGroupBusCTime.ItemIndex];
+    clk_khz := SpinEditCLkKHz.Value;
+    if clk_khz < min_clk_khz then begin
         ShowMessage('BUS CLK Low!' + #13#10 +'Min CLK ' + IntToStr(clk_khz) + ' kHz!');
-        SpinEditCLkKHz.Value := clk_khz;
+        SpinEditCLkKHz.Value := min_clk_khz;
         ModalResult := mrNone;
         Exit;
+    end else if clk_khz > SMBus_3221_Speed_Max_kHz then begin
+        clk_khz := SMBus_3221_Speed_Max_kHz;
+        SpinEditCLkKHz.Value := clk_khz;
     end;
 
 
-    blk_cfg.clk_khz := 1000;
+    blk_cfg.clk_khz := clk_khz;
 
     ina_reg.config := reg_config;
 //    ina_reg.ina2_calibration := reg_calibration;
@@ -268,7 +271,7 @@ end;
 procedure TForm3221Config.FormActivate(Sender: TObject);
 begin
     if (dev_type = HI_DEVICE_TYPE) then begin
-      SpinEditCLkKHz.MaxValue := 2000;
+      SpinEditCLkKHz.MaxValue := SMBus_3221_Speed_Max_kHz;
     end
     else begin
        SpinEditCLkKHz.MaxValue := 1000;
@@ -308,7 +311,20 @@ begin
      blk_cfg.init[0].reg_addr := 0;
      blk_cfg.init[0].data := ina_reg.config;
      // записать другие регистры ?:
-     blk_cfg.init[1].dev_addr := 0;
+     blk_cfg.init[1].dev_addr := INA2XX_I2C_ADDR;
+     blk_cfg.init[1].reg_addr := $10; // Power-Valid Upper-Limit Register (address = 10h) [reset = 2710h]
+     blk_cfg.init[1].data := 3250; // mV
+
+     blk_cfg.init[2].dev_addr := INA2XX_I2C_ADDR;
+     blk_cfg.init[2].reg_addr := $11; // Power-Valid Lower-Limit Register (address = 11h) [reset = 2328h]
+     blk_cfg.init[2].data := 3200; // mV
+
+     // записать другие регистры ?:
+     blk_cfg.init[3].dev_addr := INA2XX_I2C_ADDR;
+     blk_cfg.init[3].reg_addr := $0F; // Mask/Enable Register (address = 0Fh) [reset = 0002h]
+     blk_cfg.init[3].data := $7000;
+
+//     blk_cfg.init[3].dev_addr := 0;
 
      // min 140, max 8244*1024 = 8441856 us
      u := (ina_reg.config and BusCTimeMsk) shr BusCTimeShl;

@@ -188,7 +188,7 @@ object Form3221Config: TForm3221Config
     Width = 65
     Height = 22
     Increment = 50
-    MaxValue = 1200
+    MaxValue = 2400
     MinValue = 400
     TabOrder = 8
     Value = 1000

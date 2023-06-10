@@ -51,10 +51,8 @@ begin
   else wav_header.mono := 1;
   wav_header.freq := smps;
   wav_header.bps := smps;
-  if bits < 9 then
-    wav_header.blka :=  1
-  else
-    wav_header.blka :=  2;
+  wav_header.bits := bits;
+  wav_header.blka :=  bits div 8;
   wav_header.dsize := samplecount * wav_header.blka * wav_header.mono;
   wav_header.size8 := wav_header.dsize + sizeof(wav_header) - 8;
 end;
